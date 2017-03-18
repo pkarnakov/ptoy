@@ -92,9 +92,14 @@ public:
   std::unique_ptr<integrator> INT;
   vector<particle> P;
   vector<std::unique_ptr<env_object>> ENVOBJ;
+  vect force_center;
+  bool force_enabled;
   particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(0.2, 0.2), 100)
   {
     INT=std::unique_ptr<integrator>(new integrator_Euler);
+     
+    force_enabled = false;
+    force_center = vect(0., 0.);
 
     // place particles in the domain
     double r=0.02;
@@ -145,20 +150,42 @@ public:
 
     t=INT->get_t();
   }
+  void SetForce(vect center, bool enabled) {
+      force_center = center;
+      force_enabled = enabled;
+  }
+  void SetForce(vect center) {
+      force_center = center;
+  }
+  void SetForce(bool enabled) {
+      force_enabled = enabled;
+  }
   void RHS(const vector<vect>& X, const vector<vect>& V, double t, vector<vect>& F) const
   {
     F.resize(X.size());
 
     for(size_t i=0; i<F.size(); ++i)
     {
+      // gravity
       F[i]=g*P[i].m;
+      // environment objects
       for(size_t k=0; k<ENVOBJ.size(); ++k)
       {
         auto& obj=ENVOBJ[k];
         F[i]+=obj->F(X[i],V[i],P[i].r,P[i].sigma);
       }
+      // point force
+      if (force_enabled) {
+          const double intensity = 0.1;
+          const vect r = X[i] - force_center; 
+          F[i] += r * (intensity / std::pow(r.length(), 3));
+      }
+
+      // dissipation
+      F[i] -= V[i] * 0.1;
     }
 
+    // pairwise interactions
     for(int bj=0; bj<Blocks.B.msize().j; ++bj)
     for(int bi=0; bi<Blocks.B.msize().i; ++bi)
     {

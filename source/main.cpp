@@ -44,13 +44,13 @@ void display(void)
   milliseconds frame_duration(int(1000.0/fps));
   milliseconds time_residual=frame_duration-time_past_from_last_frame;
 
-  cout<<"sleep for "<<time_residual.count()<<endl;
+  //cout<<"sleep for "<<time_residual.count()<<endl;
   std::this_thread::sleep_for(time_residual);
   //std::this_thread::sleep_for(frame_duration);
 
 
   last_frame_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
-  cout<<"Frame "<<frame_number++<<endl;
+  //cout<<"Frame "<<frame_number++<<endl;
 
   /*for(int k=0; k<80; k++)
   {
@@ -113,9 +113,18 @@ kbd(unsigned char key, int x, int y)
   return;
 }
 
+void mouse_move(int x, int y) {
+  vect c;
+  c.x = -1. + 2. * (x / width);
+  c.y = 1. - 2. * (y / height);
+
+  G.PS->SetForce(c);
+}
+
 void mouse(int button, int state, int x, int y)
 {
   cout<<button<<" "<<state<<" "<<x<<" "<<y<<endl;
+  G.PS->SetForce(state == 0);
 }
 
 
@@ -161,6 +170,7 @@ int main(int argc, char *argv[])
     glutKeyboardFunc(kbd);
 
     glutMouseFunc(mouse);
+    glutMotionFunc(mouse_move);
 
     /* register function that draws in the window */
     glutDisplayFunc(display);
