@@ -16,7 +16,8 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
   {
     const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
     const vect v(0., 0.);
-    const double sigma = 100000.;
+    // TODO: adjust sigma so that with r->0 it converges to a solid body
+    const double sigma = 0.5;
     switch (i % 1) {
       case 0:
         P.push_back(particle(p, v, 0.01, r, sigma, 0x1, rgb(1.,0.,0.)));
@@ -170,14 +171,21 @@ void particles_system::RHS()
 
 vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, double sigma, double R)
 {
-  const double alpha=12.0;
-  const double beta=6.0;
-   
-  double eps = sigma/(pow(2.0,alpha)-pow(2.0,beta));
-
-  double r = p1.dist(p2);
+  const vect r = p1 - p2;
+  const double ar2 = r.dot(r);
+  const double ad2 = 1. / ar2;
+  const double r2 = ar2 * (1. / (R * R));
+  const double d2 = ad2 * (R * R);
+  const double d6 = d2 * d2 * d2;
+  const double d12 = d6 * d6;
   const double cutoff = 2.;
-  double F = r>R*cutoff?0.0:eps*(pow(R/r, alpha)-pow(R/r, beta));
-  F = r < R ? F : F * (cutoff - r / R) / (cutoff - 1.); 
-  return (p1-p2)*(F/r);
+  const double cutoff2 = cutoff * cutoff;
+  double F = 0.;
+  if (r2 < cutoff2) {
+    F = d2 > cutoff2 ? 0.0 : sigma * (d12 - d6);
+    if (r2 > 1.) {
+      F *= (cutoff2 - r2) / (cutoff2 - 1.); 
+    }
+  }
+  return r * (F * ad2);
 }
