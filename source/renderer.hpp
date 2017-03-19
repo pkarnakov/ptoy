@@ -51,9 +51,10 @@ public:
   }
   void draw_particles()
   {
-    for(std::size_t k=0; k<PS->P.size(); ++k)
+    auto particles = PS->GetParticles();
+    for(std::size_t k=0; k<particles.size(); ++k)
     {
-      auto& part=PS->P[k];
+      auto& part=particles[k];
       vect p=part.p;
       int r=PR.convert(vect(part.r,0.)).i-PR.convert(vect(0.,0.)).i;
       draw_circle(PR.convert(p), r, part.color);

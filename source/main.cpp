@@ -97,7 +97,7 @@ reshape(int w, int h)
 }
 
 void
-kbd(unsigned char key, int x, int y)
+kbd(unsigned char key, int /*x*/, int /*y*/)
 {
   switch((char)key) {
   case 'q':
