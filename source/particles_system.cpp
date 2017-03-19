@@ -47,19 +47,35 @@ void particles_system::status(std::ostream& out)
 }
 void particles_system::step()
 {
-  INT->step();
-
-  INT->get_data(X,V);
+  std::vector<vect> X(P.size()), V(P.size()), F(P.size());
+  for(std::size_t i=0; i<P.size(); ++i)
+  {
+    auto& p = P[i].p;
+    auto& v = P[i].v;
+    p += v * dt;
+  }
 
   for(std::size_t i=0; i<P.size(); ++i)
   {
-    P[i].p=X[i];
-    P[i].v=V[i];
+    X[i] = P[i].p;
+    V[i] = P[i].v;
+  }
+
+  RHS(X, V, t, F);
+
+  for(std::size_t i=0; i<P.size(); ++i)
+  {
+    auto& v = P[i].v;
+    auto& f = F[i];
+    v += (f + v * (-0.1)) * dt;
+    const double limit = 100.;
+    if (v.length() > limit) {
+      v *= limit / v.length();
+    }
   }
 
   Blocks.arrange(X);
-
-  t=INT->get_t();
+  t += dt;
 }
 void particles_system::SetForce(vect center, bool enabled) {
     force_center = center;
