@@ -88,7 +88,7 @@ class particles_system
   double dt;
   vect g;
   void transfer_data(const vector<particle>& P, vector<vect>& X, vector<vect>& V);
-  void RHS(const vector<vect>& X, const vector<vect>& V, double /*t*/, vector<vect>& F) const;
+  std::vector<vect> RHS() const;
   vector<std::unique_ptr<env_object>> ENVOBJ;
   vector<particle> P;
   vect force_center;

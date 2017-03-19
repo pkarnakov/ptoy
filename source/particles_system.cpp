@@ -35,7 +35,6 @@ void particles_system::status(std::ostream& out)
 }
 void particles_system::step()
 {
-  std::vector<vect> X(P.size()), V(P.size()), F(P.size());
   for(std::size_t i=0; i<P.size(); ++i)
   {
     auto& p = P[i].p;
@@ -43,13 +42,7 @@ void particles_system::step()
     p += v * dt;
   }
 
-  for(std::size_t i=0; i<P.size(); ++i)
-  {
-    X[i] = P[i].p;
-    V[i] = P[i].v;
-  }
-
-  RHS(X, V, t, F);
+  auto F = RHS();
 
   for(std::size_t i=0; i<P.size(); ++i)
   {
@@ -88,29 +81,33 @@ void particles_system::transfer_data(const vector<particle>& P, vector<vect>& X,
   }
 }
 
-void particles_system::RHS(const vector<vect>& X, const vector<vect>& V, double /*t*/, vector<vect>& F) const
+std::vector<vect> particles_system::RHS() const
 {
-  F.resize(X.size());
+  std::vector<vect> F(P.size());
 
   for(size_t i=0; i<F.size(); ++i)
   {
+    auto& f = F[i];
+    auto& p = P[i].p;
+    auto& v = P[i].v;
+    auto& part = P[i];
     // gravity
-    F[i]=g*P[i].m;
+    f=g*part.m;
     // environment objects
     for(size_t k=0; k<ENVOBJ.size(); ++k)
     {
       auto& obj=ENVOBJ[k];
-      F[i]+=obj->F(X[i],V[i],P[i].r,P[i].sigma);
+      f+=obj->F(p,v,part.r,part.sigma);
     }
     // point force
     if (force_enabled) {
         const double intensity = 0.1;
-        const vect r = X[i] - force_center; 
-        F[i] += r * (intensity / std::pow(r.length(), 3));
+        const vect r = p - force_center; 
+        f += r * (intensity / std::pow(r.length(), 3));
     }
 
     // dissipation
-    F[i] -= V[i] * 0.1;
+    f -= v * 0.1;
   }
 
   // pairwise interactions
@@ -121,11 +118,11 @@ void particles_system::RHS(const vector<vect>& X, const vector<vect>& V, double 
     const std::vector<int>& b1=Blocks.B[m];
     for(size_t w1=0; w1<b1.size(); ++w1)
     {
-      int p1=b1[w1]; // first particle
+      int p1 = b1[w1]; // first particle
 
       for(size_t k=0; k<Blocks.NEAR.size(); ++k)
       {
-        mindex mnear=m+Blocks.NEAR[k];
+        mindex mnear = m + Blocks.NEAR[k];
         if(Blocks.B.valid(mnear))
         {
           const std::vector<int>& b2=Blocks.B[mnear];
@@ -134,7 +131,7 @@ void particles_system::RHS(const vector<vect>& X, const vector<vect>& V, double 
             int p2=b2[w2]; // second particle
             if(p1!=p2 && (P[p1].layers_mask & P[p2].layers_mask))
             {
-              F[p1]+=F12(X[p1], V[p1], X[p2], V[p2], 0.5*(P[p1].sigma+P[p2].sigma), P[p1].r+P[p2].r);
+              F[p1] += F12(P[p1].p, P[p1].v, P[p2].p, P[p2].v, 0.5*(P[p1].sigma+P[p2].sigma), P[p1].r+P[p2].r);
             }
           }
         }
@@ -146,6 +143,7 @@ void particles_system::RHS(const vector<vect>& X, const vector<vect>& V, double 
   {
     F[i]*=1.0/P[i].m;
   }
+  return F;
 }
 
 vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, double sigma, double R)
