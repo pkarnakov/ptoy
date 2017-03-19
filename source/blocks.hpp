@@ -123,8 +123,7 @@ public:
   mindex get_block(vect p) const
   {
     vect rel=p-domain.A;
-    vect size=domain.size();
-    return mindex(int(rel.x/size.x), int(rel.y/size.y));
+    return mindex(int(rel.x/block_size.x), int(rel.y/block_size.y));
   }
   mindex constraints(mindex m) const
   {
@@ -133,6 +132,8 @@ public:
   void add_particles(const std::vector<particle>& P) {
     for (auto& part : P) {
       auto n = constraints(get_block(part.p));
+      //std::cout << "p=" << part.p.x << " " << part.p.y 
+      //  << " b=" << B.getn(n) << std::endl;
       B[n].push_back(part);
       assert(B[n].size() <= block_capacity);
     }
@@ -148,6 +149,14 @@ public:
           B[new_block].push_back(B[n].back());
           B[n].pop_back();
         }
+      }
+    }
+  }
+  void print_status() const {
+    std::cout << "Blocks" << std::endl;
+    for (size_t n = 0; n < B.size(); ++n) {
+      if (B[n].size()) { 
+        std::cout << n << " " << B[n].size() << std::endl;
       }
     }
   }

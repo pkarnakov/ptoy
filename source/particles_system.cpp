@@ -1,26 +1,27 @@
 #include "particles_system.hpp"
 
 
-particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(0.2, 0.2), 300, false)
+particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(0.2, 0.2), 100, false)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
 
   // place particles in the domain
   double r=0.02;
-  int N=300;
+  int N=1000;
 
   std::vector<particle> P;
   for(int i=0; i<N; ++i)
   {
-    int row=11;
+    int row=25;
     P.push_back(particle(vect((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0), vect(0.1, 0.0), 0.01, r, 10000.0, 1+i%2*0, rgb(1.0, i%2, 0.0)));
   }
 
   Blocks.add_particles(P);
+  Blocks.print_status();
 
   t=0.0;
-  dt=0.0001;
+  dt=0.0005;
   g=vect(0.0, -10.0);
 }
 particles_system::~particles_system()

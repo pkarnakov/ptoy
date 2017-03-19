@@ -65,6 +65,7 @@ void display(void)
         (new_frame_game_time - last_frame_game_time) / frame_real_duration_s
         << std::endl;
     last_report_time = new_frame_time;
+    //G.PS->Blocks.print_status();
   }
 
   last_frame_time = new_frame_time;
