@@ -47,6 +47,7 @@ void particles_system::status(std::ostream& out)
 }
 void particles_system::step()
 {
+  #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
   for(int bj=0; bj<Blocks.B.msize().j; ++bj)
   for(int bi=0; bi<Blocks.B.msize().i; ++bi)
   {
@@ -61,6 +62,7 @@ void particles_system::step()
 
   RHS();
 
+  #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
   for(int bj=0; bj<Blocks.B.msize().j; ++bj)
   for(int bi=0; bi<Blocks.B.msize().i; ++bi)
   {
@@ -93,7 +95,7 @@ void particles_system::SetForce(bool enabled) {
 
 void particles_system::RHS()
 {
-  // pairwise interactions
+  #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
   for(int bj=0; bj<Blocks.B.msize().j; ++bj)
   for(int bi=0; bi<Blocks.B.msize().i; ++bi)
   {
@@ -124,6 +126,7 @@ void particles_system::RHS()
       // dissipation
       f -= v * 0.1;
 
+      // pairwise interactions
       for(size_t k=0; k<Blocks.NEAR.size(); ++k)
       {
         mindex mnear = m + Blocks.NEAR[k];
@@ -141,6 +144,7 @@ void particles_system::RHS()
         }
       }
       
+      // mass
       f *= 1. / p1.m;
     }
   }
