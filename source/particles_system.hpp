@@ -7,9 +7,9 @@
 #include <vector>
 #include <iostream>
 #include <functional>
-#include "blocks.hpp"
 #include <memory>
 
+class blocks;
 
 using std::endl;
 using std::vector;
@@ -26,6 +26,7 @@ struct particle
 {
   vect p;
   vect v;
+  vect f;
   double m;
   double r;
   double sigma;
@@ -68,6 +69,8 @@ public:
   }
 };
 
+#include "blocks.hpp"
+
 class particles_system
 {
  public:
@@ -83,17 +86,13 @@ class particles_system
   double GetTime() const { return t; }
 
  private:
-  vector<vect> X, V;
   blocks Blocks;
   double t;
   double dt;
   vect g;
-  void transfer_data(const vector<particle>& P, vector<vect>& X, vector<vect>& V);
-  std::vector<vect> RHS() const;
+  void RHS();
   vector<std::unique_ptr<env_object>> ENVOBJ;
-  vector<particle> P;
   vect force_center;
   bool force_enabled;
 };
-
 

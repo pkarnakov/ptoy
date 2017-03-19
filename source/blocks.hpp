@@ -5,6 +5,8 @@
 #include "geometry.hpp"
 #include <cmath>
 #include <vector>
+#include "particles_system.hpp"
+#include <cassert>
 
 using std::min;
 using std::max;
@@ -57,9 +59,9 @@ public:
   {
     return D[n];
   }
-  int size() const
+  size_t size() const
   {
-    return N.i*N.j;
+    return static_cast<size_t>(N.i*N.j);
   }
   mindex msize() const
   {
@@ -79,7 +81,7 @@ class blocks
 {
   rect_vect domain;
   vect block_size;
-  int block_capacity;
+  size_t block_capacity;
   mindex N;
   void init()
   {
@@ -92,15 +94,15 @@ class blocks
     N.i=int(domain.size().x/block_size.x)+1;
     N.j=int(domain.size().y/block_size.y)+1;
     B.resize(N);
-    for(int n=0; n<B.size(); ++n)
+    for(size_t n=0; n<B.size(); ++n)
     {
       B[n].reserve(block_capacity);
     }
   }
 public:
-  array2D<std::vector<int>> B;
+  array2D<std::vector<particle>> B;
   std::vector<mindex> NEAR;
-  int close_packing(vect size, double r) const
+  size_t close_packing(vect size, double r) const
   {
     // approximate value of volume occupied by close-packed circles in a rectangle with given size
     double occupied_volume=size.x*size.y*PI/(2.0*sqrt(3.0));
@@ -109,7 +111,8 @@ public:
     // truncate and add a reserve (+1)
     return int(circles_number)+1;
   }
-  blocks(rect_vect _domain, vect _block_size, int _block_capacity) : domain(_domain), block_size(_block_size), block_capacity(_block_capacity)
+  blocks(rect_vect _domain, vect _block_size, 
+      size_t _block_capacity, bool) : domain(_domain), block_size(_block_size), block_capacity(_block_capacity)
   {
     init();
   }
@@ -127,16 +130,25 @@ public:
   {
     return mindex(max(0,min(N.i-1,m.i)), max(0,min(N.j-1,m.j)));
   }
-  void arrange(std::vector<vect> X)
-  {
-    for(int n=0; n<B.size(); ++n)
-    {
-      B[n].resize(0);
+  void add_particles(const std::vector<particle>& P) {
+    for (auto& part : P) {
+      auto n = constraints(get_block(part.p));
+      B[n].push_back(part);
+      assert(B[n].size() <= block_capacity);
     }
-
-    for(size_t k=0; k<X.size(); ++k)
-    {
-      B[constraints(get_block(X[k]))].push_back(k);
+  }
+  void arrange()
+  {
+    for (size_t n = 0; n < B.size(); ++n) {
+      for (size_t w = 0; w < B[n].size(); ++w) {
+        size_t new_block = 
+          B.getn(constraints(get_block(B[n][w].p)));
+        if (n != new_block) {
+          std::swap(B[n][w], B[n].back());
+          B[new_block].push_back(B[n].back());
+          B[n].pop_back();
+        }
+      }
     }
   }
 
