@@ -3,8 +3,6 @@
 
 particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(0.2, 0.2), 100)
 {
-  INT=std::unique_ptr<integrator>(new integrator_Euler);
-   
   force_enabled = false;
   force_center = vect(0., 0.);
 
@@ -22,16 +20,6 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
   t=0.0;
   dt=0.0001;
   g=vect(0.0, -10.0);
-
-  INT->set_data(X, V);
-  INT->set_t(t);
-  INT->set_dt(dt);
-
-  using std::placeholders::_1;
-  using std::placeholders::_2;
-  using std::placeholders::_3;
-  using std::placeholders::_4;
-  INT->set_RHS(std::bind(&particles_system::RHS, this, _1, _2, _3, _4));
 }
 particles_system::~particles_system()
 {}
