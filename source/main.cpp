@@ -5,6 +5,10 @@
 #include <thread>
 #include <chrono>
 #include <atomic>
+#include <omp.h>
+
+// TODO: reorder header includes (std first)
+// TODO: fix formatting
 
     using namespace std::chrono;
 
@@ -159,7 +163,20 @@ void mouse(int button, int state, int x, int y)
 
 void cycle()
 {
-  cout<<"Computation thread started"<<endl;
+  omp_set_dynamic(0);
+  omp_set_nested(0);
+  //omp_set_num_threads(std::thread::hardware_concurrency());
+  //omp_set_num_threads(2);
+
+  #pragma omp parallel
+  {
+    #pragma omp master
+    std::cout
+        << "Computation started on " 
+        << omp_get_num_threads() << " OpenMP threads"
+        << std::endl;
+  }
+
   while(true) { 
     if (G.PS->GetTime() < next_game_time_target) {
       G.PS->step();
@@ -167,7 +184,7 @@ void cycle()
       std::this_thread::sleep_for(milliseconds(1000 / 60));
     }
   }
-  cout<<"Computation thread finished"<<endl;
+  std::cout << "Computation finished" << std::endl;
 }
 
 
