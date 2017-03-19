@@ -8,21 +8,21 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
 
   // place particles in the domain
   double r=0.02;
-  int N=2000;
+  int N=1000;
 
   std::vector<particle> P;
   for(int i=0; i<N; ++i)
   {
-    int row=46;
+    int row=37;
     const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
     const vect v(0., 0.);
     const double sigma = 100000.;
     switch (i % 3) {
       case 0:
-        P.push_back(particle(p, v, 0.01, r, sigma, 0x1, rgb(1.,0.,0.)));
+        P.push_back(particle(p, v, 0.01, r, sigma, 0x3, rgb(1.,0.,0.)));
         break;
       case 1:
-        P.push_back(particle(p, v, 0.02, r, sigma, 0x2, rgb(0.,1.,0.)));
+        P.push_back(particle(p, v, 0.02, r, sigma, 0x3, rgb(0.,1.,0.)));
         break;
       case 2:
         P.push_back(particle(p, v, 0.05, r, sigma, 0x3, rgb(0.,0.,1.)));
@@ -34,7 +34,7 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
   Blocks.print_status();
 
   t=0.0;
-  dt=0.0002;
+  dt=0.0003;
   g=vect(0.0, -10.0);
 }
 particles_system::~particles_system()

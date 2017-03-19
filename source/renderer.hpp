@@ -7,6 +7,7 @@
 #include <GL/glut.h>
 #include <iostream>
 #include <functional>
+
 class renderer
 {
 protected:
@@ -25,13 +26,23 @@ public:
   {
     glColor3f(color.r, color.g, color.b);
 
-    float delta_theta = 1.9;
+    const size_t num_segments = 8;
+    const float theta = 2 * PI / num_segments;
+    const float c = cos(theta);
+    const float s = sin(theta);
+    float dx = r;
+    float dy = 0.;
 
-    //glBegin( GL_POLYGON );
-    glBegin( GL_LINE_LOOP );
+    glBegin( GL_POLYGON );
+    //glBegin( GL_LINE_LOOP );
+    //glDrawArrays();
 
-    for( float angle = 0; angle < 2*PI; angle += delta_theta )
-    glVertex3f( r*cos(angle)+x, r*sin(angle)+y, 0 );
+    for (size_t i = 0; i < num_segments; ++i) {
+      glVertex3f(x + dx, y + dy, 0);
+      const float dx_tmp = dx;
+      dx = c * dx - s * dy;
+      dy = s * dx_tmp + c * dy;
+    }
 
     glEnd();
   }
@@ -56,8 +67,12 @@ public:
     {
       auto& part=particles[k];
       vect p=part.p;
-      int r=PR.convert(vect(part.r * 0.7,0.)).i-PR.convert(vect(0.,0.)).i;
-      draw_circle(PR.convert(p), r, part.color);
+      double f = 0.5 + part.v.length() / 7.; // color intensity
+      f = std::min(1., std::max(0., f));
+      auto c = part.color;
+      rgb color(c.r * f, c.g * f, c.b * f);
+      int r = PR.convert(vect(part.r,0.)).i-PR.convert(vect(0.,0.)).i;
+      draw_circle(PR.convert(p), r, color);
     }
   }
   void draw_frame()

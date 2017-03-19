@@ -4,12 +4,14 @@
 #include <GL/glut.h>
 #include <thread>
 #include <chrono>
+#include <atomic>
 
     using namespace std::chrono;
 
     milliseconds last_frame_time;
     double last_frame_game_time;
     milliseconds last_report_time;
+    std::atomic<double> next_game_time_target;
 
 game G;
 
@@ -67,6 +69,9 @@ void display(void)
     last_report_time = new_frame_time;
     //G.PS->Blocks.print_status();
   }
+  
+  const double game_rate_target = 1.;
+  next_game_time_target = new_frame_game_time + game_rate_target / fps;
 
   last_frame_time = new_frame_time;
   last_frame_game_time = new_frame_game_time;
@@ -155,10 +160,14 @@ void mouse(int button, int state, int x, int y)
 void cycle()
 {
   cout<<"Computation thread started"<<endl;
-  while(true)
-  {
-    G.PS->step();
+  while(true) { 
+    if (G.PS->GetTime() < next_game_time_target) {
+      G.PS->step();
+    } else {
+      std::this_thread::sleep_for(milliseconds(1000 / 60));
+    }
   }
+  cout<<"Computation thread finished"<<endl;
 }
 
 
@@ -177,13 +186,15 @@ int main(int argc, char *argv[])
 
     /* specify the display to be single
        buffered and color as RGBA values */
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA | GLUT_DOUBLE );
+    //glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE);
+    glEnable(GL_MULTISAMPLE_ARB);
 
     /* set the initial window size */
     glutInitWindowSize((int) width, (int) height);
 
     /* create the window and store the handle to it */
-    wd = glutCreateWindow("part-toy" /* title */ );
+    wd = glutCreateWindow("ptoy" /* title */ );
 
     /* --- register callbacks with GLUT --- */
 
@@ -201,8 +212,9 @@ int main(int argc, char *argv[])
     glutIdleFunc(glutPostRedisplay);
 
     /* init GL */
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glColor3f(0.0, 0.0, 0.0);
+    auto gray = 0.5;
+    glClearColor(gray, gray, gray, 0.0);
+    //glColor3f(0.0, 1.0, 0.0);
     glLineWidth(3.0);
 
     std::thread computation_thread(cycle);
