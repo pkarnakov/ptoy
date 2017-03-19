@@ -25,8 +25,8 @@ int frame_number;
 
 void init()
 {
-  width  = 500.0;                 /* initial window width and height, */
-  height = 500.0;                  /* within which we draw. */
+  width  = 800.0;                 /* initial window width and height, */
+  height = 800.0;                  /* within which we draw. */
 
   last_frame_game_time = 0.;
 }
@@ -39,7 +39,7 @@ void display(void)
   //if(flag_display) return;
   //flag_display=true;
 
-  const double fps=25.0;
+  const double fps=10.0;
   milliseconds current_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
   milliseconds time_past_from_last_frame = current_time-last_frame_time;
 
@@ -143,8 +143,12 @@ void mouse_move(int x, int y) {
 
 void mouse(int button, int state, int x, int y)
 {
+  vect c;
+  c.x = -1. + 2. * (x / width);
+  c.y = 1. - 2. * (y / height);
+
   cout<<button<<" "<<state<<" "<<x<<" "<<y<<endl;
-  G.PS->SetForce(state == 0);
+  G.PS->SetForce(c, state == 0);
 }
 
 

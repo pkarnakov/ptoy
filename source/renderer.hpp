@@ -25,7 +25,7 @@ public:
   {
     glColor3f(color.r, color.g, color.b);
 
-    float delta_theta = 0.1;
+    float delta_theta = 1.9;
 
     //glBegin( GL_POLYGON );
     glBegin( GL_LINE_LOOP );
@@ -56,7 +56,7 @@ public:
     {
       auto& part=particles[k];
       vect p=part.p;
-      int r=PR.convert(vect(part.r,0.)).i-PR.convert(vect(0.,0.)).i;
+      int r=PR.convert(vect(part.r * 0.7,0.)).i-PR.convert(vect(0.,0.)).i;
       draw_circle(PR.convert(p), r, part.color);
     }
   }

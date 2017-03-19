@@ -1,7 +1,7 @@
 #include "particles_system.hpp"
 
 
-particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(0.2, 0.2), 100, false)
+particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(0.1, 0.1), 200, false)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
@@ -13,16 +13,29 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
   std::vector<particle> P;
   for(int i=0; i<N; ++i)
   {
-    int row=25;
-    P.push_back(particle(vect((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0), vect(0.1, 0.0), 0.01, r, 10000.0, 1+i%2*0, rgb(1.0, i%2, 0.0)));
+    int row=40;
+    const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
+    const vect v(0., 0.);
+    const double sigma = 100000.;
+    switch (i % 3) {
+      case 0:
+        P.push_back(particle(p, v, 0.01, r, sigma, 0x1, rgb(1.,0.,0.)));
+        break;
+      case 1:
+        P.push_back(particle(p, v, 0.02, r, sigma, 0x2, rgb(0.,1.,0.)));
+        break;
+      case 2:
+        P.push_back(particle(p, v, 0.05, r, sigma, 0x3, rgb(0.,0.,1.)));
+        break;
+    }
   }
 
   Blocks.add_particles(P);
   Blocks.print_status();
 
   t=0.0;
-  dt=0.0005;
-  g=vect(0.0, -10.0);
+  dt=0.0002;
+  g=vect(0.0, -10.0) * 0.;
 }
 particles_system::~particles_system()
 {}
@@ -74,12 +87,12 @@ void particles_system::step()
     mindex m(bi,bj);
     std::vector<particle>& b1=Blocks.B[m];
     for (auto& part : b1) {
-      part.p = part.p0 + part.v * dt;
       part.v = part.v0 + part.f * dt;
-      //const double limit = 100.;
-      //if (part.v.length() > limit) {
-      //  part.v *= limit / part.v.length();
-      //}
+      const double limit = 10.;
+      if (part.v.length() > limit) {
+        part.v *= limit / part.v.length();
+      }
+      part.p = part.p0 + part.v * dt;
     }
   }
   t = t0 + dt;
@@ -157,7 +170,7 @@ void particles_system::RHS()
 vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, double sigma, double R)
 {
   const double alpha=12.0;
-  const double beta=6.0;
+  const double beta=0.0;
    
   double eps=sigma/(pow(2.0,alpha)-pow(2.0,beta));
 
