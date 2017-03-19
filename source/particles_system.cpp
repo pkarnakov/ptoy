@@ -1,31 +1,31 @@
 #include "particles_system.hpp"
 
+const double r = 0.02;
 
-particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(0.1, 0.1), 200, false)
+particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(2*r, 2*r), 200, false)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
 
   // place particles in the domain
-  double r=0.02;
-  int N=1000;
+  const int row=49;
+  const int N=row * 49;
 
   std::vector<particle> P;
   for(int i=0; i<N; ++i)
   {
-    int row=37;
     const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
     const vect v(0., 0.);
     const double sigma = 100000.;
-    switch (i % 3) {
+    switch (i % 1) {
       case 0:
-        P.push_back(particle(p, v, 0.01, r, sigma, 0x3, rgb(1.,0.,0.)));
+        P.push_back(particle(p, v, 0.01, r, sigma, 0x1, rgb(1.,0.,0.)));
         break;
       case 1:
-        P.push_back(particle(p, v, 0.02, r, sigma, 0x3, rgb(0.,1.,0.)));
+        P.push_back(particle(p, v, 0.02, r, sigma, 0x2, rgb(0.,1.,0.)));
         break;
       case 2:
-        P.push_back(particle(p, v, 0.05, r, sigma, 0x3, rgb(0.,0.,1.)));
+        P.push_back(particle(p, v, 0.05, r, sigma, 0x4, rgb(0.,0.,1.)));
         break;
     }
   }
@@ -34,8 +34,9 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
   Blocks.print_status();
 
   t=0.0;
-  dt=0.0003;
-  g=vect(0.0, -10.0);
+  dt=0.0002;
+  const double gravity = 10.;
+  g=vect(0.0, -1.0) * gravity;
 }
 particles_system::~particles_system()
 {}
@@ -170,11 +171,13 @@ void particles_system::RHS()
 vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, double sigma, double R)
 {
   const double alpha=12.0;
-  const double beta=0.0;
+  const double beta=6.0;
    
-  double eps=sigma/(pow(2.0,alpha)-pow(2.0,beta));
+  double eps = sigma/(pow(2.0,alpha)-pow(2.0,beta));
 
-  double r=p1.dist(p2);
-  double F=r>R?0.0:eps*(pow(R/r, alpha)-pow(R/r, beta));
+  double r = p1.dist(p2);
+  const double cutoff = 2.;
+  double F = r>R*cutoff?0.0:eps*(pow(R/r, alpha)-pow(R/r, beta));
+  F = r < R ? F : F * (cutoff - r / R) / (cutoff - 1.); 
   return (p1-p2)*(F/r);
 }
