@@ -8,7 +8,7 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
 
   // place particles in the domain
   double r=0.02;
-  int N=100;
+  int N=300;
   for(int i=0; i<N; ++i)
   {
     int row=11;

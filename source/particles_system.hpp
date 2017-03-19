@@ -80,6 +80,7 @@ class particles_system
   void SetForce(vect center, bool enabled);
   void SetForce(vect center);
   void SetForce(bool enabled);
+  double GetTime() const { return t; }
 
  private:
   vector<vect> X, V;

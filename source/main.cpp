@@ -8,6 +8,8 @@
     using namespace std::chrono;
 
     milliseconds last_frame_time;
+    double last_frame_game_time;
+    milliseconds last_report_time;
 
 game G;
 
@@ -25,6 +27,8 @@ void init()
 {
   width  = 500.0;                 /* initial window width and height, */
   height = 500.0;                  /* within which we draw. */
+
+  last_frame_game_time = 0.;
 }
 
 /* Callback functions for GLUT */
@@ -48,8 +52,23 @@ void display(void)
   std::this_thread::sleep_for(time_residual);
   //std::this_thread::sleep_for(frame_duration);
 
+  auto new_frame_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
+  auto new_frame_game_time = G.PS->GetTime();
 
-  last_frame_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
+
+  const double frame_real_duration_s = 
+      (new_frame_time - last_frame_time).count() / 1000.;
+
+  if ((new_frame_time - last_report_time).count() > 1000.) {
+    std::cout << "fps: " << 1. / frame_real_duration_s;
+    std::cout << ", game rate: " << 
+        (new_frame_game_time - last_frame_game_time) / frame_real_duration_s
+        << std::endl;
+    last_report_time = new_frame_time;
+  }
+
+  last_frame_time = new_frame_time;
+  last_frame_game_time = new_frame_game_time;
   //cout<<"Frame "<<frame_number++<<endl;
 
   /*for(int k=0; k<80; k++)
