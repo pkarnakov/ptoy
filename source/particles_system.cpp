@@ -47,6 +47,8 @@ void particles_system::status(std::ostream& out)
 }
 void particles_system::step()
 {
+  RHS();
+
   #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
   for(int bj=0; bj<Blocks.B.msize().j; ++bj)
   for(int bi=0; bi<Blocks.B.msize().i; ++bi)
@@ -54,11 +56,14 @@ void particles_system::step()
     mindex m(bi,bj);
     std::vector<particle>& b1=Blocks.B[m];
     for (auto& part : b1) {
-      auto& p = part.p;
-      auto& v = part.v;
-      p += v * dt;
+      part.p0 = part.p;
+      part.v0 = part.v;
+      part.p += part.v * dt * 0.5;
+      part.v += part.f * dt * 0.5;
     }
   }
+  const auto t0 = t;
+  t += 0.5 * dt;
 
   RHS();
 
@@ -69,18 +74,17 @@ void particles_system::step()
     mindex m(bi,bj);
     std::vector<particle>& b1=Blocks.B[m];
     for (auto& part : b1) {
-      auto& v = part.v;
-      auto& f = part.f;
-      v += (f + v * (-0.1)) * dt;
-      const double limit = 100.;
-      if (v.length() > limit) {
-        v *= limit / v.length();
-      }
+      part.p = part.p0 + part.v * dt;
+      part.v = part.v0 + part.f * dt;
+      //const double limit = 100.;
+      //if (part.v.length() > limit) {
+      //  part.v *= limit / part.v.length();
+      //}
     }
   }
+  t = t0 + dt;
 
   Blocks.arrange();
-  t += dt;
 }
 void particles_system::SetForce(vect center, bool enabled) {
     force_center = center;

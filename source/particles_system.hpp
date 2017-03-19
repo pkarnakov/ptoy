@@ -27,6 +27,8 @@ struct particle
   vect p;
   vect v;
   vect f;
+  vect p0;
+  vect v0;
   double m;
   double r;
   double sigma;
