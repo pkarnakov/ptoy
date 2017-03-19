@@ -8,12 +8,12 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
 
   // place particles in the domain
   double r=0.02;
-  int N=1000;
+  int N=2000;
 
   std::vector<particle> P;
   for(int i=0; i<N; ++i)
   {
-    int row=40;
+    int row=46;
     const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
     const vect v(0., 0.);
     const double sigma = 100000.;
@@ -35,7 +35,7 @@ particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.
 
   t=0.0;
   dt=0.0002;
-  g=vect(0.0, -10.0) * 0.;
+  g=vect(0.0, -10.0);
 }
 particles_system::~particles_system()
 {}
@@ -141,7 +141,7 @@ void particles_system::RHS()
       }
 
       // dissipation
-      f -= v * 0.1;
+      f -= v * (0.1 * p1.m);
 
       // pairwise interactions
       for(size_t k=0; k<Blocks.NEAR.size(); ++k)

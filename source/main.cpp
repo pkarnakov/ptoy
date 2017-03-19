@@ -39,7 +39,7 @@ void display(void)
   //if(flag_display) return;
   //flag_display=true;
 
-  const double fps=10.0;
+  const double fps=60.0;
   milliseconds current_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
   milliseconds time_past_from_last_frame = current_time-last_frame_time;
 
