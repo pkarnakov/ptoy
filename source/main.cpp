@@ -5,7 +5,10 @@
 #include <thread>
 #include <chrono>
 #include <atomic>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 // TODO: reorder header includes (std first)
 // TODO: fix formatting
@@ -163,8 +166,8 @@ void mouse(int button, int state, int x, int y)
 
 void cycle()
 {
-  omp_set_dynamic(0);
-  omp_set_nested(0);
+  //omp_set_dynamic(0);
+  //omp_set_nested(0);
   //omp_set_num_threads(std::thread::hardware_concurrency());
   //omp_set_num_threads(2);
 
@@ -172,8 +175,12 @@ void cycle()
   {
     #pragma omp master
     std::cout
-        << "Computation started on " 
-        << omp_get_num_threads() << " OpenMP threads"
+        << "Computation started, " 
+        #ifdef _OPENMP
+        << "OpenMP with " << omp_get_num_threads() << " threads"
+        #else
+        << "single-threaded"
+        #endif
         << std::endl;
   }
 
@@ -203,9 +210,14 @@ int main(int argc, char *argv[])
 
     /* specify the display to be single
        buffered and color as RGBA values */
-    //glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+#ifdef _MULTISAMPLE_
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE);
     glEnable(GL_MULTISAMPLE_ARB);
+    std::cout << "Enable multisampling" << std::endl;
+#else
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+    std::cout << "No multisampling" << std::endl;
+#endif
 
     /* set the initial window size */
     glutInitWindowSize((int) width, (int) height);
