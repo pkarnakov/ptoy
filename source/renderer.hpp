@@ -22,7 +22,7 @@ public:
 class renderer_opengl : public renderer
 {
 public:
-  void draw_circle(int x, int y, int r, rgb color)
+  void draw_circle(float x, float y, float r, rgb color)
   {
     glColor3f(color.r, color.g, color.b);
 
@@ -46,6 +46,10 @@ public:
 
     glEnd();
   }
+  void draw_circle(vect c, float r, rgb color)
+  {
+    draw_circle(c.x, c.y, r, color);
+  }
   void draw_circle(mindex c, int r, rgb color)
   {
     draw_circle(c.i, c.j, r, color);
@@ -62,18 +66,25 @@ public:
   }
   void draw_particles()
   {
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    rect_vect R = PR.Rmath;
+    glOrtho(R.A.x, R.B.x, R.A.y, R.B.y, -1.f, 1.f);
     auto particles = PS->GetParticles();
     for(std::size_t k=0; k<particles.size(); ++k)
     {
       auto& part=particles[k];
-      vect p=part.p;
+      //vect p=part.p;
       double f = 0.5 + part.v.length() / 7.; // color intensity
       f = std::min(1., std::max(0., f));
       auto c = part.color;
       rgb color(c.r * f, c.g * f, c.b * f);
-      int r = PR.convert(vect(part.r,0.)).i-PR.convert(vect(0.,0.)).i;
-      draw_circle(PR.convert(p), r, color);
+      //int r = PR.convert(vect(part.r,0.)).i-PR.convert(vect(0.,0.)).i;
+      //draw_circle(PR.convert(p), r, color);
+      draw_circle(part.p, part.r, color);
     }
+    glPopMatrix();
   }
   void draw_frame()
   {

@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "game.hpp"
-#include <GL/glut.h>
+#include <GL/freeglut.h>
 #include <thread>
 #include <chrono>
 #include <atomic>
@@ -218,6 +218,8 @@ int main(int argc, char *argv[])
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
     std::cout << "No multisampling" << std::endl;
 #endif
+
+    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
 
     /* set the initial window size */
     glutInitWindowSize((int) width, (int) height);
