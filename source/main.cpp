@@ -77,7 +77,8 @@ void display(void)
     //G.PS->Blocks.print_status();
   }
   
-  const double game_rate_target = 1.;
+  const double game_rate_target = 10.;
+  //const double game_rate_target = 1.;
   next_game_time_target = new_frame_game_time + game_rate_target / fps;
 
   last_frame_time = new_frame_time;

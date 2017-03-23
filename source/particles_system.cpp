@@ -1,6 +1,7 @@
 #include "particles_system.hpp"
 
 const double r = 0.02;
+//const double r = 0.02;
 
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
@@ -12,8 +13,8 @@ particles_system::particles_system() :
 
 
   // place particles in the domain
-  const int row=49;
-  const int N=row * 49;
+  const int row=1. / r;
+  const int N=row * row;
 
   std::vector<particle> P;
   for(int i=0; i<N; ++i)
