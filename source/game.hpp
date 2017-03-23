@@ -18,11 +18,7 @@ public:
 
     vect A(-1.,-1.), B(1.,1.);
 
-    R=std::unique_ptr<renderer>(
-        new renderer_opengl(
-          PS.get(), 
-          projection(rect_vect(A, B),
-                     rect_mindex(mindex(0,0), mindex(800,800)) ) ));
+    R=std::unique_ptr<renderer>(new renderer_opengl(PS.get()));
 
     double eps=0.01;
     // place env_objects

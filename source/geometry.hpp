@@ -103,20 +103,6 @@ public:
   rect_mindex(mindex _A, mindex _B) : A(_A), B(_B) {;}
 };
 
-class projection
-{
-public:
-  rect_vect Rmath;
-  rect_mindex Rscreen;
-  projection(rect_vect _Rmath, rect_mindex _Rscreen) : Rmath(_Rmath), Rscreen(_Rscreen) {;}
-  mindex convert(vect p)
-  {
-    mindex res;
-    res.i=Rscreen.A.i+int((p.x-Rmath.A.x)/(Rmath.B.x-Rmath.A.x)*(Rscreen.B.i-Rscreen.A.i));
-    res.j=Rscreen.A.j+int((p.y-Rmath.A.y)/(Rmath.B.y-Rmath.A.y)*(Rscreen.B.j-Rscreen.A.j));
-    return res;
-  }
-};
 
 std::ostream& operator<<(std::ostream& out, vect v);
 

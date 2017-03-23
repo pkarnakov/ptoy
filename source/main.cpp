@@ -224,6 +224,8 @@ int main(int argc, char *argv[])
     /* set the initial window size */
     glutInitWindowSize((int) width, (int) height);
 
+    glLineWidth(3.0);
+
     /* create the window and store the handle to it */
     wd = glutCreateWindow("ptoy" /* title */ );
 

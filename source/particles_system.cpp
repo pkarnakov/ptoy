@@ -2,10 +2,14 @@
 
 const double r = 0.02;
 
-particles_system::particles_system() : Blocks(rect_vect(vect(-1.,-1.),vect(1.,1.)), vect(2*r, 2*r), 200, false)
+particles_system::particles_system() : 
+    domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
+    Blocks(domain, vect(2*r, 2*r), 200, false)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
+
+
 
   // place particles in the domain
   const int row=49;

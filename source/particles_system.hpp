@@ -86,8 +86,10 @@ class particles_system
   void SetForce(vect center);
   void SetForce(bool enabled);
   double GetTime() const { return t; }
+  rect_vect GetDomain() const { return domain; }
 
  private:
+  rect_vect domain;
   blocks Blocks;
   double t;
   double dt;

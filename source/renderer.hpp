@@ -12,9 +12,8 @@ class renderer
 {
 protected:
   particles_system* PS;
-  projection PR;
 public:
-  renderer(particles_system* _PS, const projection& _PR) : PS(_PS), PR(_PR) {;}
+  renderer(particles_system* _PS) : PS(_PS) {;}
   virtual void draw_particles() = 0;
   virtual void draw_frame() = 0;
 };
@@ -54,13 +53,23 @@ public:
   {
     draw_circle(c.i, c.j, r, color);
   }
+  void draw_line(vect A, vect B)
+  {
+    glColor3f(1., 1., 1.);
+    glBegin( GL_LINES ); // OR GL_LINE_LOOP
+
+    glVertex2f(A.x, A.y);
+    glVertex2f(B.x, B.y);
+
+    glEnd();
+  }
   void draw_line(mindex A, mindex B)
   {
     glColor3f(1., 1., 1.);
     glBegin( GL_LINES ); // OR GL_LINE_LOOP
 
-    glVertex3f( A.i, A.j, 0 );
-    glVertex3f( B.i, B.j, 0 );
+    glVertex2f(A.i, A.j);
+    glVertex2f(B.i, B.j);
 
     glEnd();
   }
@@ -69,7 +78,7 @@ public:
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    rect_vect R = PR.Rmath;
+    rect_vect R = PS->GetDomain();
     glOrtho(R.A.x, R.B.x, R.A.y, R.B.y, -1.f, 1.f);
     auto particles = PS->GetParticles();
     for(std::size_t k=0; k<particles.size(); ++k)
@@ -80,21 +89,26 @@ public:
       f = std::min(1., std::max(0., f));
       auto c = part.color;
       rgb color(c.r * f, c.g * f, c.b * f);
-      //int r = PR.convert(vect(part.r,0.)).i-PR.convert(vect(0.,0.)).i;
-      //draw_circle(PR.convert(p), r, color);
       draw_circle(part.p, part.r, color);
     }
     glPopMatrix();
   }
   void draw_frame()
   {
-    mindex A=PR.Rscreen.A, B=PR.Rscreen.B;
-    draw_line(mindex(A.i,A.j), mindex(B.i,A.j));
-    draw_line(mindex(A.i,B.j), mindex(B.i,B.j));
-    draw_line(mindex(A.i,A.j), mindex(A.i,B.j));
-    draw_line(mindex(B.i,A.j), mindex(B.i,B.j));
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    rect_vect R = PS->GetDomain();
+    glLineWidth(5.0);
+    vect A = R.A;
+    vect B = R.B;
+    draw_line(vect(A.x,A.y), vect(B.x,A.y));
+    draw_line(vect(A.x,B.y), vect(B.x,B.y));
+    draw_line(vect(A.x,A.y), vect(A.x,B.y));
+    draw_line(vect(B.x,A.y), vect(B.x,B.y));
+    glPopMatrix();
   }
-  renderer_opengl(particles_system* _PS, const projection& _PR) : renderer(_PS, _PR)
+  renderer_opengl(particles_system* _PS) : renderer(_PS)
   {
 
   }
