@@ -119,12 +119,14 @@ reshape(int w, int h)
 
   /* tell OpenGL to use the whole window for drawing */
   glViewport(0, 0, (GLsizei) width, (GLsizei) height);
+  
+  G.SetWindowSize(width, height);
 
   /* do an orthographic parallel projection with the coordinate
      system set to first quadrant, limited by screen/window size */
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(0.0, width, 0.0, height, -1.f, 1.f);
+  //glMatrixMode(GL_PROJECTION);
+  //glLoadIdentity();
+  //glOrtho(-1.0, width, 0.0, height, -1.f, 1.f);
 
   return;
 }

@@ -135,10 +135,13 @@ void particles_system::RHS()
       // gravity
       f=g*part.m;
       // environment objects
-      for(size_t k=0; k<ENVOBJ.size(); ++k)
       {
-        auto& obj=ENVOBJ[k];
-        f+=obj->F(p,v,part.r,part.sigma);
+        std::lock_guard<std::mutex> lg(m_ENVOBJ);
+        for(size_t k=0; k<ENVOBJ.size(); ++k)
+        {
+          auto& obj=ENVOBJ[k];
+          f+=obj->F(p,v,part.r,part.sigma);
+        }
       }
       // point force
       if (force_enabled) {

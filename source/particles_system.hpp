@@ -8,6 +8,7 @@
 #include <iostream>
 #include <functional>
 #include <memory>
+#include <mutex>
 
 class blocks;
 
@@ -80,6 +81,8 @@ class particles_system
   ~particles_system();
   std::vector<particle> GetParticles() const;
   void AddEnvObj(env_object* env);
+  void ClearEnvObj() { ENVOBJ.clear(); }
+  void SetDomain(rect_vect new_domain) { domain = new_domain; }
   void status(std::ostream& out);
   void step();
   void SetForce(vect center, bool enabled);
@@ -87,6 +90,7 @@ class particles_system
   void SetForce(bool enabled);
   double GetTime() const { return t; }
   rect_vect GetDomain() const { return domain; }
+  std::mutex m_ENVOBJ;
 
  private:
   rect_vect domain;
