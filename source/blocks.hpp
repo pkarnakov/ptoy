@@ -82,7 +82,6 @@ class blocks
   rect_vect domain;
   vect block_size;
   size_t block_capacity;
-  mindex N;
   void init()
   {
     for(int i=-1; i<=1; ++i)
@@ -117,6 +116,7 @@ class blocks
     }
   }
 public:
+  mindex N;
   const size_t kBlockNone = static_cast<size_t>(-1);
   array2D<std::vector<particle>> B;
   std::vector<mindex> NEAR;

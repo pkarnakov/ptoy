@@ -166,30 +166,44 @@ void particles_system::RHS(mindex block_m)
     // dissipation
     //f -= v * (0.1 * p1.m);
     f -= v * (0.1 * kMass);
+  }
 
-    // pairwise interactions
-    for(size_t k=0; k<Blocks.NEAR.size(); ++k)
+  // pairwise interactions
+  for(size_t k=0; k<Blocks.NEAR.size(); ++k)
+  {
+    mindex mnear = m + Blocks.NEAR[k];
+    if(Blocks.B.valid(mnear))
     {
-      mindex mnear = m + Blocks.NEAR[k];
-      if(Blocks.B.valid(mnear))
+      std::vector<particle>& b2=Blocks.B[mnear];
+
+      for(size_t w1=0; w1<b1.size(); ++w1)
       {
-        std::vector<particle>& b2=Blocks.B[mnear];
+        particle& p1 = b1[w1]; // first particle
+
         for(size_t w2=0; w2<b2.size(); ++w2)
         {
-          particle& p2=b2[w2]; // second particle
+          const particle& p2 = b2[w2]; // second particle
           //if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
-          if(&p1!=&p2)
-          {
-            f += F12(p1.p, p1.v, p2.p, p2.v, kSigma, kRadius * 2.);
+          if (&p1!=&p2) {
+            p1.f += F12(p1.p, p1.v, p2.p, p2.v, kSigma, kRadius * 2.);
           }
         }
       }
     }
-    
+  }
+
+  for(size_t w1=0; w1<b1.size(); ++w1)
+  {
     // mass
     //f *= 1. / p1.m;
-    f *= 1. / kMass;
+    b1[w1].f *= 1. / kMass;
+  }
 
+  if (m.i == 0 || m.i == Blocks.N.i - 2 ||
+      m.j == 0 || m.j == Blocks.N.j - 2)
+  for(size_t w1=0; w1<b1.size(); ++w1)
+  {
+    particle& p1 = b1[w1]; 
     // environment objects
     {
      // std::lock_guard<std::mutex> lg(m_ENVOBJ);
@@ -197,7 +211,7 @@ void particles_system::RHS(mindex block_m)
       {
         auto& obj=ENVOBJ[k];
         //f+=obj->F(p,v,part.r,part.sigma);
-        f+=obj->F(p,v,kRadius,kSigma);
+        p1.f+=obj->F(p1.p,p1.v,kRadius,kSigma);
       }
     }
   }
