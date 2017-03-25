@@ -8,118 +8,161 @@
 #include "particles_system.hpp"
 #include <cassert>
 
-using std::min;
-using std::max;
-
-template<class T>
-class array2D
-{
-  std::vector<T> D;
-  mindex N;
-public:
-  array2D() {;}
-  array2D(mindex size) : N(size)
-  {
-    D.resize(N.i*N.j);
-  }
-  void resize(mindex size)
-  {
-    N=size;
-    D.resize(N.i*N.j);
-  }
-  int getn(mindex m) const
-  {
-    return N.i*m.j+m.i;
-  }
-  int getn(int i, int j) const
-  {
-    return N.i*j+i;
-  }
-  T& operator[](mindex m)
-  {
-    return D[getn(m)];
-  }
-  const T& operator[](mindex m) const
-  {
-    return D[getn(m)];
-  }
-  T& operator()(int i, int j)
-  {
-    return D[getn(i,j)];
-  }
-  const T& operator()(int i, int j) const
-  {
-    return D[getn(i,j)];
-  }
-  T& operator[](int n)
-  {
-    return D[n];
-  }
-  const T& operator[](int n) const
-  {
-    return D[n];
-  }
-  size_t size() const
-  {
-    return static_cast<size_t>(N.i*N.j);
-  }
-  mindex msize() const
-  {
-    return N;
-  }
-  mindex getm(int n) const
-  {
-    return mindex(n%N.i, n/N.j);
-  }
-  bool valid(mindex m) const
-  {
-    return m.i>=0 && m.j>=0 && m.i<N.i && m.j<N.j;
-  }
-};
-
 class blocks
 {
-  rect_vect domain;
-  vect block_size;
-  size_t block_capacity;
-  void init()
-  {
-    for(int i=-1; i<=1; ++i)
-    for(int j=-1; j<=1; ++j)
-    {
-      NEAR.push_back(mindex(i,j));
+ public:
+  static const size_t kNumNeighbors = 9;
+  static const size_t kBlockNone = static_cast<size_t>(-1);
+  using DataVect = std::vector<std::vector<vect>>;
+  using DataInt = std::vector<std::vector<int>>;
+  struct BlockData {
+    DataVect position, position_tmp, velocity, velocity_tmp, force;
+    DataInt id;
+    void resize(size_t size) {
+      position.resize(size);
+      position_tmp.resize(size);
+      velocity.resize(size);
+      velocity_tmp.resize(size);
+      force.resize(size);
+      id.resize(size);
     }
+    void RemoveParticle(
+        size_t src, // source block 
+        size_t idx  // particle index within the source block
+        ) {
+      std::swap(position[src][idx], position[src].back());
+      std::swap(position_tmp[src][idx], position_tmp[src].back());
+      std::swap(velocity[src][idx], velocity[src].back());
+      std::swap(velocity_tmp[src][idx], velocity_tmp[src].back());
+      std::swap(force[src][idx], force[src].back());
+      std::swap(id[src][idx], id[src].back());
 
-    N.i=int(domain.size().x/block_size.x)+1;
-    N.j=int(domain.size().y/block_size.y)+1;
-    B.resize(N);
-    for(size_t n=0; n<B.size(); ++n)
-    {
-      B[n].reserve(block_capacity);
+      position[src].pop_back();
+      position_tmp[src].pop_back();
+      velocity[src].pop_back();
+      velocity_tmp[src].pop_back();
+      force[src].pop_back();
+      id[src].pop_back();
     }
-  }
-  void reinit() {
-    mindex Nnew;
-    Nnew.i=int(domain.size().x/block_size.x)+1;
-    Nnew.j=int(domain.size().y/block_size.y)+1;
-    if (Nnew.i > N.i || Nnew.j > N.j) {
-      const auto Nold = N;
-      N += N;
-      const auto Bold = B;
-      B = array2D<std::vector<particle>>(N);
-      for (int i = 0; i < Nold.i; ++i) {
-        for (int j = 0; j < Nold.j; ++j) {
-          const mindex m(i, j);
-          B[m] = std::move(Bold[m]);
-        }
+    void MoveParticle(
+        size_t src, // source block 
+        size_t idx, // particle index within the source block
+        size_t dest // destination block
+        ) {
+      position[dest].push_back(position[src][idx]);
+      position_tmp[dest].push_back(position_tmp[src][idx]);
+      velocity[dest].push_back(velocity[src][idx]);
+      velocity_tmp[dest].push_back(velocity_tmp[src][idx]);
+      force[dest].push_back(force[src][idx]);
+      id[dest].push_back(id[src][idx]);
+
+      RemoveParticle(src, idx);
+    }
+    void AddParticle(
+        size_t dest, // destination block
+        vect particle_position,
+        vect particle_velocity,
+        int particle_id
+        ) {
+      position[dest].push_back(particle_position);
+      position_tmp[dest].push_back(vect::kNan);
+      velocity[dest].push_back(particle_velocity);
+      velocity_tmp[dest].push_back(vect::kNan);
+      force[dest].push_back(vect::kNan);
+      id[dest].push_back(particle_id);
+    }
+  };
+  blocks(rect_vect domain, vect block_size) 
+      : domain_(domain), block_size_(block_size), num_particles_(0) {
+    // Determine the number of blocks
+    dims_.i = int(domain_.size().x / block_size.x) + 1;
+    dims_.j = int(domain_.size().y / block_size.y) + 1;
+    num_blocks_ = static_cast<size_t>(dims_.i * dims_.j);
+
+    assert(dims_.i > 0 && dims_.j > 0 && num_blocks_ > 0);
+
+    data_.resize(num_blocks_);
+    std::cout << "foo" << GetNumBlocks() << std::endl;
+
+    // Calc offsets to neighbors
+    size_t n = 0;
+    for (int i = -1; i <= 1; ++i) {
+      for (int j = -1; j <= 1; ++j) {
+        neighbor_offsets_[n] = i * dims_.j + j; 
+        ++n;
       }
     }
   }
-public:
-  mindex N;
-  const size_t kBlockNone = static_cast<size_t>(-1);
-  array2D<std::vector<particle>> B;
-  std::vector<mindex> NEAR;
+  size_t FindBlock(vect position) const {
+    mindex m(static_cast<int>((position.x - domain_.A.x) / block_size_.x),
+             static_cast<int>((position.y - domain_.A.y) / block_size_.y));
+    if (m.i >= 0 && m.i < dims_.i && m.j >= 0 && m.j < dims_.j) {
+      return m.i * dims_.j + m.j;
+    }
+    return kBlockNone;
+  }
+  void AddParticles(
+      const std::vector<vect>& position, 
+      const std::vector<vect>& velocity,
+      const std::vector<int>& id
+      ) {
+    const size_t size = position.size();
+    assert(velocity.size() == size);
+    assert(id.size() == size);
+
+    for (size_t p = 0; p < size; ++p) {
+      size_t i = FindBlock(position[p]);
+      if (i != kBlockNone) {
+        data_.AddParticle(i, position[p], velocity[p], id[p]);
+      }
+    }
+  }
+  BlockData& GetData() {
+    return data_;
+  }
+  size_t GetNumBlocks() const {
+    return num_blocks_;
+  }
+  size_t GetNumParticles() const { 
+    return num_particles_; 
+  }
+  std::array<int, kNumNeighbors> GetNeighborOffsets() const {
+    return neighbor_offsets_;
+  }
+  void SortParticles() {
+    size_t lnum_particles_ = 0;
+    for (size_t i = 0; i < num_blocks_; ++i) {
+      size_t p = 0;
+      size_t pe = data_.position[i].size();
+      while (p < pe) {
+        const size_t j = FindBlock(data_.position[i][p]);
+        if (i != j) {
+          if (j != kBlockNone) {
+            data_.MoveParticle(i, p, j);
+            if (j < i) {
+              ++lnum_particles_;
+            }
+          } else {
+            data_.RemoveParticle(i, p);
+          }
+          --pe;
+        } else {
+          ++p;
+          ++lnum_particles_;
+        }
+      }
+    }
+
+    num_particles_ = lnum_particles_;
+  }
+
+ private:
+  rect_vect domain_;
+  vect block_size_;
+  BlockData data_;
+  mindex dims_;
+  size_t num_blocks_;
+  std::array<int, kNumNeighbors> neighbor_offsets_;
   size_t num_particles_;
   size_t close_packing(vect size, Scal r) const
   {
@@ -129,81 +172,6 @@ public:
     Scal circles_number=occupied_volume/(PI*r*r);
     // truncate and add a reserve (+1)
     return int(circles_number)+1;
-  }
-  blocks(rect_vect _domain, vect _block_size, 
-      size_t _block_capacity, bool) : domain(_domain), block_size(_block_size), block_capacity(_block_capacity)
-  {
-    init();
-  }
-  blocks(rect_vect _domain, vect _block_size, Scal particle_radius) : domain(_domain), block_size(_block_size), block_capacity(close_packing(_block_size, particle_radius))
-  {
-    init();
-  }
-  mindex get_block(vect p) const
-  {
-    vect rel=p-domain.A;
-    return mindex(int(rel.x/block_size.x), int(rel.y/block_size.y));
-  }
-  mindex constraints(mindex m) const
-  {
-    return mindex(max(0,min(N.i-1,m.i)), max(0,min(N.j-1,m.j)));
-  }
-  size_t getn_check(vect p) const {
-    const mindex m = get_block(p);
-    if (m.i < 0 || m.i >= N.i || m.j < 0 || m.j >= N.j) {
-      return kBlockNone;
-    }
-    return B.getn(m);
-  }
-  void add_particles(const std::vector<particle>& P) {
-    for (auto& part : P) {
-      auto n = constraints(get_block(part.p));
-      //std::cout << "p=" << part.p.x << " " << part.p.y 
-      //  << " b=" << B.getn(n) << std::endl;
-      B[n].push_back(part);
-      assert(B[n].size() <= block_capacity);
-    }
-  }
-  void SetDomain(rect_vect new_domain) { 
-    domain = new_domain;
-    reinit();
-  }
-  size_t GetNumParticles() const { return num_particles_; }
-  void arrange()
-  {
-    reinit();
-    size_t lnum_particles_ = 0;
-    for (size_t n = 0; n < B.size(); ++n) {
-      size_t w = 0;
-      size_t we = B[n].size();
-      while (w < we) {
-        size_t new_block = getn_check(B[n][w].p); 
-        if (n != new_block) {
-          if (new_block != kBlockNone) {
-            B[new_block].push_back(B[n][w]);
-            if (new_block < n) {
-              ++lnum_particles_;
-            }
-          }
-          std::swap(B[n][w], B[n].back());
-          B[n].pop_back();
-          --we;
-        } else {
-          ++w;
-          ++lnum_particles_;
-        }
-      }
-    }
-
-    num_particles_ = lnum_particles_;
-  }
-  void print_status() const {
-    std::cout << "Blocks" << std::endl;
-    for (size_t n = 0; n < B.size(); ++n) {
-      if (B[n].size()) { 
-        std::cout << n << " " << B[n].size() << std::endl;
-      }
-    }
   }
 
 };

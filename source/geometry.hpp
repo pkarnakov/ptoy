@@ -11,9 +11,9 @@ using Scal = float;
 
 const Scal PI=atan(1.0)*4.0;
 
-class alignas(16) vect
-{
+class alignas(16) vect {
 public:
+  static const vect kNan;
   Scal x,y;
   vect() {;}
   vect(Scal _x, Scal _y)

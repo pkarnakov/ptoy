@@ -83,13 +83,13 @@ class particles_system
  public:
   particles_system(); 
   ~particles_system();
-  std::vector<particle> GetParticles() const;
+  std::vector<particle> GetParticles();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
   void SetDomain(rect_vect new_domain) { 
     std::lock_guard<std::mutex> lg(m_step);
     domain = new_domain; 
-    Blocks.SetDomain(domain);
+    //Blocks.SetDomain(domain);
   }
   void status(std::ostream& out);
   void step(Scal time_target);
@@ -111,7 +111,7 @@ class particles_system
   Scal t;
   Scal dt;
   vect g;
-  void RHS(mindex block_m);
+  void RHS(size_t i);
   vector<std::unique_ptr<env_object>> ENVOBJ;
   vect force_center;
   bool force_enabled;

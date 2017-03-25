@@ -2,8 +2,10 @@
 
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
-    Blocks(domain, vect(4*kRadius, 4*kRadius), 200, false)
+    Blocks(domain, vect(4*kRadius, 4*kRadius))
 {
+  std::lock_guard<std::mutex> lg(m_step);
+
   force_enabled = false;
   force_center = vect(0., 0.);
 
@@ -32,24 +34,33 @@ particles_system::particles_system() :
     }
   }
 
-  Blocks.add_particles(P);
-  Blocks.print_status();
+  std::vector<vect> position;
+  std::vector<vect> velocity;
+  std::vector<int> id;
+
+  for (auto part : P) {
+    position.push_back(part.p);
+    velocity.push_back(part.v);
+    id.push_back(id.size());
+  }
+
+  Blocks.AddParticles(position, velocity, id);
 
   t=0.0;
   dt=0.0002;
   const Scal gravity = 10.;
   g=vect(0.0, -1.0) * gravity;
 }
-particles_system::~particles_system()
-{}
-std::vector<particle> particles_system::GetParticles() const {
+particles_system::~particles_system() {}
+std::vector<particle> particles_system::GetParticles() {
   //std::lock_guard<std::mutex> lg(m_step);
   std::vector<particle> res;
-  for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-  for(int bi=0; bi<Blocks.B.msize().i; ++bi)
-  {
-    for (auto& part : Blocks.B[mindex(bi, bj)]) {
-      res.push_back(part);
+  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+    const auto& data = Blocks.GetData();
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      res.push_back(particle(
+          data.position[i][p], data.velocity[i][p],
+          0.01, kRadius, kSigma, 0x1, rgb(1., 0., 0.)));
     }
   }
   return res;
@@ -70,57 +81,49 @@ void particles_system::step(Scal time_target)
   {
 
   while (t < time_target) {
-    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
-    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
-    {
-      RHS(mindex(bi,bj));
+    #pragma omp for
+    for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+      RHS(i);
     }
 
-    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
-    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
-    {
-      mindex m(bi,bj);
-      std::vector<particle>& b1=Blocks.B[m];
-      for (auto& part : b1) {
-        part.p0 = part.p;
-        part.v0 = part.v;
-        part.p += part.v * dt * 0.5;
-        part.v += part.f * dt * 0.5;
+    #pragma omp for 
+    for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+      auto& data = Blocks.GetData();
+      for (size_t p = 0; p < data.position[i].size(); ++p) {
+        data.position_tmp[i][p] = data.position[i][p]; 
+        data.velocity_tmp[i][p] = data.velocity[i][p]; 
+        data.position[i][p] += data.velocity[i][p] * dt * 0.5;
+        data.velocity[i][p] += data.force[i][p] * dt * 0.5;
       }
     }
 
     #pragma omp single
     t += 0.5 * dt;
 
-    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
-    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
-    {
-      RHS(mindex(bi,bj));
+    #pragma omp for 
+    for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+      RHS(i);
     }
 
-    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
-    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
-    {
-      mindex m(bi,bj);
-      std::vector<particle>& b1=Blocks.B[m];
-      for (auto& part : b1) {
-        part.v = part.v0 + part.f * dt;
+    #pragma omp for
+    for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+      auto& data = Blocks.GetData();
+      for (size_t p = 0; p < data.position[i].size(); ++p) {
+        data.velocity[i][p] = 
+            data.velocity_tmp[i][p] + data.force[i][p] * dt;
         const Scal limit = 10.;
-        if (part.v.length() > limit) {
-          part.v *= limit / part.v.length();
+        if (data.velocity[i][p].length() > limit) {
+          data.velocity[i][p] *= limit / data.velocity[i][p].length();
         }
-        part.p = part.p0 + part.v * dt;
+        data.position[i][p] = 
+            data.position_tmp[i][p] + data.velocity[i][p] * dt;
       }
     }
 
     #pragma omp single
     {
       t += 0.5 * dt;
-      Blocks.arrange();
+      Blocks.SortParticles();
     }
   }
   }
@@ -136,31 +139,26 @@ void particles_system::SetForce(bool enabled) {
     force_enabled = enabled;
 }
 
-void particles_system::RHS(mindex block_m)
+void particles_system::RHS(size_t i)
 {
-  const mindex m = block_m;
-
-  std::vector<particle>& b1=Blocks.B[m];
-  for(size_t w1=0; w1<b1.size(); ++w1)
-  {
-    particle& p1 = b1[w1]; // first particle
-    auto& part = p1;
-    auto& f = part.f;
-    auto& p = part.p;
-    auto& v = part.v;
+  auto& data = Blocks.GetData();
+  for (size_t p = 0; p < data.position[i].size(); ++p) {
+    auto& f = data.force[i][p];
+    auto& x = data.position[i][p];
+    auto& v = data.velocity[i][p];
 
     // zero
     f = vect(0., 0.);
 
     // gravity
     //f=g*part.m;
-    f=g*kMass;
+    //f = g*kMass;
 
     // point force
     if (force_enabled) {
-        const Scal intensity = 0.1;
-        const vect r = p - force_center; 
-        f += r * (intensity / std::pow(r.length(), 3));
+      const Scal intensity = 0.1;
+      const vect r = x - force_center; 
+      f += r * (intensity / std::pow(r.length(), 3));
     }
 
     // dissipation
@@ -169,50 +167,51 @@ void particles_system::RHS(mindex block_m)
   }
 
   // pairwise interactions
-  for(size_t k=0; k<Blocks.NEAR.size(); ++k)
-  {
-    mindex mnear = m + Blocks.NEAR[k];
-    if(Blocks.B.valid(mnear))
-    {
-      std::vector<particle>& b2=Blocks.B[mnear];
+  for (int offset : Blocks.GetNeighborOffsets()) {
+    const size_t j = i + offset;
+    // TODO: revise outside block condition
+    if (j >= Blocks.GetNumBlocks()) {
+      continue;
+    }
 
-      for(size_t w1=0; w1<b1.size(); ++w1)
-      {
-        particle& p1 = b1[w1]; // first particle
+    if (i != j) // no check for self-force needed
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      for (size_t q = 0; q < data.position[j].size(); ++q) {
+        //if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
+        data.force[i][p] += F12(
+            data.position[i][p], data.velocity[i][p],
+            data.position[j][q], data.velocity[j][q],
+            kSigma, kRadius * 2.);
+      }
+    }
 
-        for(size_t w2=0; w2<b2.size(); ++w2)
-        {
-          const particle& p2 = b2[w2]; // second particle
-          //if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
-          if (&p1!=&p2) {
-            p1.f += F12(p1.p, p1.v, p2.p, p2.v, kSigma, kRadius * 2.);
-          }
+    if (i == j) // need to exclude self-force
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      for (size_t q = 0; q < data.position[j].size(); ++q) {
+        //if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
+        if (p != q) {
+          data.force[i][p] += F12(
+              data.position[i][p], data.velocity[i][p],
+              data.position[j][q], data.velocity[j][q],
+              kSigma, kRadius * 2.);
         }
       }
     }
   }
 
-  for(size_t w1=0; w1<b1.size(); ++w1)
-  {
-    // mass
-    //f *= 1. / p1.m;
-    b1[w1].f *= 1. / kMass;
+  for (size_t p = 0; p < data.position[i].size(); ++p) {
+    auto& f = data.force[i][p];
+    f *= 1. / kMass;
   }
 
-  if (m.i == 0 || m.i == Blocks.N.i - 2 ||
-      m.j == 0 || m.j == Blocks.N.j - 2)
-  for(size_t w1=0; w1<b1.size(); ++w1)
-  {
-    particle& p1 = b1[w1]; 
-    // environment objects
-    {
-     // std::lock_guard<std::mutex> lg(m_ENVOBJ);
-      for(size_t k=0; k<ENVOBJ.size(); ++k)
-      {
-        auto& obj=ENVOBJ[k];
-        //f+=obj->F(p,v,part.r,part.sigma);
-        p1.f+=obj->F(p1.p,p1.v,kRadius,kSigma);
-      }
+  // environment objects
+  for(size_t k=0; k<ENVOBJ.size(); ++k) {
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      auto& obj=ENVOBJ[k];
+      //f+=obj->F(p,v,part.r,part.sigma);
+      data.force[i][p] += obj->F(
+          data.position[i][p], data.velocity[i][p],
+          kRadius,kSigma);
     }
   }
 }

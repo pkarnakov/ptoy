@@ -54,6 +54,11 @@ endif()
 set_property(TARGET ${BINARY_NAME} PROPERTY CXX_STANDARD 11)
 set_property(TARGET ${BINARY_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
+# Debug build
+if (DEBUG) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
+endif()
+
 # Static build
 if (DEFINED STATIC)
   set(STATIC_BUILD ${STATIC})   
