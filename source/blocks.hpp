@@ -73,7 +73,8 @@ class blocks
     }
   };
   blocks(rect_vect domain, vect block_size) 
-      : domain_(domain), block_size_(block_size), num_particles_(0) {
+      : domain_(domain), block_size_(block_size)
+        , num_particles_(0), num_per_cell_(0) {
     // Determine the number of blocks
     dims_.i = int(domain_.size().x / block_size.x) + 1;
     dims_.j = int(domain_.size().y / block_size.y) + 1;
@@ -126,11 +127,15 @@ class blocks
   size_t GetNumParticles() const { 
     return num_particles_; 
   }
+  size_t GetNumPerCell() const {
+    return num_per_cell_;
+  }
   std::array<int, kNumNeighbors> GetNeighborOffsets() const {
     return neighbor_offsets_;
   }
   void SortParticles() {
     size_t lnum_particles_ = 0;
+    size_t max_per_cell = 0;
     for (size_t i = 0; i < num_blocks_; ++i) {
       size_t p = 0;
       size_t pe = data_.position[i].size();
@@ -151,9 +156,11 @@ class blocks
           ++lnum_particles_;
         }
       }
+      max_per_cell = std::max(max_per_cell, pe);
     }
 
     num_particles_ = lnum_particles_;
+    num_per_cell_ = max_per_cell;
   }
 
  private:
@@ -164,6 +171,7 @@ class blocks
   size_t num_blocks_;
   std::array<int, kNumNeighbors> neighbor_offsets_;
   size_t num_particles_;
+  size_t num_per_cell_;
   size_t close_packing(vect size, Scal r) const
   {
     // approximate value of volume occupied by close-packed circles in a rectangle with given size

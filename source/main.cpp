@@ -76,6 +76,8 @@ void display(void)
             last_frame_game_time) / frame_real_duration_s
         << ", particles: " 
         << G.PS->GetNumParticles()
+        << ", max_per_cell: " 
+        << G.PS->GetNumPerCell()
         << std::endl;
     last_report_time = new_frame_time;
     //G.PS->Blocks.print_status();

@@ -104,6 +104,9 @@ class particles_system
     //std::lock_guard<std::mutex> lg(m_step);
     return Blocks.GetNumParticles(); 
   }
+  size_t GetNumPerCell() const {
+    return Blocks.GetNumPerCell();
+  }
 
  private:
   rect_vect domain;
