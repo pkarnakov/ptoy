@@ -46,6 +46,7 @@ struct alignas(16) particle
 };
 
 vect F12(vect p1, vect v1, vect p2, vect v2, Scal sigma, Scal R);
+vect F12(vect p1, vect p2);
 
 class env_object
 {
@@ -89,6 +90,7 @@ class particles_system
   void SetDomain(rect_vect new_domain) { 
     std::lock_guard<std::mutex> lg(m_step);
     domain = new_domain; 
+    // TODO: window resize
     //Blocks.SetDomain(domain);
   }
   void status(std::ostream& out);

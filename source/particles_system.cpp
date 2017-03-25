@@ -139,6 +139,39 @@ void particles_system::SetForce(bool enabled) {
     force_enabled = enabled;
 }
 
+vect F12(vect p1, vect p2)
+{
+  const Scal sigma = kSigma;
+  const Scal R = 2. * kRadius;
+  const vect r = p1 - p2;
+  const Scal ar2 = r.dot(r);
+  const Scal ad2 = 1. / ar2;
+  const Scal r2 = ar2 * (1. / (R * R));
+  const Scal d2 = ad2 * (R * R);
+  const Scal d6 = d2 * d2 * d2;
+  const Scal d12 = d6 * d6;
+  const Scal cutoff = 2.;
+  const Scal cutoff2 = cutoff * cutoff;
+  Scal F = 0.;
+  if (r2 < cutoff2) {
+    F = d2 > cutoff2 ? 0.0 : sigma * (d12 - d6);
+    if (r2 > 1.) {
+      F *= (cutoff2 - r2) / (cutoff2 - 1.); 
+    }
+  }
+  return r * (F * ad2);
+}
+
+void CalcForce(std::vector<vect>& force,
+               std::vector<vect>& position,
+               std::vector<vect>& position_other) {
+  for (size_t q = 0; q < position_other.size(); ++q) {
+    for (size_t p = 0; p < position.size(); ++p) {
+      force[p] += F12(position[p], position_other[q]);
+    }
+  }
+}
+
 void particles_system::RHS(size_t i)
 {
   auto& data = Blocks.GetData();
@@ -175,14 +208,8 @@ void particles_system::RHS(size_t i)
     }
 
     if (i != j) // no check for self-force needed
-    for (size_t p = 0; p < data.position[i].size(); ++p) {
-      for (size_t q = 0; q < data.position[j].size(); ++q) {
-        //if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
-        data.force[i][p] += F12(
-            data.position[i][p], data.velocity[i][p],
-            data.position[j][q], data.velocity[j][q],
-            kSigma, kRadius * 2.);
-      }
+    {
+      CalcForce(data.force[i], data.position[i], data.position[j]);
     }
 
     if (i == j) // need to exclude self-force
@@ -216,24 +243,8 @@ void particles_system::RHS(size_t i)
   }
 }
 
-vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, Scal sigma, Scal R)
+vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, 
+    Scal /*sigma*/, Scal /*R*/)
 {
-  //return vect(0.,0.);
-  const vect r = p1 - p2;
-  const Scal ar2 = r.dot(r);
-  const Scal ad2 = 1. / ar2;
-  const Scal r2 = ar2 * (1. / (R * R));
-  const Scal d2 = ad2 * (R * R);
-  const Scal d6 = d2 * d2 * d2;
-  const Scal d12 = d6 * d6;
-  const Scal cutoff = 2.;
-  const Scal cutoff2 = cutoff * cutoff;
-  Scal F = 0.;
-  if (r2 < cutoff2) {
-    F = d2 > cutoff2 ? 0.0 : sigma * (d12 - d6);
-    if (r2 > 1.) {
-      F *= (cutoff2 - r2) / (cutoff2 - 1.); 
-    }
-  }
-  return r * (F * ad2);
+  return F12(p1, p2);
 }
