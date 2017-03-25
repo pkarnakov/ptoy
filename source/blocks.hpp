@@ -99,10 +99,28 @@ class blocks
       B[n].reserve(block_capacity);
     }
   }
+  void reinit() {
+    mindex Nnew;
+    Nnew.i=int(domain.size().x/block_size.x)+1;
+    Nnew.j=int(domain.size().y/block_size.y)+1;
+    if (Nnew.i > N.i || Nnew.j > N.j) {
+      const auto Nold = N;
+      N += N;
+      const auto Bold = B;
+      B = array2D<std::vector<particle>>(N);
+      for (int i = 0; i < Nold.i; ++i) {
+        for (int j = 0; j < Nold.j; ++j) {
+          const mindex m(i, j);
+          B[m] = std::move(Bold[m]);
+        }
+      }
+    }
+  }
 public:
   const size_t kBlockNone = static_cast<size_t>(-1);
   array2D<std::vector<particle>> B;
   std::vector<mindex> NEAR;
+  size_t num_particles_;
   size_t close_packing(vect size, double r) const
   {
     // approximate value of volume occupied by close-packed circles in a rectangle with given size
@@ -146,25 +164,38 @@ public:
       assert(B[n].size() <= block_capacity);
     }
   }
+  void SetDomain(rect_vect new_domain) { 
+    domain = new_domain;
+    reinit();
+  }
+  size_t GetNumParticles() const { return num_particles_; }
   void arrange()
   {
+    reinit();
+    size_t lnum_particles_ = 0;
     for (size_t n = 0; n < B.size(); ++n) {
       size_t w = 0;
       size_t we = B[n].size();
       while (w < we) {
         size_t new_block = getn_check(B[n][w].p); 
         if (n != new_block) {
-          std::swap(B[n][w], B[n].back());
           if (new_block != kBlockNone) {
-            B[new_block].push_back(B[n].back());
+            B[new_block].push_back(B[n][w]);
+            if (new_block < n) {
+              ++lnum_particles_;
+            }
           }
+          std::swap(B[n][w], B[n].back());
           B[n].pop_back();
           --we;
         } else {
           ++w;
+          ++lnum_particles_;
         }
       }
     }
+
+    num_particles_ = lnum_particles_;
   }
   void print_status() const {
     std::cout << "Blocks" << std::endl;

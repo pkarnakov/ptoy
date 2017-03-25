@@ -48,7 +48,7 @@ void display(void)
   //if(flag_display) return;
   //flag_display=true;
 
-  const double fps=60.0;
+  const double fps=30.0;
   milliseconds current_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
   milliseconds time_past_from_last_frame = current_time-last_frame_time;
 
@@ -69,9 +69,13 @@ void display(void)
       (new_frame_time - last_frame_time).count() / 1000.;
 
   if ((new_frame_time - last_report_time).count() > 1000.) {
-    std::cout << "fps: " << 1. / frame_real_duration_s;
-    std::cout << ", game rate: " << 
-        (new_frame_game_time - last_frame_game_time) / frame_real_duration_s
+    std::cout 
+        << "fps: " << 1. / frame_real_duration_s
+        << ", game rate: "
+        << (new_frame_game_time - 
+            last_frame_game_time) / frame_real_duration_s
+        << ", particles: " 
+        << G.PS->GetNumParticles()
         << std::endl;
     last_report_time = new_frame_time;
     //G.PS->Blocks.print_status();

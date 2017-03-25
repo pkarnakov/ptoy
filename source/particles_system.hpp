@@ -82,7 +82,11 @@ class particles_system
   std::vector<particle> GetParticles() const;
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
-  void SetDomain(rect_vect new_domain) { domain = new_domain; }
+  void SetDomain(rect_vect new_domain) { 
+    std::lock_guard<std::mutex> lg(m_step);
+    domain = new_domain; 
+    Blocks.SetDomain(domain);
+  }
   void status(std::ostream& out);
   void step();
   void SetForce(vect center, bool enabled);
@@ -90,7 +94,12 @@ class particles_system
   void SetForce(bool enabled);
   double GetTime() const { return t; }
   rect_vect GetDomain() const { return domain; }
-  std::mutex m_ENVOBJ;
+  mutable std::mutex m_ENVOBJ;
+  mutable std::mutex m_step;
+  size_t GetNumParticles() const { 
+    //std::lock_guard<std::mutex> lg(m_step);
+    return Blocks.GetNumParticles(); 
+  }
 
  private:
   rect_vect domain;

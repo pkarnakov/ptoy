@@ -47,6 +47,7 @@ particles_system::particles_system() :
 particles_system::~particles_system()
 {}
 std::vector<particle> particles_system::GetParticles() const {
+  //std::lock_guard<std::mutex> lg(m_step);
   std::vector<particle> res;
   for(int bj=0; bj<Blocks.B.msize().j; ++bj)
   for(int bi=0; bi<Blocks.B.msize().i; ++bi)
@@ -67,6 +68,7 @@ void particles_system::status(std::ostream& out)
 }
 void particles_system::step()
 {
+  std::lock_guard<std::mutex> lg(m_step);
   RHS();
 
   #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
