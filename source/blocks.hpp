@@ -5,16 +5,21 @@
 #include "geometry.hpp"
 #include <cmath>
 #include <vector>
-#include "particles_system.hpp"
 #include <cassert>
+#include "aligned_allocator.hpp"
+
+using ArrayVect = std::vector<vect,
+      hpc15::aligned_allocator<vect,64>>;
+using ArrayInt = std::vector<int,
+      hpc15::aligned_allocator<int,64>>;
 
 class blocks
 {
  public:
   static const size_t kNumNeighbors = 9;
   static const size_t kBlockNone = static_cast<size_t>(-1);
-  using DataVect = std::vector<std::vector<vect>>;
-  using DataInt = std::vector<std::vector<int>>;
+  using DataVect = std::vector<ArrayVect>;
+  using DataInt = std::vector<ArrayInt>;
   struct BlockData {
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
@@ -103,8 +108,8 @@ class blocks
     return kBlockNone;
   }
   void AddParticles(
-      const std::vector<vect>& position, 
-      const std::vector<vect>& velocity,
+      const ArrayVect& position, 
+      const ArrayVect& velocity,
       const std::vector<int>& id
       ) {
     const size_t size = position.size();

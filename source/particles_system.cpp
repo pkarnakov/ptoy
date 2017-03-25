@@ -34,8 +34,8 @@ particles_system::particles_system() :
     }
   }
 
-  std::vector<vect> position;
-  std::vector<vect> velocity;
+  ArrayVect position;
+  ArrayVect velocity;
   std::vector<int> id;
 
   for (auto part : P) {
@@ -146,25 +146,15 @@ vect F12(vect p1, vect p2)
   const vect r = p1 - p2;
   const Scal ar2 = r.dot(r);
   const Scal ad2 = 1. / ar2;
-  const Scal r2 = ar2 * (1. / (R * R));
   const Scal d2 = ad2 * (R * R);
   const Scal d6 = d2 * d2 * d2;
   const Scal d12 = d6 * d6;
-  const Scal cutoff = 2.;
-  const Scal cutoff2 = cutoff * cutoff;
-  Scal F = 0.;
-  if (r2 < cutoff2) {
-    F = d2 > cutoff2 ? 0.0 : sigma * (d12 - d6);
-    if (r2 > 1.) {
-      F *= (cutoff2 - r2) / (cutoff2 - 1.); 
-    }
-  }
-  return r * (F * ad2);
+  return r * (sigma * (d12 - d6) * ad2);
 }
 
-void CalcForce(std::vector<vect>& force,
-               std::vector<vect>& position,
-               std::vector<vect>& position_other) {
+void CalcForce(ArrayVect& force,
+               ArrayVect& position,
+               ArrayVect& position_other) {
   for (size_t q = 0; q < position_other.size(); ++q) {
     for (size_t p = 0; p < position.size(); ++p) {
       force[p] += F12(position[p], position_other[q]);
