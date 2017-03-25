@@ -100,6 +100,7 @@ class blocks
     }
   }
 public:
+  const size_t kBlockNone = static_cast<size_t>(-1);
   array2D<std::vector<particle>> B;
   std::vector<mindex> NEAR;
   size_t close_packing(vect size, double r) const
@@ -129,6 +130,13 @@ public:
   {
     return mindex(max(0,min(N.i-1,m.i)), max(0,min(N.j-1,m.j)));
   }
+  size_t getn_check(vect p) const {
+    const mindex m = get_block(p);
+    if (m.i < 0 || m.i >= N.i || m.j < 0 || m.j >= N.j) {
+      return kBlockNone;
+    }
+    return B.getn(m);
+  }
   void add_particles(const std::vector<particle>& P) {
     for (auto& part : P) {
       auto n = constraints(get_block(part.p));
@@ -141,13 +149,19 @@ public:
   void arrange()
   {
     for (size_t n = 0; n < B.size(); ++n) {
-      for (size_t w = 0; w < B[n].size(); ++w) {
-        size_t new_block = 
-          B.getn(constraints(get_block(B[n][w].p)));
+      size_t w = 0;
+      size_t we = B[n].size();
+      while (w < we) {
+        size_t new_block = getn_check(B[n][w].p); 
         if (n != new_block) {
           std::swap(B[n][w], B[n].back());
-          B[new_block].push_back(B[n].back());
+          if (new_block != kBlockNone) {
+            B[new_block].push_back(B[n].back());
+          }
           B[n].pop_back();
+          --we;
+        } else {
+          ++w;
         }
       }
     }
