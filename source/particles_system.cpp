@@ -1,18 +1,14 @@
 #include "particles_system.hpp"
 
-const double r = 0.02;
-//const double r = 0.02;
-
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
-    Blocks(domain, vect(4*r, 4*r), 200, false)
+    Blocks(domain, vect(4*kRadius, 4*kRadius), 200, false)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
 
-
-
   // place particles in the domain
+  const double r = kRadius;
   const int row=1. / r;
   const int N=row * row;
 
@@ -22,7 +18,7 @@ particles_system::particles_system() :
     const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
     const vect v(0., 0.);
     // TODO: adjust sigma so that with r->0 it converges to a solid body
-    const double sigma = 0.5;
+    const double sigma = kSigma;
     switch (i % 1) {
       case 0:
         P.push_back(particle(p, v, 0.01, r, sigma, 0x1, rgb(1.,0.,0.)));
@@ -152,8 +148,13 @@ void particles_system::RHS(mindex block_m)
     auto& f = part.f;
     auto& p = part.p;
     auto& v = part.v;
+
+    // zero
+    f = vect(0., 0.);
+
     // gravity
-    f=g*part.m;
+    //f=g*part.m;
+    f=g*kMass;
 
     // point force
     if (force_enabled) {
@@ -163,7 +164,8 @@ void particles_system::RHS(mindex block_m)
     }
 
     // dissipation
-    f -= v * (0.1 * p1.m);
+    //f -= v * (0.1 * p1.m);
+    f -= v * (0.1 * kMass);
 
     // pairwise interactions
     for(size_t k=0; k<Blocks.NEAR.size(); ++k)
@@ -175,24 +177,27 @@ void particles_system::RHS(mindex block_m)
         for(size_t w2=0; w2<b2.size(); ++w2)
         {
           particle& p2=b2[w2]; // second particle
-          if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
+          //if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
+          if(&p1!=&p2)
           {
-            f += F12(p1.p, p1.v, p2.p, p2.v, 0.5*(p1.sigma+p2.sigma), p1.r+p2.r);
+            f += F12(p1.p, p1.v, p2.p, p2.v, kSigma, kRadius * 2.);
           }
         }
       }
     }
     
     // mass
-    f *= 1. / p1.m;
+    //f *= 1. / p1.m;
+    f *= 1. / kMass;
 
     // environment objects
     {
-      std::lock_guard<std::mutex> lg(m_ENVOBJ);
+     // std::lock_guard<std::mutex> lg(m_ENVOBJ);
       for(size_t k=0; k<ENVOBJ.size(); ++k)
       {
         auto& obj=ENVOBJ[k];
-        f+=obj->F(p,v,part.r,part.sigma);
+        //f+=obj->F(p,v,part.r,part.sigma);
+        f+=obj->F(p,v,kRadius,kSigma);
       }
     }
   }

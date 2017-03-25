@@ -17,6 +17,10 @@ using std::vector;
 using std::size_t;
 using std::min;
 
+const double kRadius = 0.02;
+const double kSigma = 0.5;
+const double kMass = 0.01;
+
 template<class T>
 T sqr(T a)
 {
@@ -30,14 +34,14 @@ struct particle
   vect f;
   vect p0;
   vect v0;
-  double m;
-  double r;
-  double sigma;
-  unsigned int layers_mask;
-  rgb color;
+  //unsigned int layers_mask;
+  //rgb color;
   particle() {;}
-  particle(vect _p, vect _v, double _m, double _r, double _sigma, unsigned int _layers_mask, rgb _color)
-    : p(_p), v(_v), m(_m), r(_r), sigma(_sigma), layers_mask(_layers_mask) , color(_color)
+  particle(vect _p, vect _v, double /*_m*/, double /*_r*/, 
+      double /*_sigma*/, 
+      unsigned int /*_layers_mask*/, 
+      rgb /*_color*/)
+    : p(_p), v(_v)//, layers_mask(_layers_mask), color(_color)
   {;}
 };
 

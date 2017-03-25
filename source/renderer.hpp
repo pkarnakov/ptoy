@@ -87,9 +87,11 @@ public:
       //vect p=part.p;
       double f = 0.5 + part.v.length() / 7.; // color intensity
       f = std::min(1., std::max(0., f));
-      auto c = part.color;
-      rgb color(c.r * f, c.g * f, c.b * f);
-      draw_circle(part.p, part.r, color);
+      //auto c = part.color;
+      //rgb color(c.r * f, c.g * f, c.b * f);
+      rgb color(f, 0., 0.);
+      //draw_circle(part.p, part.r, color);
+      draw_circle(part.p, kRadius, color);
     }
     glPopMatrix();
   }
