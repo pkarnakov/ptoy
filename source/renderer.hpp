@@ -21,16 +21,16 @@ public:
 class renderer_opengl : public renderer
 {
 public:
-  void draw_circle(float x, float y, float r, rgb color)
+  void draw_circle(Scal x, Scal y, Scal r, rgb color)
   {
     glColor3f(color.r, color.g, color.b);
 
     const size_t num_segments = 8;
-    const float theta = 2 * PI / num_segments;
-    const float c = cos(theta);
-    const float s = sin(theta);
-    float dx = r;
-    float dy = 0.;
+    const Scal theta = 2 * PI / num_segments;
+    const Scal c = cos(theta);
+    const Scal s = sin(theta);
+    Scal dx = r;
+    Scal dy = 0.;
 
     glBegin( GL_POLYGON );
     //glBegin( GL_LINE_LOOP );
@@ -38,14 +38,14 @@ public:
 
     for (size_t i = 0; i < num_segments; ++i) {
       glVertex3f(x + dx, y + dy, 0);
-      const float dx_tmp = dx;
+      const Scal dx_tmp = dx;
       dx = c * dx - s * dy;
       dy = s * dx_tmp + c * dy;
     }
 
     glEnd();
   }
-  void draw_circle(vect c, float r, rgb color)
+  void draw_circle(vect c, Scal r, rgb color)
   {
     draw_circle(c.x, c.y, r, color);
   }
@@ -85,8 +85,8 @@ public:
     {
       auto& part=particles[k];
       //vect p=part.p;
-      double f = 0.5 + part.v.length() / 7.; // color intensity
-      f = std::min(1., std::max(0., f));
+      Scal f = 0.5 + part.v.length() / 7.; // color intensity
+      f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
       //auto c = part.color;
       //rgb color(c.r * f, c.g * f, c.b * f);
       rgb color(f, 0., 0.);

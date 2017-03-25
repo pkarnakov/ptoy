@@ -121,12 +121,12 @@ public:
   array2D<std::vector<particle>> B;
   std::vector<mindex> NEAR;
   size_t num_particles_;
-  size_t close_packing(vect size, double r) const
+  size_t close_packing(vect size, Scal r) const
   {
     // approximate value of volume occupied by close-packed circles in a rectangle with given size
-    double occupied_volume=size.x*size.y*PI/(2.0*sqrt(3.0));
+    Scal occupied_volume=size.x*size.y*PI/(2.0*sqrt(3.0));
     // approximate number of close-packed circles
-    double circles_number=occupied_volume/(PI*r*r);
+    Scal circles_number=occupied_volume/(PI*r*r);
     // truncate and add a reserve (+1)
     return int(circles_number)+1;
   }
@@ -135,7 +135,7 @@ public:
   {
     init();
   }
-  blocks(rect_vect _domain, vect _block_size, double particle_radius) : domain(_domain), block_size(_block_size), block_capacity(close_packing(_block_size, particle_radius))
+  blocks(rect_vect _domain, vect _block_size, Scal particle_radius) : domain(_domain), block_size(_block_size), block_capacity(close_packing(_block_size, particle_radius))
   {
     init();
   }

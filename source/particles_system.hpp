@@ -17,9 +17,9 @@ using std::vector;
 using std::size_t;
 using std::min;
 
-const double kRadius = 0.02;
-const double kSigma = 0.5;
-const double kMass = 0.01;
+const Scal kRadius = 0.02;
+const Scal kSigma = 0.5;
+const Scal kMass = 0.01;
 
 template<class T>
 T sqr(T a)
@@ -27,7 +27,7 @@ T sqr(T a)
   return a*a;
 }
 
-struct particle
+struct alignas(16) particle
 {
   vect p;
   vect v;
@@ -37,32 +37,32 @@ struct particle
   //unsigned int layers_mask;
   //rgb color;
   particle() {;}
-  particle(vect _p, vect _v, double /*_m*/, double /*_r*/, 
-      double /*_sigma*/, 
+  particle(vect _p, vect _v, Scal /*_m*/, Scal /*_r*/, 
+      Scal /*_sigma*/, 
       unsigned int /*_layers_mask*/, 
       rgb /*_color*/)
     : p(_p), v(_v)//, layers_mask(_layers_mask), color(_color)
   {;}
 };
 
-vect F12(vect p1, vect v1, vect p2, vect v2, double sigma, double R);
+vect F12(vect p1, vect v1, vect p2, vect v2, Scal sigma, Scal R);
 
 class env_object
 {
 public:
-  virtual vect F(vect p, vect v, double R, double sigma) = 0;
+  virtual vect F(vect p, vect v, Scal R, Scal sigma) = 0;
 };
 
 class line : public env_object
 {
   vect A, B;
-  double eps;
+  Scal eps;
 public:
-  line(vect _A, vect _B, double _eps) : A(_A), B(_B), eps(_eps) {;}
-  vect F(vect p, vect /*v*/, double R, double sigma)
+  line(vect _A, vect _B, Scal _eps) : A(_A), B(_B), eps(_eps) {;}
+  vect F(vect p, vect /*v*/, Scal R, Scal sigma)
   {
     vect Q;
-    double lambda=(B-A).dot(p-A)/(B-A).dot(B-A);
+    Scal lambda=(B-A).dot(p-A)/(B-A).dot(B-A);
     if(lambda>0. && lambda<1.)
     {
       Q=A+(B-A)*lambda;
@@ -92,11 +92,11 @@ class particles_system
     Blocks.SetDomain(domain);
   }
   void status(std::ostream& out);
-  void step(double time_target);
+  void step(Scal time_target);
   void SetForce(vect center, bool enabled);
   void SetForce(vect center);
   void SetForce(bool enabled);
-  double GetTime() const { return t; }
+  Scal GetTime() const { return t; }
   rect_vect GetDomain() const { return domain; }
   mutable std::mutex m_ENVOBJ;
   mutable std::mutex m_step;
@@ -108,8 +108,8 @@ class particles_system
  private:
   rect_vect domain;
   blocks Blocks;
-  double t;
-  double dt;
+  Scal t;
+  Scal dt;
   vect g;
   void RHS(mindex block_m);
   vector<std::unique_ptr<env_object>> ENVOBJ;

@@ -6,23 +6,26 @@
 #include <iostream>
 #include <cmath>
 
-const double PI=atan(1.0)*4.0;
+using Scal = float;
+//using Scal = double;
 
-class vect
+const Scal PI=atan(1.0)*4.0;
+
+class alignas(16) vect
 {
 public:
-  double x,y;
+  Scal x,y;
   vect() {;}
-  vect(double _x, double _y)
+  vect(Scal _x, Scal _y)
   {
     x=_x; y=_y;
   }
-  vect& operator*=(double a)
+  vect& operator*=(Scal a)
   {
     x*=a; y*=a;
     return *this;
   }
-  vect operator*(double a) const
+  vect operator*(Scal a) const
   {
     vect res=*this;
     res*=a;
@@ -50,15 +53,15 @@ public:
     res-=v;
     return res;
   }
-  double dot(vect v) const
+  Scal dot(vect v) const
   {
     return v.x*x+v.y*y;
   }
-  double length() const
+  Scal length() const
   {
     return sqrt(x*x+y*y);
   }
-  double dist(vect v) const
+  Scal dist(vect v) const
   {
     return (v-*this).length();
   }

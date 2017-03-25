@@ -27,7 +27,7 @@ public:
 
     std::lock_guard<std::mutex> lg(PS->m_ENVOBJ);
 
-    double eps=0.01;
+    Scal eps=0.01;
     // place env_objects
     PS->ClearEnvObj();
     PS->AddEnvObj(new line(vect(A.x, A.y), vect(B.x, A.y), eps));

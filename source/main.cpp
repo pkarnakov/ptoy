@@ -16,9 +16,9 @@
     using namespace std::chrono;
 
     milliseconds last_frame_time;
-    double last_frame_game_time;
+    Scal last_frame_game_time;
     milliseconds last_report_time;
-    std::atomic<double> next_game_time_target;
+    std::atomic<Scal> next_game_time_target;
 
 game G;
 
@@ -48,7 +48,7 @@ void display(void)
   //if(flag_display) return;
   //flag_display=true;
 
-  const double fps=30.0;
+  const Scal fps=30.0;
   milliseconds current_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
   milliseconds time_past_from_last_frame = current_time-last_frame_time;
 
@@ -65,7 +65,7 @@ void display(void)
   auto new_frame_game_time = G.PS->GetTime();
 
 
-  const double frame_real_duration_s = 
+  const Scal frame_real_duration_s = 
       (new_frame_time - last_frame_time).count() / 1000.;
 
   if ((new_frame_time - last_report_time).count() > 1000.) {
@@ -81,8 +81,8 @@ void display(void)
     //G.PS->Blocks.print_status();
   }
   
-  const double game_rate_target = 10.;
-  //const double game_rate_target = 1.;
+  const Scal game_rate_target = 10.;
+  //const Scal game_rate_target = 1.;
   next_game_time_target = new_frame_game_time + game_rate_target / fps;
 
   last_frame_time = new_frame_time;

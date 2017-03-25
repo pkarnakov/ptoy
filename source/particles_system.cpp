@@ -8,7 +8,7 @@ particles_system::particles_system() :
   force_center = vect(0., 0.);
 
   // place particles in the domain
-  const double r = kRadius;
+  const Scal r = kRadius;
   const int row=1. / r;
   const int N=row * row;
 
@@ -18,7 +18,7 @@ particles_system::particles_system() :
     const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
     const vect v(0., 0.);
     // TODO: adjust sigma so that with r->0 it converges to a solid body
-    const double sigma = kSigma;
+    const Scal sigma = kSigma;
     switch (i % 1) {
       case 0:
         P.push_back(particle(p, v, 0.01, r, sigma, 0x1, rgb(1.,0.,0.)));
@@ -37,7 +37,7 @@ particles_system::particles_system() :
 
   t=0.0;
   dt=0.0002;
-  const double gravity = 10.;
+  const Scal gravity = 10.;
   g=vect(0.0, -1.0) * gravity;
 }
 particles_system::~particles_system()
@@ -62,7 +62,7 @@ void particles_system::status(std::ostream& out)
   out << "status N/A";
   //out<<"Particles system"<<std::endl<<"Particles number = "<<P.size()<<std::endl;
 }
-void particles_system::step(double time_target)
+void particles_system::step(Scal time_target)
 {
   std::lock_guard<std::mutex> lg(m_step);
 
@@ -109,7 +109,7 @@ void particles_system::step(double time_target)
       std::vector<particle>& b1=Blocks.B[m];
       for (auto& part : b1) {
         part.v = part.v0 + part.f * dt;
-        const double limit = 10.;
+        const Scal limit = 10.;
         if (part.v.length() > limit) {
           part.v *= limit / part.v.length();
         }
@@ -158,7 +158,7 @@ void particles_system::RHS(mindex block_m)
 
     // point force
     if (force_enabled) {
-        const double intensity = 0.1;
+        const Scal intensity = 0.1;
         const vect r = p - force_center; 
         f += r * (intensity / std::pow(r.length(), 3));
     }
@@ -217,18 +217,19 @@ void particles_system::RHS(mindex block_m)
   }
 }
 
-vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, double sigma, double R)
+vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, Scal sigma, Scal R)
 {
+  //return vect(0.,0.);
   const vect r = p1 - p2;
-  const double ar2 = r.dot(r);
-  const double ad2 = 1. / ar2;
-  const double r2 = ar2 * (1. / (R * R));
-  const double d2 = ad2 * (R * R);
-  const double d6 = d2 * d2 * d2;
-  const double d12 = d6 * d6;
-  const double cutoff = 2.;
-  const double cutoff2 = cutoff * cutoff;
-  double F = 0.;
+  const Scal ar2 = r.dot(r);
+  const Scal ad2 = 1. / ar2;
+  const Scal r2 = ar2 * (1. / (R * R));
+  const Scal d2 = ad2 * (R * R);
+  const Scal d6 = d2 * d2 * d2;
+  const Scal d12 = d6 * d6;
+  const Scal cutoff = 2.;
+  const Scal cutoff2 = cutoff * cutoff;
+  Scal F = 0.;
   if (r2 < cutoff2) {
     F = d2 > cutoff2 ? 0.0 : sigma * (d12 - d6);
     if (r2 > 1.) {
