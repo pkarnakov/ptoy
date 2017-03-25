@@ -5,7 +5,7 @@ const double r = 0.02;
 
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
-    Blocks(domain, vect(2*r, 2*r), 200, false)
+    Blocks(domain, vect(4*r, 4*r), 200, false)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
@@ -66,47 +66,68 @@ void particles_system::status(std::ostream& out)
   out << "status N/A";
   //out<<"Particles system"<<std::endl<<"Particles number = "<<P.size()<<std::endl;
 }
-void particles_system::step()
+void particles_system::step(double time_target)
 {
   std::lock_guard<std::mutex> lg(m_step);
-  RHS();
 
-  #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
-  for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-  for(int bi=0; bi<Blocks.B.msize().i; ++bi)
+  #pragma omp parallel
   {
-    mindex m(bi,bj);
-    std::vector<particle>& b1=Blocks.B[m];
-    for (auto& part : b1) {
-      part.p0 = part.p;
-      part.v0 = part.v;
-      part.p += part.v * dt * 0.5;
-      part.v += part.f * dt * 0.5;
+
+  while (t < time_target) {
+    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
+    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
+    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
+    {
+      RHS(mindex(bi,bj));
     }
-  }
-  const auto t0 = t;
-  t += 0.5 * dt;
 
-  RHS();
-
-  #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
-  for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-  for(int bi=0; bi<Blocks.B.msize().i; ++bi)
-  {
-    mindex m(bi,bj);
-    std::vector<particle>& b1=Blocks.B[m];
-    for (auto& part : b1) {
-      part.v = part.v0 + part.f * dt;
-      const double limit = 10.;
-      if (part.v.length() > limit) {
-        part.v *= limit / part.v.length();
+    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
+    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
+    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
+    {
+      mindex m(bi,bj);
+      std::vector<particle>& b1=Blocks.B[m];
+      for (auto& part : b1) {
+        part.p0 = part.p;
+        part.v0 = part.v;
+        part.p += part.v * dt * 0.5;
+        part.v += part.f * dt * 0.5;
       }
-      part.p = part.p0 + part.v * dt;
+    }
+
+    #pragma omp single
+    t += 0.5 * dt;
+
+    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
+    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
+    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
+    {
+      RHS(mindex(bi,bj));
+    }
+
+    #pragma omp for collapse(2) schedule(dynamic, Blocks.B.msize().i)
+    for(int bj=0; bj<Blocks.B.msize().j; ++bj)
+    for(int bi=0; bi<Blocks.B.msize().i; ++bi)
+    {
+      mindex m(bi,bj);
+      std::vector<particle>& b1=Blocks.B[m];
+      for (auto& part : b1) {
+        part.v = part.v0 + part.f * dt;
+        const double limit = 10.;
+        if (part.v.length() > limit) {
+          part.v *= limit / part.v.length();
+        }
+        part.p = part.p0 + part.v * dt;
+      }
+    }
+
+    #pragma omp single
+    {
+      t += 0.5 * dt;
+      Blocks.arrange();
     }
   }
-  t = t0 + dt;
-
-  Blocks.arrange();
+  }
 }
 void particles_system::SetForce(vect center, bool enabled) {
     force_center = center;
@@ -119,62 +140,60 @@ void particles_system::SetForce(bool enabled) {
     force_enabled = enabled;
 }
 
-void particles_system::RHS()
+void particles_system::RHS(mindex block_m)
 {
-  #pragma omp parallel for collapse(2) schedule(dynamic, Blocks.B.msize().i)
-  for(int bj=0; bj<Blocks.B.msize().j; ++bj)
-  for(int bi=0; bi<Blocks.B.msize().i; ++bi)
+  const mindex m = block_m;
+
+  std::vector<particle>& b1=Blocks.B[m];
+  for(size_t w1=0; w1<b1.size(); ++w1)
   {
-    mindex m(bi,bj);
-    std::vector<particle>& b1=Blocks.B[m];
-    for(size_t w1=0; w1<b1.size(); ++w1)
+    particle& p1 = b1[w1]; // first particle
+    auto& part = p1;
+    auto& f = part.f;
+    auto& p = part.p;
+    auto& v = part.v;
+    // gravity
+    f=g*part.m;
+
+    // point force
+    if (force_enabled) {
+        const double intensity = 0.1;
+        const vect r = p - force_center; 
+        f += r * (intensity / std::pow(r.length(), 3));
+    }
+
+    // dissipation
+    f -= v * (0.1 * p1.m);
+
+    // pairwise interactions
+    for(size_t k=0; k<Blocks.NEAR.size(); ++k)
     {
-      particle& p1 = b1[w1]; // first particle
-      auto& part = p1;
-      auto& f = part.f;
-      auto& p = part.p;
-      auto& v = part.v;
-      // gravity
-      f=g*part.m;
-      // environment objects
+      mindex mnear = m + Blocks.NEAR[k];
+      if(Blocks.B.valid(mnear))
       {
-        std::lock_guard<std::mutex> lg(m_ENVOBJ);
-        for(size_t k=0; k<ENVOBJ.size(); ++k)
+        std::vector<particle>& b2=Blocks.B[mnear];
+        for(size_t w2=0; w2<b2.size(); ++w2)
         {
-          auto& obj=ENVOBJ[k];
-          f+=obj->F(p,v,part.r,part.sigma);
-        }
-      }
-      // point force
-      if (force_enabled) {
-          const double intensity = 0.1;
-          const vect r = p - force_center; 
-          f += r * (intensity / std::pow(r.length(), 3));
-      }
-
-      // dissipation
-      f -= v * (0.1 * p1.m);
-
-      // pairwise interactions
-      for(size_t k=0; k<Blocks.NEAR.size(); ++k)
-      {
-        mindex mnear = m + Blocks.NEAR[k];
-        if(Blocks.B.valid(mnear))
-        {
-          std::vector<particle>& b2=Blocks.B[mnear];
-          for(size_t w2=0; w2<b2.size(); ++w2)
+          particle& p2=b2[w2]; // second particle
+          if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
           {
-            particle& p2=b2[w2]; // second particle
-            if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
-            {
-              f += F12(p1.p, p1.v, p2.p, p2.v, 0.5*(p1.sigma+p2.sigma), p1.r+p2.r);
-            }
+            f += F12(p1.p, p1.v, p2.p, p2.v, 0.5*(p1.sigma+p2.sigma), p1.r+p2.r);
           }
         }
       }
-      
-      // mass
-      f *= 1. / p1.m;
+    }
+    
+    // mass
+    f *= 1. / p1.m;
+
+    // environment objects
+    {
+      std::lock_guard<std::mutex> lg(m_ENVOBJ);
+      for(size_t k=0; k<ENVOBJ.size(); ++k)
+      {
+        auto& obj=ENVOBJ[k];
+        f+=obj->F(p,v,part.r,part.sigma);
+      }
     }
   }
 }

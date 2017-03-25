@@ -193,7 +193,7 @@ void cycle()
 
   while(true) { 
     if (G.PS->GetTime() < next_game_time_target) {
-      G.PS->step();
+      G.PS->step(next_game_time_target);
     } else {
       std::this_thread::sleep_for(milliseconds(1000 / 60));
     }

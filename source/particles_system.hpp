@@ -88,7 +88,7 @@ class particles_system
     Blocks.SetDomain(domain);
   }
   void status(std::ostream& out);
-  void step();
+  void step(double time_target);
   void SetForce(vect center, bool enabled);
   void SetForce(vect center);
   void SetForce(bool enabled);
@@ -107,7 +107,7 @@ class particles_system
   double t;
   double dt;
   vect g;
-  void RHS();
+  void RHS(mindex block_m);
   vector<std::unique_ptr<env_object>> ENVOBJ;
   vect force_center;
   bool force_enabled;
