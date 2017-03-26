@@ -334,7 +334,7 @@ void particles_system::RHS(size_t i)
 
     if (i != j) // no check for self-force needed
     {
-      CALC_FORCE<true>(data.force[i], data.position[i], data.position[j]);
+      CALC_FORCE<false>(data.force[i], data.position[i], data.position[j]);
     }
 
     if (i == j) // apply threshold to distance to avoid self-force 
