@@ -91,7 +91,7 @@ public:
       //rgb color(c.r * f, c.g * f, c.b * f);
       rgb color(f, 0., 0.);
       //draw_circle(part.p, part.r, color);
-      draw_circle(part.p, kRadius, color);
+      draw_circle(part.p, kRadius * 0.9, color);
     }
     glPopMatrix();
   }

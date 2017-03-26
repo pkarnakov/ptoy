@@ -47,7 +47,7 @@ particles_system::particles_system() :
   Blocks.AddParticles(position, velocity, id);
 
   t=0.0;
-  dt=0.0002;
+  dt=kTimeStep;
   const Scal gravity = 10.;
   g=vect(0.0, -1.0) * gravity;
 }
@@ -327,14 +327,13 @@ void particles_system::RHS(size_t i)
 
     // point force
     if (force_enabled) {
-      const Scal intensity = 0.1;
       const vect r = x - force_center; 
-      f += r * (intensity / std::pow(r.length(), 3));
+      f += r * (kPointForce / std::pow(r.length(), 3));
     }
 
     // dissipation
     //f -= v * (0.1 * p1.m);
-    f -= v * (0.1 * kMass);
+    f -= v * (kDissipation * kMass);
   }
 
   // pairwise interactions
