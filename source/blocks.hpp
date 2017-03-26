@@ -30,6 +30,15 @@ class blocks
       velocity_tmp.resize(size);
       force.resize(size);
       id.resize(size);
+
+      for (size_t i = 0; i < position.size(); ++i) {
+        position[i].reserve(32);
+        position_tmp[i].reserve(32);
+        velocity[i].reserve(32);
+        velocity_tmp[i].reserve(32);
+        force[i].reserve(32);
+        id[i].reserve(32);
+      }
     }
     void RemoveParticle(
         size_t src, // source block 

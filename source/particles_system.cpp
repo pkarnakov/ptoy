@@ -155,9 +155,17 @@ vect F12(vect p1, vect p2)
 void CalcForce(ArrayVect& force,
                ArrayVect& position,
                ArrayVect& position_other) {
+  return;
   for (size_t q = 0; q < position_other.size(); ++q) {
-    for (size_t p = 0; p < position.size(); ++p) {
+    for (size_t p = 0; p < position.size(); p+=8) {
       force[p] += F12(position[p], position_other[q]);
+      force[p+1] += F12(position[p+1], position_other[q]);
+      force[p+2] += F12(position[p+2], position_other[q]);
+      force[p+3] += F12(position[p+3], position_other[q]);
+      force[p+4] += F12(position[p+4], position_other[q]);
+      force[p+5] += F12(position[p+5], position_other[q]);
+      force[p+6] += F12(position[p+6], position_other[q]);
+      force[p+7] += F12(position[p+7], position_other[q]);
     }
   }
 }
