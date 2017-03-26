@@ -198,8 +198,8 @@ void CalcForceAvx(
   // R2 = (2. * kRadius) ^ 2;
   const float tmp = std::pow(2. * kRadius, 2);
   const __m256 R2 = _mm256_broadcast_ss(&tmp);
-  // threshold = kRadius * 1e-3
-  const float tmp_th = kRadius * 1e-3;
+  // threshold = kRadius ^ 2 * 1e-3
+  const float tmp_th = std::pow(kRadius, 2) * 1e-3;
   const __m256 threshold = _mm256_broadcast_ss(&tmp_th);
 
   for (size_t q = 0; q < position_other.size(); ++q) {
