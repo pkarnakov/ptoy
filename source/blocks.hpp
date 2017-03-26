@@ -5,16 +5,21 @@
 #include "geometry.hpp"
 #include <cmath>
 #include <vector>
-#include "particles_system.hpp"
 #include <cassert>
+#include "aligned_allocator.hpp"
+
+using ArrayVect = std::vector<vect,
+      hpc15::aligned_allocator<vect,64>>;
+using ArrayInt = std::vector<int,
+      hpc15::aligned_allocator<int,64>>;
 
 class blocks
 {
  public:
   static const size_t kNumNeighbors = 9;
   static const size_t kBlockNone = static_cast<size_t>(-1);
-  using DataVect = std::vector<std::vector<vect>>;
-  using DataInt = std::vector<std::vector<int>>;
+  using DataVect = std::vector<ArrayVect>;
+  using DataInt = std::vector<ArrayInt>;
   struct BlockData {
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
@@ -25,6 +30,15 @@ class blocks
       velocity_tmp.resize(size);
       force.resize(size);
       id.resize(size);
+
+      for (size_t i = 0; i < position.size(); ++i) {
+        position[i].reserve(32);
+        position_tmp[i].reserve(32);
+        velocity[i].reserve(32);
+        velocity_tmp[i].reserve(32);
+        force[i].reserve(32);
+        id[i].reserve(32);
+      }
     }
     void RemoveParticle(
         size_t src, // source block 
@@ -83,7 +97,6 @@ class blocks
     assert(dims_.i > 0 && dims_.j > 0 && num_blocks_ > 0);
 
     data_.resize(num_blocks_);
-    std::cout << "foo" << GetNumBlocks() << std::endl;
 
     // Calc offsets to neighbors
     size_t n = 0;
@@ -103,8 +116,8 @@ class blocks
     return kBlockNone;
   }
   void AddParticles(
-      const std::vector<vect>& position, 
-      const std::vector<vect>& velocity,
+      const ArrayVect& position, 
+      const ArrayVect& velocity,
       const std::vector<int>& id
       ) {
     const size_t size = position.size();

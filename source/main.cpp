@@ -207,6 +207,8 @@ void cycle()
 
 int main(int argc, char *argv[])
 {
+  //TestUni();
+  //return 0;
     frame_number=0;
     /* perform initialization NOT OpenGL/GLUT dependent,
        as we haven't created a GLUT window yet */

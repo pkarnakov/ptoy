@@ -6,12 +6,12 @@
 #include <iostream>
 #include <cmath>
 
-//using Scal = float;
-using Scal = double;
+using Scal = float;
+//using Scal = double;
 
 const Scal PI=atan(1.0)*4.0;
 
-class alignas(16) vect {
+class vect {
 public:
   static const vect kNan;
   Scal x,y;

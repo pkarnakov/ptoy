@@ -9,8 +9,9 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include "blocks.hpp"
 
-class blocks;
+#include <x86intrin.h>
 
 using std::endl;
 using std::vector;
@@ -27,7 +28,9 @@ T sqr(T a)
   return a*a;
 }
 
-struct alignas(16) particle
+void TestUni();
+
+struct alignas(64) particle
 {
   vect p;
   vect v;
@@ -46,7 +49,6 @@ struct alignas(16) particle
 };
 
 vect F12(vect p1, vect v1, vect p2, vect v2, Scal sigma, Scal R);
-vect F12(vect p1, vect p2);
 
 class env_object
 {
@@ -76,8 +78,6 @@ public:
     return F12(p, vect(0.,0.), Q, vect(0.,0.), sigma, R);
   }
 };
-
-#include "blocks.hpp"
 
 class particles_system
 {
