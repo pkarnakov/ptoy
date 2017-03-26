@@ -38,7 +38,7 @@ class aligned_allocator {
     aligned_allocator() NOEXCEPT_SPEC {
     }
 
-    aligned_allocator(aligned_allocator const& a) NOEXCEPT_SPEC {
+    aligned_allocator(aligned_allocator const&) NOEXCEPT_SPEC {
     }
 
     template <typename U>
@@ -58,7 +58,7 @@ class aligned_allocator {
         return p;
     }
 
-    void deallocate(pointer p, size_type n) NOEXCEPT_SPEC {
+    void deallocate(pointer p, size_type) NOEXCEPT_SPEC {
         std::free(p);
     }
 
