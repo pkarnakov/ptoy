@@ -11,6 +11,7 @@
 #include <mutex>
 #include "blocks.hpp"
 
+#include <x86intrin.h>
 
 using std::endl;
 using std::vector;
@@ -26,6 +27,8 @@ T sqr(T a)
 {
   return a*a;
 }
+
+void TestUni();
 
 struct alignas(64) particle
 {

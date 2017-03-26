@@ -152,10 +152,21 @@ vect F12(vect p1, vect p2)
   return r * (sigma * (d12 - d6) * ad2);
 }
 
-void CalcForce(ArrayVect& force,
+void CalcForceSerial(ArrayVect& force,
                ArrayVect& position,
                ArrayVect& position_other) {
-  return;
+
+  for (size_t q = 0; q < position_other.size(); ++q) {
+    for (size_t p = 0; p < position.size(); ++p) {
+      force[p] += F12(position[p], position_other[q]);
+    }
+  }
+}
+
+void CalcForceSerialPadded(ArrayVect& force,
+               ArrayVect& position,
+               ArrayVect& position_other) {
+
   for (size_t q = 0; q < position_other.size(); ++q) {
     for (size_t p = 0; p < position.size(); p+=8) {
       force[p] += F12(position[p], position_other[q]);
@@ -170,6 +181,122 @@ void CalcForce(ArrayVect& force,
   }
 }
 
+void print(const __m256& mm) {
+  float a[8];
+  _mm256_store_ps(a, mm);
+  for (size_t i = 0; i < 8; ++i) {
+    std::cout << a[i] << " ";
+  }
+  std::cout << std::endl;
+}
+
+template <bool ApplyThreshold=true>
+void CalcForceAvx(
+    ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
+  // sigma = kSigma;
+  const __m256 sigma = _mm256_broadcast_ss(&kSigma);
+  // R2 = (2. * kRadius) ^ 2;
+  const float tmp = std::pow(2. * kRadius, 2);
+  const __m256 R2 = _mm256_broadcast_ss(&tmp);
+  // threshold = kRadius * 1e-3
+  const float tmp_th = kRadius * 1e-3;
+  const __m256 threshold = _mm256_broadcast_ss(&tmp_th);
+
+  for (size_t q = 0; q < position_other.size(); ++q) {
+    const __m256 qx = _mm256_broadcast_ss((float*)&position_other[q].x);
+    const __m256 qy = _mm256_broadcast_ss((float*)&position_other[q].y);
+    // qxy = (q.x, q.y)
+    const __m256 qxy = _mm256_blend_ps(qx, qy, 0xAA);
+    for (size_t p = 0; p < position.size(); p+=8) {
+      // pxy =(p.x, p.y)
+      const __m256 pxy_l = _mm256_load_ps((float*)&position[p]);
+      const __m256 pxy_h = _mm256_load_ps((float*)&position[p+4]);
+      // rxy = pxy - qxy
+      const __m256 rxy_l = _mm256_sub_ps(pxy_l, qxy);
+      const __m256 rxy_h = _mm256_sub_ps(pxy_h, qxy);
+      // rxy2 = rxy * rxy 
+      const __m256 rxy2_l = _mm256_mul_ps(rxy_l, rxy_l);
+      const __m256 rxy2_h = _mm256_mul_ps(rxy_h, rxy_h);
+      // r2 = (rx * rx + ry * ry)
+      // r2 = ([7] [6] [3] [2] [5] [4] [1] [0]) 
+      __m256 r2 = _mm256_hadd_ps(rxy2_l, rxy2_h);
+      if (ApplyThreshold) {
+        // r2 = max(r2, threshold)
+        r2 = _mm256_max_ps(r2, threshold);
+      }
+      // c2 = 1. / r2
+      const __m256 c2 = _mm256_rcp_ps(r2);
+      // d2 = c2 * R2 = R2 / r2 
+      const __m256 d2 = _mm256_mul_ps(c2, R2);
+      // d6 = d2 * d2 * d2
+      const __m256 d6 = _mm256_mul_ps(d2, _mm256_mul_ps(d2, d2));
+      // d12 = d6 * d6
+      const __m256 d12 = _mm256_mul_ps(d6, d6);
+      // k = (d12 - d6) * sigma * c2
+      const __m256 k = _mm256_mul_ps(
+          sigma, _mm256_mul_ps(c2, _mm256_sub_ps(d12, d6)));
+
+      // lo = k([3] [3] [2] [2] [1] [1] [0] [0])
+      const __m256 kxy_l = _mm256_unpacklo_ps(k, k);
+      // hi = k([7] [7] [6] [6] [5] [5] [4] [4]) 
+      const __m256 kxy_h = _mm256_unpackhi_ps(k, k);
+
+      // load force to fxy
+      __m256 fxy_l = _mm256_load_ps((float*)&force[p]);
+      __m256 fxy_h = _mm256_load_ps((float*)&force[p+4]);
+      // fxy += rxy * kxy
+      fxy_l =  _mm256_add_ps(fxy_l, _mm256_mul_ps(kxy_l, rxy_l));
+      fxy_h =  _mm256_add_ps(fxy_h, _mm256_mul_ps(kxy_h, rxy_h));
+      // store force
+      _mm256_store_ps((float*)&force[p], fxy_l);
+      _mm256_store_ps((float*)&force[p+4], fxy_h);
+    }
+  }
+}
+
+void TestUni() {
+  std::cout.precision(8);
+  std::cout << std::scientific;
+  const vect p0(0., 0.);
+  const vect q0(1., 0.);
+  const vect zero(0., 0.);
+
+  const size_t N = 8;
+  ArrayVect position(N, p0);
+  ArrayVect position_other(N, q0);
+
+  for (size_t i = 0; i < N; ++i) {
+    const Scal k = 0.1;
+    position[i] += vect(0., k * i);
+    position_other[i] += vect(0., k * i);
+  }
+
+  vect offset(1., 0.);
+  for (size_t i = 0; i < N; ++i) {
+    position[i] += offset;
+    position_other[i] += offset;
+  }
+
+
+  ArrayVect force2(N, zero);
+  CalcForceSerial(force2, position, position_other);
+
+  ArrayVect force(N, zero);
+  CalcForceAvx(force, position, position_other);
+
+  for (size_t i = 0; i < N; ++i) {
+    std::cout 
+        << force2[i] << " " 
+        << force[i] << " "
+        << (force[i] - force2[i]) * (1. / force2[i].length()) << " "
+        << std::endl;
+  }
+}
+
+#define CALC_FORCE CalcForceAvx
+//#define CALC_FORCE CalcForceSerial
+//#define CALC_FORCE CalcForceSerialPadded
+
 void particles_system::RHS(size_t i)
 {
   auto& data = Blocks.GetData();
@@ -183,7 +310,7 @@ void particles_system::RHS(size_t i)
 
     // gravity
     //f=g*part.m;
-    //f = g*kMass;
+   // f = g*kMass;
 
     // point force
     if (force_enabled) {
@@ -207,20 +334,12 @@ void particles_system::RHS(size_t i)
 
     if (i != j) // no check for self-force needed
     {
-      CalcForce(data.force[i], data.position[i], data.position[j]);
+      CALC_FORCE<true>(data.force[i], data.position[i], data.position[j]);
     }
 
-    if (i == j) // need to exclude self-force
-    for (size_t p = 0; p < data.position[i].size(); ++p) {
-      for (size_t q = 0; q < data.position[j].size(); ++q) {
-        //if(&p1!=&p2 && (p1.layers_mask & p2.layers_mask))
-        if (p != q) {
-          data.force[i][p] += F12(
-              data.position[i][p], data.velocity[i][p],
-              data.position[j][q], data.velocity[j][q],
-              kSigma, kRadius * 2.);
-        }
-      }
+    if (i == j) // apply threshold to distance to avoid self-force 
+    {
+      CALC_FORCE<true>(data.force[i], data.position[i], data.position[j]);
     }
   }
 
@@ -229,6 +348,7 @@ void particles_system::RHS(size_t i)
     f *= 1. / kMass;
   }
 
+  if(0)
   // environment objects
   for(size_t k=0; k<ENVOBJ.size(); ++k) {
     for (size_t p = 0; p < data.position[i].size(); ++p) {

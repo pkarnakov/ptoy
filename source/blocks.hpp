@@ -97,7 +97,6 @@ class blocks
     assert(dims_.i > 0 && dims_.j > 0 && num_blocks_ > 0);
 
     data_.resize(num_blocks_);
-    std::cout << "foo" << GetNumBlocks() << std::endl;
 
     // Calc offsets to neighbors
     size_t n = 0;
