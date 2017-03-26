@@ -310,7 +310,7 @@ void particles_system::RHS(size_t i)
 
     // gravity
     //f=g*part.m;
-   // f = g*kMass;
+    f = g*kMass;
 
     // point force
     if (force_enabled) {
@@ -348,7 +348,6 @@ void particles_system::RHS(size_t i)
     f *= 1. / kMass;
   }
 
-  if(0)
   // environment objects
   for(size_t k=0; k<ENVOBJ.size(); ++k) {
     for (size_t p = 0; p < data.position[i].size(); ++p) {
