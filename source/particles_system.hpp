@@ -54,29 +54,32 @@ class env_object
 {
 public:
   virtual vect F(vect p, vect v, Scal R, Scal sigma) = 0;
+  virtual bool IsClose(vect p, Scal R) = 0;
 };
 
 class line : public env_object
 {
   vect A, B;
   Scal eps;
+  vect GetNearest(vect p) {
+    vect Q;
+    Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
+    if (lambda > 0. && lambda < 1.) {
+      Q = A + (B-A) * lambda;
+    } else {
+      Q = (p.dist(A) < p.dist(B)) ? A : B;
+    }
+    return Q;
+  }
 public:
   line(vect _A, vect _B, Scal _eps) : A(_A), B(_B), eps(_eps) {;}
-  vect F(vect p, vect /*v*/, Scal R, Scal sigma)
-  {
-    vect Q;
-    Scal lambda=(B-A).dot(p-A)/(B-A).dot(B-A);
-    if(lambda>0. && lambda<1.)
-    {
-      Q=A+(B-A)*lambda;
-    }
-    else
-    {
-      Q=(p.dist(A)<p.dist(B))?A:B;
-    }
-
-    return F12(p, vect(0.,0.), Q, vect(0.,0.), sigma, R);
+  vect F(vect p, vect /*v*/, Scal R, Scal sigma) override {
+    return F12(p, vect(0.,0.), GetNearest(p), vect(0.,0.), sigma, R);
   }
+  bool IsClose(vect p, Scal R) {
+    return GetNearest(p).dist(p) < R + kRadius;
+  }
+
 };
 
 class particles_system
@@ -87,6 +90,7 @@ class particles_system
   std::vector<particle> GetParticles();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
+  void UpdateEnvObj();
   void SetDomain(rect_vect new_domain) { 
     std::lock_guard<std::mutex> lg(m_step);
     domain = new_domain; 
@@ -118,6 +122,7 @@ class particles_system
   vect g;
   void RHS(size_t i);
   vector<std::unique_ptr<env_object>> ENVOBJ;
+  std::vector<std::vector<size_t>> block_envobj_;
   vect force_center;
   bool force_enabled;
 };

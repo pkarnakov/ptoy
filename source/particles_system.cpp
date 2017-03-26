@@ -297,6 +297,20 @@ void TestUni() {
 //#define CALC_FORCE CalcForceSerial
 //#define CALC_FORCE CalcForceSerialPadded
 
+
+void particles_system::UpdateEnvObj() { 
+  block_envobj_.resize(Blocks.GetNumBlocks());
+  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+    for (size_t k = 0; k < ENVOBJ.size(); ++k) {
+        std::cout << Blocks.GetCenter(i) << " " << Blocks.GetCircumRadius() << std::endl;
+      if (ENVOBJ[k]->IsClose(Blocks.GetCenter(i),
+                             Blocks.GetCircumRadius())) {
+        block_envobj_[i].push_back(k);
+      }
+    }
+  }
+}
+
 void particles_system::RHS(size_t i)
 {
   auto& data = Blocks.GetData();
@@ -332,13 +346,11 @@ void particles_system::RHS(size_t i)
       continue;
     }
 
-    if (i != j) // no check for self-force needed
-    {
+    if (i != j) { // no check for self-force needed
       CALC_FORCE<false>(data.force[i], data.position[i], data.position[j]);
     }
 
-    if (i == j) // apply threshold to distance to avoid self-force 
-    {
+    if (i == j) { // apply threshold to distance to avoid self-force 
       CALC_FORCE<true>(data.force[i], data.position[i], data.position[j]);
     }
   }
@@ -349,19 +361,16 @@ void particles_system::RHS(size_t i)
   }
 
   // environment objects
-  for(size_t k=0; k<ENVOBJ.size(); ++k) {
+  for (size_t k : block_envobj_[i]) {
     for (size_t p = 0; p < data.position[i].size(); ++p) {
       auto& obj=ENVOBJ[k];
-      //f+=obj->F(p,v,part.r,part.sigma);
       data.force[i][p] += obj->F(
-          data.position[i][p], data.velocity[i][p],
-          kRadius,kSigma);
+          data.position[i][p], data.velocity[i][p], kRadius,kSigma);
     }
   }
 }
 
 vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, 
-    Scal /*sigma*/, Scal /*R*/)
-{
+         Scal /*sigma*/, Scal /*R*/) {
   return F12(p1, p2);
 }

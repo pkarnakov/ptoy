@@ -34,6 +34,7 @@ public:
     PS->AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y), eps));
     PS->AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y), eps));
     PS->AddEnvObj(new line(vect(B.x, A.y), vect(B.x, B.y), eps));
+    PS->UpdateEnvObj();
 
   }
 };

@@ -86,6 +86,15 @@ class blocks
       id[dest].push_back(particle_id);
     }
   };
+  Scal GetCircumRadius() const {
+    return block_size_.length() * 0.5;
+  }
+  // TODO: draw blocks
+  vect GetCenter(size_t block) const {
+    const mindex m(block / dims_.j, block % dims_.j);
+    return domain_.A + 
+        vect((0.5 + m.i) * block_size_.x, (0.5 + m.j) * block_size_.y);
+  }
   blocks(rect_vect domain, vect block_size) 
       : domain_(domain), block_size_(block_size)
         , num_particles_(0), num_per_cell_(0) {
