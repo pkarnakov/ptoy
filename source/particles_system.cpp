@@ -302,7 +302,6 @@ void particles_system::UpdateEnvObj() {
   block_envobj_.resize(Blocks.GetNumBlocks());
   for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
     for (size_t k = 0; k < ENVOBJ.size(); ++k) {
-        std::cout << Blocks.GetCenter(i) << " " << Blocks.GetCircumRadius() << std::endl;
       if (ENVOBJ[k]->IsClose(Blocks.GetCenter(i),
                              Blocks.GetCircumRadius())) {
         block_envobj_[i].push_back(k);

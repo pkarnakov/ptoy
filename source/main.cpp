@@ -178,7 +178,7 @@ void cycle()
   //omp_set_dynamic(0);
   //omp_set_nested(0);
   //omp_set_num_threads(std::thread::hardware_concurrency());
-  //omp_set_num_threads(2);
+  omp_set_num_threads(2);
 
   #pragma omp parallel
   {
