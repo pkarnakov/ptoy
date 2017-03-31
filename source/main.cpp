@@ -28,6 +28,7 @@ int wd;                   /* GLUT window handle */
 GLdouble width, height;   /* window width and height */
 
 std::atomic<bool> flag_display;
+std::atomic<bool> quit;
 
 using std::cout;
 using std::endl;
@@ -190,7 +191,7 @@ void cycle()
         << std::endl;
   }
 
-  while(true) { 
+  while (!quit) { 
     if (G->PS->GetTime() < next_game_time_target) {
       G->PS->step(next_game_time_target);
     } else {
@@ -200,6 +201,8 @@ void cycle()
   std::cout << "Computation finished" << std::endl;
 }
 
+// TODO: detect motionless regions
+
 
 int main() {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -207,11 +210,10 @@ int main() {
     return 1;
   }
 
-  width = 800;
-  height = 800;
+  init();
 
   SDL_Window* window = SDL_CreateWindow(
-      "ptoy SDL",
+      "ptoy",
       SDL_WINDOWPOS_UNDEFINED,
       SDL_WINDOWPOS_UNDEFINED,
       width,
@@ -220,7 +222,7 @@ int main() {
   );
 
   if (window == NULL) {
-    SDL_Log("Could no craete window: %s\n", SDL_GetError());
+    SDL_Log("Unable to create window: %s\n", SDL_GetError());
     return 1;
   }
 
@@ -236,10 +238,46 @@ int main() {
 
   G->PS->SetForce(vect(0., 0.), false);
 
-  while (true) {
+  //Main loop flag
+  quit = false;
+
+  //Event handler
+  SDL_Event e;
+
+
+  //While application is running
+  while (!quit) {
+    while (SDL_PollEvent( &e ) != 0) {
+      if (e.type == SDL_QUIT) {
+        quit = true;
+      } else if(e.type == SDL_KEYDOWN) {
+        switch( e.key.keysym.sym ) {
+          case 'q':
+          quit = true;
+          break;
+        }
+      } else if(e.type == SDL_MOUSEMOTION) {
+        //Get mouse position
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+
+        vect c;
+        c.x = -1. + 2. * (x / width);
+        c.y = 1. - 2. * (y / height);
+
+        G->PS->SetForce(c);
+      } else if(e.type == SDL_MOUSEBUTTONDOWN) {
+        G->PS->SetForce(true);
+      } else if(e.type == SDL_MOUSEBUTTONUP) {
+        G->PS->SetForce(false);
+      }
+    }
+
+
+
     display();
     SDL_GL_SwapWindow(window);
-    SDL_Delay(50);
+    SDL_Delay(30);
   }
 
   // Finalize
