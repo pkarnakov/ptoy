@@ -98,6 +98,22 @@ class particles_system
     std::lock_guard<std::mutex> lg(m_step);
     domain = new_domain; 
     // TODO: window resize
+
+    const auto& data = Blocks.GetData();
+    ArrayVect position;
+    ArrayVect velocity;
+    std::vector<int> id;
+    for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+      position.insert(position.end(), 
+                      data.position[i].begin(), data.position[i].end()); 
+      velocity.insert(velocity.end(), 
+                      data.velocity[i].begin(), data.velocity[i].end()); 
+      id.insert(id.end(), 
+                data.id[i].begin(), data.id[i].end()); 
+    }
+
+    Blocks = blocks(domain, vect(4 * kRadius, 4 * kRadius));  
+    Blocks.AddParticles(position, velocity, id);
     //Blocks.SetDomain(domain);
   }
   void status(std::ostream& out);
