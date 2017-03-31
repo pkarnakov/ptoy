@@ -2,6 +2,8 @@
 
 #include "game.hpp"
 #include <GL/freeglut.h>
+#include <SDL2/SDL.h>
+
 #include <thread>
 #include <chrono>
 #include <atomic>
@@ -48,7 +50,7 @@ void display(void)
   if(flag_display) return;
   flag_display=true;
 
-  const Scal fps=30.0;
+  const Scal fps=1.0;
   milliseconds current_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
   milliseconds time_past_from_last_frame = current_time-last_frame_time;
 
@@ -199,8 +201,44 @@ void cycle()
 }
 
 
+int main() {
+  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    SDL_Log("Unable to initialize SDL: %s\n", SDL_GetError());
+    return 1;
+  }
 
-int main(int argc, char *argv[])
+  SDL_Window* window = SDL_CreateWindow(
+      "ptoy SDL",
+      SDL_WINDOWPOS_UNDEFINED,
+      SDL_WINDOWPOS_UNDEFINED,
+      800,
+      800,
+      SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+  );
+
+  if (window == NULL) {
+    SDL_Log("Could no craete window: %s\n", SDL_GetError());
+    return 1;
+  }
+
+  SDL_GLContext glcontext = SDL_GL_CreateContext(window);
+
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+  SDL_GL_SwapWindow(window);
+
+  SDL_Delay(1000);
+
+  SDL_GL_DeleteContext(glcontext);
+
+  SDL_DestroyWindow(window);
+
+  SDL_Quit();
+
+  return 0;
+}
+
+int main2(int argc, char *argv[])
 {
   //TestUni();
   //return 0;
@@ -264,4 +302,7 @@ int main(int argc, char *argv[])
     /* start the GLUT main loop */
    glutMainLoop();
 
+   computation_thread.join();
+
+   return 0;
 }
