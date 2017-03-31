@@ -50,7 +50,7 @@ void display(void)
   if(flag_display) return;
   flag_display=true;
 
-  const Scal fps=1.0;
+  const Scal fps=30.0;
   milliseconds current_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
   milliseconds time_past_from_last_frame = current_time-last_frame_time;
 
@@ -60,7 +60,7 @@ void display(void)
   milliseconds time_residual=frame_duration-time_past_from_last_frame;
 
   //cout<<"sleep for "<<time_residual.count()<<endl;
-  std::this_thread::sleep_for(time_residual);
+  //std::this_thread::sleep_for(time_residual);
   //std::this_thread::sleep_for(frame_duration);
 
   auto new_frame_time = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
@@ -101,7 +101,7 @@ void display(void)
 
   glFlush();
 
-  glutSwapBuffers();
+  //glutSwapBuffers();
 
 
   flag_display=false;
@@ -207,12 +207,15 @@ int main() {
     return 1;
   }
 
+  width = 800;
+  height = 800;
+
   SDL_Window* window = SDL_CreateWindow(
       "ptoy SDL",
       SDL_WINDOWPOS_UNDEFINED,
       SDL_WINDOWPOS_UNDEFINED,
-      800,
-      800,
+      width,
+      height,
       SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
   );
 
@@ -223,17 +226,28 @@ int main() {
 
   SDL_GLContext glcontext = SDL_GL_CreateContext(window);
 
-  glClearColor(0, 0, 0, 1);
+  auto gray = 0.5;
+  glClearColor(gray, gray, gray, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
   SDL_GL_SwapWindow(window);
 
-  SDL_Delay(1000);
+  G = std::unique_ptr<game>(new game(width, height));
+  std::thread computation_thread(cycle);
 
+  G->PS->SetForce(vect(0., 0.), false);
+
+  while (true) {
+    display();
+    SDL_GL_SwapWindow(window);
+    SDL_Delay(50);
+  }
+
+  // Finalize
   SDL_GL_DeleteContext(glcontext);
-
   SDL_DestroyWindow(window);
-
   SDL_Quit();
+
+  computation_thread.join();
 
   return 0;
 }
