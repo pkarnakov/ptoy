@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "game.hpp"
-#include <GL/freeglut.h>
 #include <SDL2/SDL.h>
 
 #include <thread>
@@ -24,7 +23,6 @@ std::atomic<Scal> next_game_time_target;
 
 std::unique_ptr<game> G;
 
-int wd;                   /* GLUT window handle */
 GLdouble width, height;   /* window width and height */
 
 std::atomic<bool> flag_display;
@@ -108,65 +106,6 @@ void display(void)
   flag_display=false;
 }
 
-
-/* Called when window is resized,
-   also when window is first created,
-   before the first call to display(). */
-void
-reshape(int w, int h)
-{
-  /* save new screen dimensions */
-  width = (GLdouble) w;
-  height = (GLdouble) h;
-
-  /* tell OpenGL to use the whole window for drawing */
-  glViewport(0, 0, (GLsizei) width, (GLsizei) height);
-  
-  //G->SetWindowSize(width, height);
-
-  /* do an orthographic parallel projection with the coordinate
-     system set to first quadrant, limited by screen/window size */
-  //glMatrixMode(GL_PROJECTION);
-  //glLoadIdentity();
-  //glOrtho(-1.0, width, 0.0, height, -1.f, 1.f);
-
-  return;
-}
-
-void
-kbd(unsigned char key, int /*x*/, int /*y*/)
-{
-  switch((char)key) {
-  case 'q':
-  case 27:    /* ESC */
-    glutDestroyWindow(wd);
-    exit(0);
-  case 'u':
-    display();
-  default:
-    break;
-  }
-
-  return;
-}
-
-void mouse_move(int x, int y) {
-  vect c;
-  c.x = -1. + 2. * (x / width);
-  c.y = 1. - 2. * (y / height);
-
-  G->PS->SetForce(c);
-}
-
-void mouse(int button, int state, int x, int y)
-{
-  vect c;
-  c.x = -1. + 2. * (x / width);
-  c.y = 1. - 2. * (y / height);
-
-  cout<<button<<" "<<state<<" "<<x<<" "<<y<<endl;
-  G->PS->SetForce(c, state == 0);
-}
 
 
 void cycle()
@@ -297,73 +236,4 @@ int main() {
   computation_thread.join();
 
   return 0;
-}
-
-int main2(int argc, char *argv[])
-{
-  //TestUni();
-  //return 0;
-    frame_number=0;
-    /* perform initialization NOT OpenGL/GLUT dependent,
-       as we haven't created a GLUT window yet */
-    init();
-
-    /* initialize GLUT, let it extract command-line
-       GLUT options that you may provide
-       - NOTE THE '&' BEFORE argc */
-    glutInit(&argc, argv);
-
-    /* specify the display to be single
-       buffered and color as RGBA values */
-#ifdef _MULTISAMPLE_
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE);
-    glEnable(GL_MULTISAMPLE_ARB);
-    std::cout << "Enable multisampling" << std::endl;
-#else
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-    std::cout << "No multisampling" << std::endl;
-#endif
-
-//    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
-
-    /* set the initial window size */
-    glutInitWindowSize((int) width, (int) height);
-
-    /* create the window and store the handle to it */
-    wd = glutCreateWindow("ptoy" /* title */ );
-    
-    glLineWidth(3.0);
-
-    /* --- register callbacks with GLUT --- */
-
-    /* register function to handle window resizes */
-    glutReshapeFunc(reshape);
-
-    /* register keyboard event processing function */
-    glutKeyboardFunc(kbd);
-
-    glutMouseFunc(mouse);
-    glutMotionFunc(mouse_move);
-
-    /* register function that draws in the window */
-    glutDisplayFunc(display);
-    glutIdleFunc(glutPostRedisplay);
-
-    /* init GL */
-    auto gray = 0.5;
-    glClearColor(gray, gray, gray, 0.0);
-    //glColor3f(0.0, 1.0, 0.0);
-    //glLineWidth(3.0);
-
-    G = std::unique_ptr<game>(new game(width, height));
-    std::thread computation_thread(cycle);
-
-    flag_display=false;
-
-    /* start the GLUT main loop */
-   glutMainLoop();
-
-   computation_thread.join();
-
-   return 0;
 }

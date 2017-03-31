@@ -77,12 +77,13 @@ if (STATIC_BUILD)
   endif()
 endif()
 
-# OpenGL and Glut
+# OpenGL and GLX 
 find_package(OpenGL REQUIRED)
-find_package(GLUT REQUIRED)
+include_directories(${OPENGL_INCLUDE_DIRS})
+set(LIBRARIES ${LIBRARIES} ${OPENGL_LIBRARIES})
 find_package(SDL2 REQUIRED)
-include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS})
-set(LIBRARIES ${LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${SDL2_LIBRARIES})
+include_directories(${SDL2_INCLUDE_DIRS})
+set(LIBRARIES ${LIBRARIES} ${SDL2_LIBRARIES})
 
 # Multisampling flag
 if (DEFINED MULTISAMPLE)
