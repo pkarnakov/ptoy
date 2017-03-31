@@ -250,13 +250,13 @@ int main() {
     while (SDL_PollEvent( &e ) != 0) {
       if (e.type == SDL_QUIT) {
         quit = true;
-      } else if(e.type == SDL_KEYDOWN) {
+      } else if (e.type == SDL_KEYDOWN) {
         switch( e.key.keysym.sym ) {
           case 'q':
           quit = true;
           break;
         }
-      } else if(e.type == SDL_MOUSEMOTION) {
+      } else if (e.type == SDL_MOUSEMOTION) {
         //Get mouse position
         int x, y;
         SDL_GetMouseState(&x, &y);
@@ -266,10 +266,19 @@ int main() {
         c.y = 1. - 2. * (y / height);
 
         G->PS->SetForce(c);
-      } else if(e.type == SDL_MOUSEBUTTONDOWN) {
+      } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         G->PS->SetForce(true);
-      } else if(e.type == SDL_MOUSEBUTTONUP) {
+      } else if (e.type == SDL_MOUSEBUTTONUP) {
         G->PS->SetForce(false);
+      } else if (e.type == SDL_WINDOWEVENT) {
+        switch (e.window.event) {
+          case SDL_WINDOWEVENT_RESIZED:
+            width = e.window.data1;
+            height = e.window.data2;
+            glViewport(0, 0, width, height);
+            G->SetWindowSize(width, height);
+            break;
+        }
       }
     }
 

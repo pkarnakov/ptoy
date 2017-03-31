@@ -22,9 +22,10 @@ public:
   void SetWindowSize(int width, int height) {
     vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
     rect_vect R(A, B);
-    PS->SetDomain(R);
 
     std::lock_guard<std::mutex> lg(PS->m_ENVOBJ);
+
+    PS->SetDomain(R);
 
     // place env_objects
     PS->ClearEnvObj();
@@ -32,7 +33,7 @@ public:
     PS->AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y)));
     PS->AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y)));
     PS->AddEnvObj(new line(vect(B.x, A.y), vect(B.x, B.y)));
-    PS->UpdateEnvObj();
 
+    PS->UpdateEnvObj();
   }
 };
