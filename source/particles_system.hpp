@@ -79,7 +79,7 @@ public:
   vect F(vect p, vect /*v*/, Scal R, Scal sigma) override {
     return F12(p, vect(0.,0.), GetNearest(p), vect(0.,0.), sigma, R);
   }
-  bool IsClose(vect p, Scal R) {
+  bool IsClose(vect p, Scal R) override {
     return GetNearest(p).dist(p) < R + kRadius;
   }
 
