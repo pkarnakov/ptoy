@@ -152,12 +152,14 @@ vect F12(vect p1, vect p2)
   return r * (sigma * (d12 - d6) * ad2);
 }
 
+template <bool ApplyThreshold=true>
 void CalcForceSerial(ArrayVect& force,
                ArrayVect& position,
                ArrayVect& position_other) {
 
   for (size_t q = 0; q < position_other.size(); ++q) {
     for (size_t p = 0; p < position.size(); ++p) {
+if (&position[p] != &position_other[q])
       force[p] += F12(position[p], position_other[q]);
     }
   }

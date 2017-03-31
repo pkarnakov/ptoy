@@ -7,6 +7,7 @@
 #include <vector>
 #include <cassert>
 #include "aligned_allocator.hpp"
+#include <array>
 
 using ArrayVect = std::vector<vect,
       hpc15::aligned_allocator<vect,64>>;

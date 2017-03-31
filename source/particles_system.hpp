@@ -63,7 +63,7 @@ public:
 class line : public env_object
 {
   vect A, B;
-  Scal eps;
+  //Scal eps;
   vect GetNearest(vect p) {
     vect Q;
     Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
@@ -75,7 +75,7 @@ class line : public env_object
     return Q;
   }
 public:
-  line(vect _A, vect _B, Scal _eps) : A(_A), B(_B), eps(_eps) {;}
+  line(vect _A, vect _B) : A(_A), B(_B) {;}
   vect F(vect p, vect /*v*/, Scal R, Scal sigma) override {
     return F12(p, vect(0.,0.), GetNearest(p), vect(0.,0.), sigma, R);
   }

@@ -42,7 +42,7 @@ class aligned_allocator {
     }
 
     template <typename U>
-    aligned_allocator(aligned_allocator<U,Alignment> const& b) NOEXCEPT_SPEC {
+    aligned_allocator(aligned_allocator<U,Alignment> const&) NOEXCEPT_SPEC {
     }
 
     pointer allocate(size_type n) {
@@ -83,21 +83,21 @@ class aligned_allocator {
         c->~C();
     }
 
-    bool operator == (aligned_allocator const& a2) const NOEXCEPT_SPEC {
+    bool operator == (aligned_allocator const&) const NOEXCEPT_SPEC {
         return true;
     }
 
-    bool operator != (aligned_allocator const& a2) const NOEXCEPT_SPEC {
+    bool operator != (aligned_allocator const&) const NOEXCEPT_SPEC {
         return false;
     }
 
     template <typename U, unsigned int UAlignment>
-    bool operator == (aligned_allocator<U,UAlignment> const& b) const NOEXCEPT_SPEC {
+    bool operator == (aligned_allocator<U,UAlignment> const&) const NOEXCEPT_SPEC {
         return false;
     }
 
     template <typename U, unsigned int UAlignment>
-    bool operator != (aligned_allocator<U,UAlignment> const& b) const NOEXCEPT_SPEC {
+    bool operator != (aligned_allocator<U,UAlignment> const&) const NOEXCEPT_SPEC {
         return true;
     }
 };
