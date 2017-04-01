@@ -98,7 +98,7 @@ class particles_system
   void ResetEnvObjFrame(rect_vect new_domain) {
     const vect A = new_domain.A, B = new_domain.B;
     ClearEnvObj();
-    std::cout << "envobj:" << domain.A << " " << domain.B << std::endl;
+    //std::cout << "envobj:" << domain.A << " " << domain.B << std::endl;
     AddEnvObj(new line(vect(A.x, A.y), vect(B.x, A.y)));
     AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y)));
     AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y)));

@@ -41,12 +41,13 @@ class blocks
       id.resize(size);
 
       for (size_t i = 0; i < position.size(); ++i) {
-        position[i].reserve(32);
-        position_tmp[i].reserve(32);
-        velocity[i].reserve(32);
-        velocity_tmp[i].reserve(32);
-        force[i].reserve(32);
-        id[i].reserve(32);
+        const size_t kBlockPadding = 16;
+        position[i].reserve(kBlockPadding);
+        position_tmp[i].reserve(kBlockPadding);
+        velocity[i].reserve(kBlockPadding);
+        velocity_tmp[i].reserve(kBlockPadding);
+        force[i].reserve(kBlockPadding);
+        id[i].reserve(kBlockPadding);
       }
     }
     void RemoveParticle(
@@ -98,10 +99,10 @@ class blocks
   void SetDomain(rect_vect proposal) {
     rect_vect domain = domain_;
     vect old_size = domain_.size();
-    while (proposal.A.x < domain.A.x) { domain.A.x -= old_size.x; }
-    while (proposal.A.y < domain.A.y) { domain.A.y -= old_size.y; }
-    while (proposal.B.x > domain.B.x) { domain.B.x += old_size.x; }
-    while (proposal.B.y > domain.B.y) { domain.B.y += old_size.y; }
+    while (proposal.A.x < domain.A.x) { domain.A.x -= block_size_.x; }
+    while (proposal.A.y < domain.A.y) { domain.A.y -= block_size_.y; }
+    while (proposal.B.x > domain.B.x) { domain.B.x += block_size_.x; }
+    while (proposal.B.y > domain.B.y) { domain.B.y += block_size_.y; }
     
     if (domain != domain_) {
       const BlockData old_data = GetData();

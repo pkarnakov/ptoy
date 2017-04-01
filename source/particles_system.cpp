@@ -124,12 +124,18 @@ void particles_system::step(Scal time_target)
 
     #pragma omp single
     {
+      auto limited = [](Scal& current, const Scal target) {
+        const Scal limit = 0.02;
+        current = std::min(current + limit,
+                           std::max(current - limit, target));
+      };
+
       rect_vect new_domain = domain;
-      new_domain.B.x -= t * 0.05;
-      const double limit = 0.01;
-      const double newx = resize_queue_.B.x;
-      const double oldx = domain.B.x;
-      new_domain.B.x = std::min(oldx+limit, std::max(oldx-limit, newx));
+      limited(new_domain.A.x, resize_queue_.A.x);
+      limited(new_domain.A.y, resize_queue_.A.y);
+      limited(new_domain.B.x, resize_queue_.B.x);
+      limited(new_domain.B.y, resize_queue_.B.y);
+
       if (int(t / dt) % int(0.01 / dt) == 0) {
         if (new_domain != domain) {
           SetDomain(new_domain);
@@ -316,6 +322,7 @@ void TestUni() {
 
 
 void particles_system::UpdateEnvObj() { 
+  block_envobj_.clear();
   block_envobj_.resize(Blocks.GetNumBlocks());
   for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
     for (size_t k = 0; k < ENVOBJ.size(); ++k) {
