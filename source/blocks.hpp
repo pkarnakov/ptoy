@@ -98,10 +98,10 @@ class blocks
   void SetDomain(rect_vect proposal) {
     rect_vect domain = domain_;
     vect old_size = domain_.size();
-    (proposal.A.x < domain.A.x) && (domain.A.x -= old_size.x);
-    (proposal.A.y < domain.A.y) && (domain.A.y -= old_size.y);
-    (proposal.B.x > domain.B.x) && (domain.B.x += old_size.x);
-    (proposal.B.y > domain.B.y) && (domain.B.y += old_size.y);
+    while (proposal.A.x < domain.A.x) { domain.A.x -= old_size.x; }
+    while (proposal.A.y < domain.A.y) { domain.A.y -= old_size.y; }
+    while (proposal.B.x > domain.B.x) { domain.B.x += old_size.x; }
+    while (proposal.B.y > domain.B.y) { domain.B.y += old_size.y; }
     
     if (domain != domain_) {
       const BlockData old_data = GetData();
