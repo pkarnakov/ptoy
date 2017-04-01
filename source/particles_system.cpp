@@ -50,11 +50,14 @@ particles_system::particles_system() :
   g = vect(0.0, -1.0) * gravity;
 
   SetDomain(domain);
+  resize_queue_ = domain;
   ResetEnvObjFrame(domain);
 }
 particles_system::~particles_system() {}
-std::vector<particle> particles_system::GetParticles() {
-  //std::lock_guard<std::mutex> lg(m_step);
+const std::vector<particle>& particles_system::GetParticles() {
+  return particle_buffer_;
+}
+void particles_system::SetParticleBuffer() {
   std::vector<particle> res;
   for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
     const auto& data = Blocks.GetData();
@@ -64,7 +67,7 @@ std::vector<particle> particles_system::GetParticles() {
           0.01, kRadius, kSigma, 0x1, rgb(1., 0., 0.)));
     }
   }
-  return res;
+  particle_buffer_ = res;
 }
 void particles_system::AddEnvObj(env_object* env) {
   ENVOBJ.push_back(std::unique_ptr<env_object>(env));
@@ -123,10 +126,17 @@ void particles_system::step(Scal time_target)
     {
       rect_vect new_domain = domain;
       new_domain.B.x -= t * 0.05;
-      //SetDomain(new_domain);
-      const double delay = 0.1;
-      if (int(t / dt) % int(delay / dt) == 0) 
-      ResetEnvObjFrame(new_domain);
+      const double limit = 0.01;
+      const double newx = resize_queue_.B.x;
+      const double oldx = domain.B.x;
+      new_domain.B.x = std::min(oldx+limit, std::max(oldx-limit, newx));
+      if (int(t / dt) % int(0.01 / dt) == 0) {
+        if (new_domain != domain) {
+          SetDomain(new_domain);
+          ResetEnvObjFrame(new_domain);
+        }
+      }
+      SetParticleBuffer();
       t += 0.5 * dt;
       Blocks.SortParticles();
     }

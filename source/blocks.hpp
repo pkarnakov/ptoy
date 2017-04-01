@@ -24,6 +24,14 @@ class blocks
   struct BlockData {
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
+    void clear() {
+      position.clear();
+      position_tmp.clear();
+      velocity.clear();
+      velocity_tmp.clear();
+      force.clear();
+      id.clear();
+    }
     void resize(size_t size) {
       position.resize(size);
       position_tmp.resize(size);
@@ -217,6 +225,7 @@ class blocks
 
     assert(dims_.i > 0 && dims_.j > 0 && num_blocks_ > 0);
 
+    data_.clear();
     data_.resize(num_blocks_);
 
     // Calc offsets to neighbors

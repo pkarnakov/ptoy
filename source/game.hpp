@@ -21,6 +21,6 @@ public:
   }
   void SetWindowSize(int width, int height) {
     vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
-    PS->SetDomain(rect_vect(A, B));
+    PS->PushResize(rect_vect(A, B));
   }
 };

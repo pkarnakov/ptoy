@@ -90,7 +90,8 @@ class particles_system
  public:
   particles_system(); 
   ~particles_system();
-  std::vector<particle> GetParticles();
+  const std::vector<particle>& GetParticles();
+  void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
   void UpdateEnvObj();
@@ -108,6 +109,9 @@ class particles_system
     domain = new_domain;
     Blocks.SetDomain(domain);
   }
+  void PushResize(rect_vect new_domain) {
+    resize_queue_ = new_domain;
+  }
   void status(std::ostream& out);
   void step(Scal time_target);
   void SetForce(vect center, bool enabled);
@@ -124,6 +128,7 @@ class particles_system
 
  private:
   rect_vect domain;
+  rect_vect resize_queue_;
   blocks Blocks;
   Scal t;
   Scal dt;
@@ -133,5 +138,6 @@ class particles_system
   std::vector<std::vector<size_t>> block_envobj_;
   vect force_center;
   bool force_enabled;
+  std::vector<particle> particle_buffer_;
 };
 
