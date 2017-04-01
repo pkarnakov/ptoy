@@ -94,11 +94,18 @@ class particles_system
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
   void UpdateEnvObj();
+  void ResetEnvObjFrame(rect_vect new_domain) {
+    const vect A = new_domain.A, B = new_domain.B;
+    ClearEnvObj();
+    std::cout << "envobj:" << domain.A << " " << domain.B << std::endl;
+    AddEnvObj(new line(vect(A.x, A.y), vect(B.x, A.y)));
+    AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y)));
+    AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y)));
+    AddEnvObj(new line(vect(B.x, A.y), vect(B.x, B.y)));
+    UpdateEnvObj();
+  }
   void SetDomain(rect_vect new_domain) { 
-    std::lock_guard<std::mutex> lg(m_step);
-    domain = new_domain; 
-    // TODO: window resize
-
+    domain = new_domain;
     Blocks.SetDomain(domain);
   }
   void status(std::ostream& out);
@@ -108,10 +115,7 @@ class particles_system
   void SetForce(bool enabled);
   Scal GetTime() const { return t; }
   rect_vect GetDomain() const { return domain; }
-  mutable std::mutex m_ENVOBJ;
-  mutable std::mutex m_step;
   size_t GetNumParticles() const { 
-    //std::lock_guard<std::mutex> lg(m_step);
     return Blocks.GetNumParticles(); 
   }
   size_t GetNumPerCell() const {

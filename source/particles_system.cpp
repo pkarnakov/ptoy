@@ -4,8 +4,6 @@ particles_system::particles_system() :
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
     Blocks(domain, vect(4*kRadius, 4*kRadius))
 {
-  std::lock_guard<std::mutex> lg(m_step);
-
   force_enabled = false;
   force_center = vect(0., 0.);
 
@@ -46,10 +44,13 @@ particles_system::particles_system() :
 
   Blocks.AddParticles(position, velocity, id);
 
-  t=0.0;
-  dt=kTimeStep;
+  t = 0.0;
+  dt = kTimeStep;
   const Scal gravity = 10.;
-  g=vect(0.0, -1.0) * gravity;
+  g = vect(0.0, -1.0) * gravity;
+
+  SetDomain(domain);
+  ResetEnvObjFrame(domain);
 }
 particles_system::~particles_system() {}
 std::vector<particle> particles_system::GetParticles() {
@@ -75,8 +76,6 @@ void particles_system::status(std::ostream& out)
 }
 void particles_system::step(Scal time_target)
 {
-  std::lock_guard<std::mutex> lg(m_step);
-
   #pragma omp parallel
   {
 
@@ -122,6 +121,12 @@ void particles_system::step(Scal time_target)
 
     #pragma omp single
     {
+      rect_vect new_domain = domain;
+      new_domain.B.x -= t * 0.05;
+      //SetDomain(new_domain);
+      const double delay = 0.1;
+      if (int(t / dt) % int(delay / dt) == 0) 
+      ResetEnvObjFrame(new_domain);
       t += 0.5 * dt;
       Blocks.SortParticles();
     }
