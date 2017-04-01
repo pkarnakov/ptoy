@@ -201,8 +201,9 @@ int main() {
         SDL_GetMouseState(&x, &y);
 
         vect c;
-        c.x = -1. + 2. * (x / width);
-        c.y = 1. - 2. * (y / height);
+        vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
+        c.x = A.x + (B.x - A.x) * (x / width);
+        c.y = B.y + (A.y - B.y) * (y / height);
 
         G->PS->SetForce(c);
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
