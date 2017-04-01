@@ -87,6 +87,22 @@ class blocks
       id[dest].push_back(particle_id);
     }
   };
+  void SetDomain(rect_vect proposal) {
+    rect_vect domain = domain_;
+    vect old_size = domain_.size();
+    (proposal.A.x < domain.A.x) && (domain.A.x -= old_size.x);
+    (proposal.A.y < domain.A.y) && (domain.A.y -= old_size.y);
+    (proposal.B.x > domain.B.x) && (domain.B.x += old_size.x);
+    (proposal.B.y > domain.B.y) && (domain.B.y += old_size.y);
+    
+    if (domain != domain_) {
+      const BlockData old_data = GetData();
+      InitEmptyBlocks(domain, block_size_);
+      AddParticles(old_data);
+      std::cout << "Create blocks for new domain: " <<
+        domain_.A << " " << domain_.B << std::endl;
+    }
+  }
   Scal GetCircumRadius() const {
     return block_size_.length() * 0.5;
   }
@@ -97,25 +113,8 @@ class blocks
         vect((0.5 + m.i) * block_size_.x, (0.5 + m.j) * block_size_.y);
   }
   blocks(rect_vect domain, vect block_size) 
-      : domain_(domain), block_size_(block_size)
-        , num_particles_(0), num_per_cell_(0) {
-    // Determine the number of blocks
-    dims_.i = int(domain_.size().x / block_size.x) + 1;
-    dims_.j = int(domain_.size().y / block_size.y) + 1;
-    num_blocks_ = static_cast<size_t>(dims_.i * dims_.j);
-
-    assert(dims_.i > 0 && dims_.j > 0 && num_blocks_ > 0);
-
-    data_.resize(num_blocks_);
-
-    // Calc offsets to neighbors
-    size_t n = 0;
-    for (int i = -1; i <= 1; ++i) {
-      for (int j = -1; j <= 1; ++j) {
-        neighbor_offsets_[n] = i * dims_.j + j; 
-        ++n;
-      }
-    }
+      : num_particles_(0), num_per_cell_(0) {
+    InitEmptyBlocks(domain, block_size);
   }
   size_t FindBlock(vect position) const {
     mindex m(static_cast<int>((position.x - domain_.A.x) / block_size_.x),
@@ -124,6 +123,20 @@ class blocks
       return m.i * dims_.j + m.j;
     }
     return kBlockNone;
+  }
+  void AddParticles(const BlockData& other) {
+    const size_t size = other.position.size();
+    assert(other.velocity.size() == size);
+    assert(other.id.size() == size);
+    for (size_t k = 0; k < size; ++k) {
+      for (size_t p = 0; p < other.position[k].size(); ++p) {
+        size_t i = FindBlock(other.position[k][p]);
+        if (i != kBlockNone) {
+          data_.AddParticle(i, other.position[k][p], 
+                            other.velocity[k][p], other.id[k][p]);
+        }
+      }
+    }
   }
   void AddParticles(
       const ArrayVect& position, 
@@ -195,14 +208,24 @@ class blocks
   std::array<int, kNumNeighbors> neighbor_offsets_;
   size_t num_particles_;
   size_t num_per_cell_;
-  size_t close_packing(vect size, Scal r) const
-  {
-    // approximate value of volume occupied by close-packed circles in a rectangle with given size
-    Scal occupied_volume=size.x*size.y*PI/(2.0*sqrt(3.0));
-    // approximate number of close-packed circles
-    Scal circles_number=occupied_volume/(PI*r*r);
-    // truncate and add a reserve (+1)
-    return int(circles_number)+1;
-  }
+  void InitEmptyBlocks(rect_vect domain, vect block_size) {
+    domain_ = domain;
+    block_size_ = block_size;
+    dims_.i = int(domain.size().x / block_size.x) + 1;
+    dims_.j = int(domain.size().y / block_size.y) + 1;
+    num_blocks_ = static_cast<size_t>(dims_.i * dims_.j);
 
+    assert(dims_.i > 0 && dims_.j > 0 && num_blocks_ > 0);
+
+    data_.resize(num_blocks_);
+
+    // Calc offsets to neighbors
+    size_t n = 0;
+    for (int i = -1; i <= 1; ++i) {
+      for (int j = -1; j <= 1; ++j) {
+        neighbor_offsets_[n] = i * dims_.j + j; 
+        ++n;
+      }
+    }
+  }
 };
