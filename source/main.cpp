@@ -131,17 +131,20 @@ void cycle()
   }
 
   while (!quit) { 
-    if (G->PS->GetTime() < next_game_time_target) {
-      G->PS->step(next_game_time_target);
-    } else {
-      std::this_thread::sleep_for(milliseconds(1000 / 60));
-    }
+    G->PS->step(next_game_time_target, &quit);
   }
   std::cout << "Computation finished" << std::endl;
 }
 
 // TODO: detect motionless regions
 
+vect GetDomainMousePosition(int x, int y) {
+  vect c;
+  vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
+  c.x = A.x + (B.x - A.x) * (x / width);
+  c.y = B.y + (A.y - B.y) * (y / height);
+  return c;
+}
 
 int main() {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -183,6 +186,8 @@ int main() {
   //Event handler
   SDL_Event e;
 
+  enum class MouseState {Force, Bonds};
+  MouseState mouse_state = MouseState::Force;
 
   //While application is running
   while (!quit) {
@@ -192,20 +197,22 @@ int main() {
       } else if (e.type == SDL_KEYDOWN) {
         switch( e.key.keysym.sym ) {
           case 'q':
-          quit = true;
-          break;
+            quit = true;
+            break;
+          case 'f':
+            mouse_state = MouseState::Force;
+            std::cout << "Mouse switched to Force mode" << std::endl;
+            break;
+          case 'b':
+            mouse_state = MouseState::Bonds;
+            std::cout << "Mouse switched to Bonds mode" << std::endl;
+            break;
         }
       } else if (e.type == SDL_MOUSEMOTION) {
         //Get mouse position
         int x, y;
         SDL_GetMouseState(&x, &y);
-
-        vect c;
-        vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
-        c.x = A.x + (B.x - A.x) * (x / width);
-        c.y = B.y + (A.y - B.y) * (y / height);
-
-        G->PS->SetForce(c);
+        G->PS->SetForce(GetDomainMousePosition(x, y));
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         G->PS->SetForce(true);
       } else if (e.type == SDL_MOUSEBUTTONUP) {
@@ -221,8 +228,6 @@ int main() {
         }
       }
     }
-
-
 
     display();
     SDL_GL_SwapWindow(window);

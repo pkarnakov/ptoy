@@ -77,7 +77,7 @@ void particles_system::status(std::ostream& out)
   out << "status N/A";
   //out<<"Particles system"<<std::endl<<"Particles number = "<<P.size()<<std::endl;
 }
-void particles_system::step(Scal time_target)
+void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
 {
   #pragma omp parallel
   {

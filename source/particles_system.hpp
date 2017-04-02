@@ -113,7 +113,7 @@ class particles_system
     resize_queue_ = new_domain;
   }
   void status(std::ostream& out);
-  void step(Scal time_target);
+  void step(Scal time_target, const std::atomic<bool>& quit);
   void SetForce(vect center, bool enabled);
   void SetForce(vect center);
   void SetForce(bool enabled);
