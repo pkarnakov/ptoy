@@ -72,13 +72,17 @@ void display(void)
   if ((new_frame_time - last_report_time).count() > 1000.) {
     std::cout 
         << "fps: " << 1. / frame_real_duration_s
-        << ", game rate: "
+        << ", game rate="
         << (new_frame_game_time - 
             last_frame_game_time) / frame_real_duration_s
-        << ", particles: " 
+        << ", particles=" 
         << G->PS->GetNumParticles()
-        << ", max_per_cell: " 
+        << ", max_per_cell=" 
         << G->PS->GetNumPerCell()
+        << ", t=" 
+        << G->PS->GetTime()
+        << ", steps=" 
+        << G->PS->GetNumSteps()
         << std::endl;
     last_report_time = new_frame_time;
     //G->PS->Blocks.print_status();
@@ -95,8 +99,11 @@ void display(void)
   /* clear the screen to white */
   glClear(GL_COLOR_BUFFER_BIT);
 
-  G->R->draw_particles();
-  G->R->draw_frame();
+  {
+    std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
+    G->R->DrawAll();
+    G->PS->SetRendererReadyForNext(true);
+  }
 
   glFlush();
 
@@ -131,16 +138,26 @@ void cycle()
   }
 
   while (!quit) { 
-    if (G->PS->GetTime() < next_game_time_target) {
-      G->PS->step(next_game_time_target);
-    } else {
-      std::this_thread::sleep_for(milliseconds(1000 / 60));
-    }
+    G->PS->step(next_game_time_target, quit);
   }
   std::cout << "Computation finished" << std::endl;
 }
 
 // TODO: detect motionless regions
+
+vect GetDomainMousePosition(int x, int y) {
+  vect c;
+  vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
+  c.x = A.x + (B.x - A.x) * (x / width);
+  c.y = B.y + (A.y - B.y) * (y / height);
+  return c;
+}
+
+vect GetDomainMousePosition() {
+  int x, y;
+  SDL_GetMouseState(&x, &y);
+  return GetDomainMousePosition(x, y);
+}
 
 
 int main() {
@@ -183,6 +200,8 @@ int main() {
   //Event handler
   SDL_Event e;
 
+  enum class MouseState {None, Force, Bonds};
+  MouseState mouse_state = MouseState::Force;
 
   //While application is running
   while (!quit) {
@@ -192,24 +211,54 @@ int main() {
       } else if (e.type == SDL_KEYDOWN) {
         switch( e.key.keysym.sym ) {
           case 'q':
-          quit = true;
-          break;
+            quit = true;
+            break;
+          case 'n':
+            mouse_state = MouseState::None;
+            std::cout << "Mouse switched to None mode" << std::endl;
+            break;
+          case 'f':
+            mouse_state = MouseState::Force;
+            std::cout << "Mouse switched to Force mode" << std::endl;
+            break;
+          case 'b':
+            mouse_state = MouseState::Bonds;
+            std::cout << "Mouse switched to Bonds mode" << std::endl;
+            break;
         }
       } else if (e.type == SDL_MOUSEMOTION) {
-        //Get mouse position
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-
-        vect c;
-        vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
-        c.x = A.x + (B.x - A.x) * (x / width);
-        c.y = B.y + (A.y - B.y) * (y / height);
-
-        G->PS->SetForce(c);
+        switch (mouse_state) {
+          case MouseState::Force:
+            G->PS->SetForce(GetDomainMousePosition());
+            break;
+          case MouseState::Bonds:
+            G->PS->BondsMove(GetDomainMousePosition());
+            break;
+          case MouseState::None:
+            break;
+        }
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        G->PS->SetForce(true);
+        switch (mouse_state) {
+          case MouseState::Force:
+            G->PS->SetForce(GetDomainMousePosition(), true);
+            break;
+          case MouseState::Bonds:
+            G->PS->BondsStart(GetDomainMousePosition());
+            break;
+          case MouseState::None:
+            break;
+        }
       } else if (e.type == SDL_MOUSEBUTTONUP) {
-        G->PS->SetForce(false);
+        switch (mouse_state) {
+          case MouseState::Force:
+            G->PS->SetForce(false);
+            break;
+          case MouseState::Bonds:
+            G->PS->BondsStop(GetDomainMousePosition());
+            break;
+          case MouseState::None:
+            break;
+        }
       } else if (e.type == SDL_WINDOWEVENT) {
         switch (e.window.event) {
           case SDL_WINDOWEVENT_RESIZED:
@@ -221,8 +270,6 @@ int main() {
         }
       }
     }
-
-
 
     display();
     SDL_GL_SwapWindow(window);

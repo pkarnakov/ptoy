@@ -2,7 +2,8 @@
 
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
-    Blocks(domain, vect(4*kRadius, 4*kRadius))
+    Blocks(domain, vect(kBlockSize, kBlockSize)),
+    blocks_buffer_(Blocks)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
@@ -46,21 +47,19 @@ particles_system::particles_system() :
 
   t = 0.0;
   dt = kTimeStep;
-  const Scal gravity = 10.;
-  g = vect(0.0, -1.0) * gravity;
+  g = vect(0.0, -1.0) * kGravity;
 
   SetDomain(domain);
+  SetParticleBuffer();
   resize_queue_ = domain;
   ResetEnvObjFrame(domain);
 }
 particles_system::~particles_system() {}
-const std::vector<particle>& particles_system::GetParticles() {
-  return particle_buffer_;
-}
 void particles_system::SetParticleBuffer() {
-  std::vector<particle> res;
-  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
-    const auto& data = Blocks.GetData();
+  blocks_buffer_ = Blocks;
+  std::vector<particle>res;
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    const auto& data = blocks_buffer_.GetData();
     for (size_t p = 0; p < data.position[i].size(); ++p) {
       res.push_back(particle(
           data.position[i][p], data.velocity[i][p],
@@ -77,16 +76,19 @@ void particles_system::status(std::ostream& out)
   out << "status N/A";
   //out<<"Particles system"<<std::endl<<"Particles number = "<<P.size()<<std::endl;
 }
-void particles_system::step(Scal time_target)
+void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
 {
   #pragma omp parallel
   {
 
-  while (t < time_target) {
+  while (t < time_target && !quit.load()) {
     #pragma omp for
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       RHS(i);
     }
+
+    #pragma omp single
+    RHS_bonds();
 
     #pragma omp for 
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
@@ -106,6 +108,9 @@ void particles_system::step(Scal time_target)
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       RHS(i);
     }
+
+    #pragma omp single
+    RHS_bonds();
 
     #pragma omp for
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
@@ -142,22 +147,81 @@ void particles_system::step(Scal time_target)
           ResetEnvObjFrame(new_domain);
         }
       }
-      SetParticleBuffer();
-      t += 0.5 * dt;
       Blocks.SortParticles();
+      if (renderer_ready_for_next_) {
+        std::lock_guard<std::mutex> lg(m_buffer_);
+        SetParticleBuffer();
+        renderer_ready_for_next_ = false;
+      }
+      t += 0.5 * dt;
     }
   }
   }
 }
 void particles_system::SetForce(vect center, bool enabled) {
-    force_center = center;
-    force_enabled = enabled;
+  force_center = center;
+  force_enabled = enabled;
 }
 void particles_system::SetForce(vect center) {
-    force_center = center;
+  force_center = center;
 }
 void particles_system::SetForce(bool enabled) {
-    force_enabled = enabled;
+  force_enabled = enabled;
+}
+
+void particles_system::BondsStart(vect point) {
+  bonds_enabled_ = true;
+  int id = kParticleIdNone;
+
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    auto& data = blocks_buffer_.GetData();
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      if (data.position[i][p].dist(point) < kRadius) {
+        id = data.id[i][p];
+        std::cout << "Found particle id=" << id << std::endl;
+      }
+    }
+  }
+
+  bonds_prev_particle_id_ = id;
+}
+
+void particles_system::BondsMove(vect point) {
+  if (!bonds_enabled_) {
+    return;
+  }
+  int id = kParticleIdNone;
+
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    auto& data = blocks_buffer_.GetData();
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      if (data.position[i][p].dist(point) < kRadius &&
+          data.id[i][p] != bonds_prev_particle_id_) {
+        id = data.id[i][p];
+        std::cout << "Found next particle id=" << id << std::endl;
+      }
+    }
+  }
+
+  if (bonds_prev_particle_id_ != kParticleIdNone && 
+      id != kParticleIdNone) {
+    assert(bonds_prev_particle_id_ != id);
+    bonds_.emplace_back(bonds_prev_particle_id_, id);
+  }
+  if (id != kParticleIdNone) {
+    bonds_prev_particle_id_ = id;
+  }
+}
+
+void particles_system::BondsStop(vect point) {
+  if (!bonds_enabled_) {
+    return;
+  }
+  bonds_enabled_ = false;
+  for (auto bond : bonds_) {
+    std::cout << "(" << bond.first << ", " << bond.second << ") ";
+  }
+  std::cout << std::endl;
 }
 
 vect F12(vect p1, vect p2)
@@ -256,8 +320,10 @@ void CalcForceAvx(
       // d12 = d6 * d6
       const __m256 d12 = _mm256_mul_ps(d6, d6);
       // k = (d12 - d6) * sigma * c2
-      const __m256 k = _mm256_mul_ps(
+      __m256 k = _mm256_mul_ps(
           sigma, _mm256_mul_ps(c2, _mm256_sub_ps(d12, d6)));
+
+      k = _mm256_max_ps(k, threshold);
 
       // lo = k([3] [3] [2] [2] [1] [1] [0] [0])
       const __m256 kxy_l = _mm256_unpacklo_ps(k, k);
@@ -334,6 +400,29 @@ void particles_system::UpdateEnvObj() {
   }
 }
 
+vect F12_bond(vect p1, vect p2) {
+  const Scal sigma = kSigma * 1e6;
+  const Scal R = 2. * kRadius;
+  const vect dp = p1 - p2;
+  const Scal r = dp.length();
+  const Scal k = (R - r) / R;
+
+  return dp * (sigma * k);
+}
+
+void particles_system::RHS_bonds() {
+  const auto& bbi = Blocks.GetBlockById();
+  auto& data = Blocks.GetData();
+  for (auto bond : bonds_) {
+    const auto& a = bbi[bond.first];
+    const auto& b = bbi[bond.second];
+    const auto f = F12_bond(data.position[a.first][a.second],
+                        data.position[b.first][b.second]);
+    data.force[a.first][a.second] += f;
+    data.force[b.first][b.second] -= f;
+  }
+}
+
 void particles_system::RHS(size_t i)
 {
   auto& data = Blocks.GetData();
@@ -352,7 +441,7 @@ void particles_system::RHS(size_t i)
     // point force
     if (force_enabled) {
       const vect r = x - force_center; 
-      f += r * (kPointForce / std::pow(r.length(), 3));
+      f += r * (kPointForce / std::pow(r.length(), 4));
     }
 
     // dissipation

@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include "blocks.hpp"
+#include <atomic>
 
 #include <x86intrin.h>
 
@@ -21,9 +22,13 @@ using std::min;
 const Scal kRadius = 0.02;
 const Scal kSigma = 0.5;
 const Scal kMass = kRadius * kRadius * 100.;
-const Scal kPointForce = 0.2;
+const Scal kPointForce = 0.1;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
+const Scal kBlockSize = 4. * kRadius;
+const Scal kGravity = 10.;
+
+const int kParticleIdNone = -1;
 
 template<class T>
 T sqr(T a)
@@ -90,7 +95,6 @@ class particles_system
  public:
   particles_system(); 
   ~particles_system();
-  const std::vector<particle>& GetParticles();
   void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
@@ -112,20 +116,42 @@ class particles_system
   void PushResize(rect_vect new_domain) {
     resize_queue_ = new_domain;
   }
+  const std::vector<std::pair<size_t, size_t>> GetBonds() const {
+    return bonds_;
+  }
   void status(std::ostream& out);
-  void step(Scal time_target);
+  void step(Scal time_target, const std::atomic<bool>& quit);
   void SetForce(vect center, bool enabled);
   void SetForce(vect center);
   void SetForce(bool enabled);
+  void BondsStart(vect point);
+  void BondsMove(vect point);
+  void BondsStop(vect point);
   Scal GetTime() const { return t; }
+  size_t GetNumSteps() const { return static_cast<size_t>(t / dt); } 
   rect_vect GetDomain() const { return domain; }
+
+  // These are only for external use (TODO: check or ensure)
+  const std::vector<particle>& GetParticles() const {
+    return particle_buffer_;
+  }
   size_t GetNumParticles() const { 
-    return Blocks.GetNumParticles(); 
+    return blocks_buffer_.GetNumParticles(); 
   }
   size_t GetNumPerCell() const {
-    return Blocks.GetNumPerCell();
+    return blocks_buffer_.GetNumPerCell();
+  }
+  const std::vector<std::pair<size_t, size_t>> GetBlockById() const {
+    return blocks_buffer_.GetBlockById();
+  }
+  const blocks::BlockData& GetBlockData() const {
+    return blocks_buffer_.GetData();
+  };
+  void SetRendererReadyForNext(bool value) {
+    renderer_ready_for_next_ = value;
   }
 
+  mutable std::mutex m_buffer_;
  private:
   rect_vect domain;
   rect_vect resize_queue_;
@@ -134,10 +160,16 @@ class particles_system
   Scal dt;
   vect g;
   void RHS(size_t i);
+  void RHS_bonds();
   vector<std::unique_ptr<env_object>> ENVOBJ;
   std::vector<std::vector<size_t>> block_envobj_;
   vect force_center;
   bool force_enabled;
   std::vector<particle> particle_buffer_;
+  blocks blocks_buffer_;
+  int bonds_prev_particle_id_;
+  bool bonds_enabled_ = false;
+  std::vector<std::pair<size_t, size_t>> bonds_;
+  bool renderer_ready_for_next_ = true;
 };
 
