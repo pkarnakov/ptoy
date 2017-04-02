@@ -25,6 +25,8 @@ const Scal kPointForce = 0.2;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
 
+const size_t kParticleIdNone = -1;
+
 template<class T>
 T sqr(T a)
 {
@@ -142,5 +144,8 @@ class particles_system
   vect force_center;
   bool force_enabled;
   std::vector<particle> particle_buffer_;
+  size_t bonds_prev_particle_id_;
+  bool bonds_enabled_ = false;
+  std::vector<std::pair<size_t, size_t>> bonds_;
 };
 

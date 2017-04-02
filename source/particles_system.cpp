@@ -161,12 +161,58 @@ void particles_system::SetForce(bool enabled) {
 }
 
 void particles_system::BondsStart(vect point) {
+  bonds_enabled_ = true;
+  size_t id = kParticleIdNone;
+
+  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+    auto& data = Blocks.GetData();
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      if (data.position[i][p].dist(point) < kRadius) {
+        id = data.id[i][p];
+        std::cout << "Found particle id=" << id << std::endl;
+      }
+    }
+  }
+
+  bonds_prev_particle_id_ = id;
 }
 
 void particles_system::BondsMove(vect point) {
+  if (!bonds_enabled_) {
+    return;
+  }
+  size_t id = kParticleIdNone;
+
+  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+    auto& data = Blocks.GetData();
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      if (data.position[i][p].dist(point) < kRadius &&
+          data.id[i][p] != bonds_prev_particle_id_) {
+        id = data.id[i][p];
+        std::cout << "Found next particle id=" << id << std::endl;
+      }
+    }
+  }
+
+  if (bonds_prev_particle_id_ != kParticleIdNone && 
+      id != kParticleIdNone) {
+    assert(bonds_prev_particle_id_ != id);
+    bonds_.emplace_back(bonds_prev_particle_id_, id);
+  }
+  if (id != kParticleIdNone) {
+    bonds_prev_particle_id_ = id;
+  }
 }
 
 void particles_system::BondsStop(vect point) {
+  if (!bonds_enabled_) {
+    return;
+  }
+  bonds_enabled_ = false;
+  for (auto bond : bonds_) {
+    std::cout << "(" << bond.first << ", " << bond.second << ") ";
+  }
+  std::cout << std::endl;
 }
 
 vect F12(vect p1, vect p2)
