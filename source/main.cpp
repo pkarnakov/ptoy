@@ -131,7 +131,7 @@ void cycle()
   }
 
   while (!quit) { 
-    G->PS->step(next_game_time_target, &quit);
+    G->PS->step(next_game_time_target, quit);
   }
   std::cout << "Computation finished" << std::endl;
 }
@@ -145,6 +145,13 @@ vect GetDomainMousePosition(int x, int y) {
   c.y = B.y + (A.y - B.y) * (y / height);
   return c;
 }
+
+vect GetDomainMousePosition() {
+  int x, y;
+  SDL_GetMouseState(&x, &y);
+  return GetDomainMousePosition(x, y);
+}
+
 
 int main() {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -186,7 +193,7 @@ int main() {
   //Event handler
   SDL_Event e;
 
-  enum class MouseState {Force, Bonds};
+  enum class MouseState {None, Force, Bonds};
   MouseState mouse_state = MouseState::Force;
 
   //While application is running
@@ -199,6 +206,10 @@ int main() {
           case 'q':
             quit = true;
             break;
+          case 'n':
+            mouse_state = MouseState::None;
+            std::cout << "Mouse switched to None mode" << std::endl;
+            break;
           case 'f':
             mouse_state = MouseState::Force;
             std::cout << "Mouse switched to Force mode" << std::endl;
@@ -209,14 +220,38 @@ int main() {
             break;
         }
       } else if (e.type == SDL_MOUSEMOTION) {
-        //Get mouse position
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-        G->PS->SetForce(GetDomainMousePosition(x, y));
+        switch (mouse_state) {
+          case MouseState::Force:
+            G->PS->SetForce(GetDomainMousePosition());
+            break;
+          case MouseState::Bonds:
+            G->PS->BondsMove(GetDomainMousePosition());
+            break;
+          case MouseState::None:
+            break;
+        }
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        G->PS->SetForce(true);
+        switch (mouse_state) {
+          case MouseState::Force:
+            G->PS->SetForce(GetDomainMousePosition(), true);
+            break;
+          case MouseState::Bonds:
+            G->PS->BondsStart(GetDomainMousePosition());
+            break;
+          case MouseState::None:
+            break;
+        }
       } else if (e.type == SDL_MOUSEBUTTONUP) {
-        G->PS->SetForce(false);
+        switch (mouse_state) {
+          case MouseState::Force:
+            G->PS->SetForce(false);
+            break;
+          case MouseState::Bonds:
+            G->PS->BondsStop(GetDomainMousePosition());
+            break;
+          case MouseState::None:
+            break;
+        }
       } else if (e.type == SDL_WINDOWEVENT) {
         switch (e.window.event) {
           case SDL_WINDOWEVENT_RESIZED:

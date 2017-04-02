@@ -98,7 +98,6 @@ class blocks
   };
   void SetDomain(rect_vect proposal) {
     rect_vect domain = domain_;
-    vect old_size = domain_.size();
     while (proposal.A.x < domain.A.x) { domain.A.x -= block_size_.x; }
     while (proposal.A.y < domain.A.y) { domain.A.y -= block_size_.y; }
     while (proposal.B.x > domain.B.x) { domain.B.x += block_size_.x; }

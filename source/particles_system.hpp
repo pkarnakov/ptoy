@@ -117,6 +117,9 @@ class particles_system
   void SetForce(vect center, bool enabled);
   void SetForce(vect center);
   void SetForce(bool enabled);
+  void BondsStart(vect point);
+  void BondsMove(vect point);
+  void BondsStop(vect point);
   Scal GetTime() const { return t; }
   rect_vect GetDomain() const { return domain; }
   size_t GetNumParticles() const { 

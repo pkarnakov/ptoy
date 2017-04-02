@@ -150,14 +150,23 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
   }
 }
 void particles_system::SetForce(vect center, bool enabled) {
-    force_center = center;
-    force_enabled = enabled;
+  force_center = center;
+  force_enabled = enabled;
 }
 void particles_system::SetForce(vect center) {
-    force_center = center;
+  force_center = center;
 }
 void particles_system::SetForce(bool enabled) {
-    force_enabled = enabled;
+  force_enabled = enabled;
+}
+
+void particles_system::BondsStart(vect point) {
+}
+
+void particles_system::BondsMove(vect point) {
+}
+
+void particles_system::BondsStop(vect point) {
 }
 
 vect F12(vect p1, vect p2)
