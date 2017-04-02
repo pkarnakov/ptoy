@@ -95,6 +95,7 @@ void display(void)
   /* clear the screen to white */
   glClear(GL_COLOR_BUFFER_BIT);
 
+  G->R->DrawBonds();
   G->R->draw_particles();
   G->R->draw_frame();
 

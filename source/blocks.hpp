@@ -35,7 +35,7 @@ class blocks
       force.clear();
       id.clear();
 
-      for (auto pair : parent->block_by_id_) {
+      for (auto& pair : parent->block_by_id_) {
         pair.first = kBlockNone;
       }
     }
@@ -108,7 +108,8 @@ class blocks
       force[dest].push_back(vect::kNan);
       id[dest].push_back(particle_id);
 
-      const auto pid = id[dest].back();
+      assert(id[dest].back() >= 0);
+      const size_t pid = static_cast<size_t>(id[dest].back());
       if (parent->block_by_id_.size() <= pid) {
         parent->block_by_id_.resize(pid + 1);
       }
@@ -180,6 +181,9 @@ class blocks
         data_.AddParticle(i, position[p], velocity[p], id[p]);
       }
     }
+  }
+  const BlockData& GetData() const {
+    return data_;
   }
   BlockData& GetData() {
     return data_;

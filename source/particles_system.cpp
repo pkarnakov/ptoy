@@ -82,7 +82,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
   #pragma omp parallel
   {
 
-  while (t < time_target) {
+  while (t < time_target && !quit.load()) {
     #pragma omp for
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       RHS(i);
@@ -162,7 +162,7 @@ void particles_system::SetForce(bool enabled) {
 
 void particles_system::BondsStart(vect point) {
   bonds_enabled_ = true;
-  size_t id = kParticleIdNone;
+  int id = kParticleIdNone;
 
   for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
     auto& data = Blocks.GetData();
@@ -181,7 +181,7 @@ void particles_system::BondsMove(vect point) {
   if (!bonds_enabled_) {
     return;
   }
-  size_t id = kParticleIdNone;
+  int id = kParticleIdNone;
 
   for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
     auto& data = Blocks.GetData();

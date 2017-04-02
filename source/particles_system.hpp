@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include "blocks.hpp"
+#include <atomic>
 
 #include <x86intrin.h>
 
@@ -25,7 +26,7 @@ const Scal kPointForce = 0.2;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
 
-const size_t kParticleIdNone = -1;
+const int kParticleIdNone = -1;
 
 template<class T>
 T sqr(T a)
@@ -114,6 +115,9 @@ class particles_system
   void PushResize(rect_vect new_domain) {
     resize_queue_ = new_domain;
   }
+  const std::vector<std::pair<size_t, size_t>> GetBonds() const {
+    return bonds_;
+  }
   void status(std::ostream& out);
   void step(Scal time_target, const std::atomic<bool>& quit);
   void SetForce(vect center, bool enabled);
@@ -130,6 +134,12 @@ class particles_system
   size_t GetNumPerCell() const {
     return Blocks.GetNumPerCell();
   }
+  const std::vector<std::pair<size_t, size_t>> GetBlockById() const {
+    return Blocks.GetBlockById();
+  }
+  const blocks::BlockData& GetBlockData() const {
+    return Blocks.GetData();
+  };
 
  private:
   rect_vect domain;
@@ -144,7 +154,7 @@ class particles_system
   vect force_center;
   bool force_enabled;
   std::vector<particle> particle_buffer_;
-  size_t bonds_prev_particle_id_;
+  int bonds_prev_particle_id_;
   bool bonds_enabled_ = false;
   std::vector<std::pair<size_t, size_t>> bonds_;
 };
