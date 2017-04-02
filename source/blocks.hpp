@@ -22,9 +22,11 @@ class blocks
   using DataVect = std::vector<ArrayVect>;
   using DataInt = std::vector<ArrayInt>;
   struct BlockData {
+   private:
+    blocks* parent;
+   public:
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
-    blocks* parent;
     BlockData() = delete;
     BlockData(blocks* parent) : parent(parent) {}
     void clear() {
@@ -84,6 +86,7 @@ class blocks
         size_t idx, // particle index within the source block
         size_t dest // destination block
         ) {
+      assert(src != dest);
       position[dest].push_back(position[src][idx]);
       position_tmp[dest].push_back(position_tmp[src][idx]);
       velocity[dest].push_back(velocity[src][idx]);

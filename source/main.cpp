@@ -72,13 +72,17 @@ void display(void)
   if ((new_frame_time - last_report_time).count() > 1000.) {
     std::cout 
         << "fps: " << 1. / frame_real_duration_s
-        << ", game rate: "
+        << ", game rate="
         << (new_frame_game_time - 
             last_frame_game_time) / frame_real_duration_s
-        << ", particles: " 
+        << ", particles=" 
         << G->PS->GetNumParticles()
-        << ", max_per_cell: " 
+        << ", max_per_cell=" 
         << G->PS->GetNumPerCell()
+        << ", t=" 
+        << G->PS->GetTime()
+        << ", steps=" 
+        << G->PS->GetNumSteps()
         << std::endl;
     last_report_time = new_frame_time;
     //G->PS->Blocks.print_status();
@@ -95,9 +99,11 @@ void display(void)
   /* clear the screen to white */
   glClear(GL_COLOR_BUFFER_BIT);
 
-  G->R->DrawBonds();
-  G->R->draw_particles();
-  G->R->draw_frame();
+  {
+    std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
+    G->R->DrawAll();
+    G->PS->SetRendererReadyForNext(true);
+  }
 
   glFlush();
 

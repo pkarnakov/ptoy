@@ -2,7 +2,8 @@
 
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
-    Blocks(domain, vect(4*kRadius, 4*kRadius))
+    Blocks(domain, vect(4*kRadius, 4*kRadius)),
+    blocks_buffer_(Blocks)
 {
   force_enabled = false;
   force_center = vect(0., 0.);
@@ -50,17 +51,16 @@ particles_system::particles_system() :
   g = vect(0.0, -1.0) * gravity;
 
   SetDomain(domain);
+  SetParticleBuffer();
   resize_queue_ = domain;
   ResetEnvObjFrame(domain);
 }
 particles_system::~particles_system() {}
-const std::vector<particle>& particles_system::GetParticles() {
-  return particle_buffer_;
-}
 void particles_system::SetParticleBuffer() {
-  std::vector<particle> res;
-  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
-    const auto& data = Blocks.GetData();
+  blocks_buffer_ = Blocks;
+  std::vector<particle>res;
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    const auto& data = blocks_buffer_.GetData();
     for (size_t p = 0; p < data.position[i].size(); ++p) {
       res.push_back(particle(
           data.position[i][p], data.velocity[i][p],
@@ -142,9 +142,13 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
           ResetEnvObjFrame(new_domain);
         }
       }
-      SetParticleBuffer();
-      t += 0.5 * dt;
       Blocks.SortParticles();
+      if (renderer_ready_for_next_) {
+        std::lock_guard<std::mutex> lg(m_buffer_);
+        SetParticleBuffer();
+        renderer_ready_for_next_ = false;
+      }
+      t += 0.5 * dt;
     }
   }
   }
@@ -164,8 +168,8 @@ void particles_system::BondsStart(vect point) {
   bonds_enabled_ = true;
   int id = kParticleIdNone;
 
-  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
-    auto& data = Blocks.GetData();
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    auto& data = blocks_buffer_.GetData();
     for (size_t p = 0; p < data.position[i].size(); ++p) {
       if (data.position[i][p].dist(point) < kRadius) {
         id = data.id[i][p];
@@ -183,8 +187,8 @@ void particles_system::BondsMove(vect point) {
   }
   int id = kParticleIdNone;
 
-  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
-    auto& data = Blocks.GetData();
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    auto& data = blocks_buffer_.GetData();
     for (size_t p = 0; p < data.position[i].size(); ++p) {
       if (data.position[i][p].dist(point) < kRadius &&
           data.id[i][p] != bonds_prev_particle_id_) {

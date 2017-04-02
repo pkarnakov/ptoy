@@ -129,11 +129,26 @@ public:
     for (auto bond : PS->GetBonds()) {
       const auto& a = bbi[bond.first];
       const auto& b = bbi[bond.second];
+      assert(a.first != blocks::kBlockNone);
+      assert(b.first != blocks::kBlockNone);
       draw_line(
           data.position[a.first][a.second],
           data.position[b.first][b.second]);
     }
+    if (PS->GetParticles().size()) {
+      draw_circle(PS->GetParticles()[0].p,
+          kRadius*1.1, rgb(0.,0.,1.));
+    }
+    if (bbi.size() && bbi[0].first != blocks::kBlockNone) {
+      draw_circle(data.position[bbi[0].first][bbi[0].second],
+          kRadius*1.1, rgb(0.,1.,0.));
+    }
     glPopMatrix();
+  }
+  void DrawAll() {
+    draw_particles();
+    draw_frame();
+    DrawBonds();
   }
   renderer_opengl(particles_system* _PS) : renderer(_PS)
   {
