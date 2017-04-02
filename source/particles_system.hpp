@@ -136,6 +136,12 @@ class particles_system
   rect_vect GetDomain() const { return domain; }
 
   // These are only for external use (TODO: check or ensure)
+  bool GetGravity() const {
+    return gravity_enable_;
+  }
+  void InvertGravity() {
+    gravity_enable_ = !gravity_enable_;
+  }
   const std::vector<particle>& GetParticles() const {
     return particle_buffer_;
   }
@@ -170,6 +176,7 @@ class particles_system
   vect force_center;
   bool force_enabled;
   bool force_attractive_ = false;
+  bool gravity_enable_ = true;
   std::vector<particle> particle_buffer_;
   blocks blocks_buffer_;
   int bonds_prev_particle_id_;

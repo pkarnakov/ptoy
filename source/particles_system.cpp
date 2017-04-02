@@ -435,8 +435,9 @@ void particles_system::RHS(size_t i)
     f = vect(0., 0.);
 
     // gravity
-    //f=g*part.m;
-    f = g*kMass;
+    if (gravity_enable_) {
+      f = g*kMass;
+    }
 
     // point force
     if (force_enabled) {
