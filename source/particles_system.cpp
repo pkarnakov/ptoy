@@ -169,6 +169,41 @@ void particles_system::SetForce(bool enabled) {
   force_enabled = enabled;
 }
 
+void particles_system::PickStart(vect point) {
+  size_t min_block = blocks::kBlockNone;
+  size_t min_particle;
+  Scal min_dist;
+
+  auto& data = blocks_buffer_.GetData();
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      if (min_block == blocks::kBlockNone  
+          || data.position[i][p].dist(point) < min_dist) {
+        min_block = i;
+        min_particle = p;
+        min_dist = data.position[i][p].dist(point);
+      }
+    }
+  }
+
+  pick_particle_id_ = data.id[min_block][min_particle];
+  pick_pointer_ = point;
+  pick_enabled_ = true;
+}
+
+void particles_system::PickMove(vect point) {
+  if (!pick_enabled_) {
+    return;
+  }
+  pick_pointer_ = point;
+}
+
+void particles_system::PickStop(vect point) {
+  if (!pick_enabled_) {
+    return;
+  }
+  pick_enabled_ = false;
+}
 void particles_system::BondsStart(vect point) {
   bonds_enabled_ = true;
   int id = kParticleIdNone;
@@ -449,6 +484,11 @@ void particles_system::RHS(size_t i)
           f += r * (kPointForce / std::pow(r.length(), 4));
         }
       }
+    }
+    
+    // pick force
+    if (pick_enabled_ && data.id[i][p] == pick_particle_id_) {
+      f += F12_bond(x, pick_pointer_);
     }
 
     // dissipation

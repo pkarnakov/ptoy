@@ -207,7 +207,7 @@ int main() {
   //Event handler
   SDL_Event e;
 
-  enum class MouseState {None, Force, Bonds};
+  enum class MouseState {None, Force, Bonds, Pick};
   MouseState mouse_state = MouseState::Force;
 
   //While application is running
@@ -229,6 +229,10 @@ int main() {
             std::cout << "Mouse switched to Force mode" << std::endl;
             G->PS->SetForceAttractive(false);
             break;
+          case 'p':
+            mouse_state = MouseState::Pick;
+            std::cout << "Mouse switched to Pick mode" << std::endl;
+            break;
           case 'a':
             mouse_state = MouseState::Force;
             std::cout << "Mouse switched to ForceAttractive mode" << std::endl;
@@ -244,7 +248,6 @@ int main() {
               << (G->PS->GetGravity() ? "Gravity on" : "Gravity off")
               << std::endl;
             break;
-          case 'p':
           case ' ':
             pause = !pause;
             break;
@@ -257,6 +260,9 @@ int main() {
           case MouseState::Bonds:
             G->PS->BondsMove(GetDomainMousePosition());
             break;
+          case MouseState::Pick:
+            G->PS->PickMove(GetDomainMousePosition());
+            break;
           case MouseState::None:
             break;
         }
@@ -268,6 +274,9 @@ int main() {
           case MouseState::Bonds:
             G->PS->BondsStart(GetDomainMousePosition());
             break;
+          case MouseState::Pick:
+            G->PS->PickStart(GetDomainMousePosition());
+            break;
           case MouseState::None:
             break;
         }
@@ -278,6 +287,9 @@ int main() {
             break;
           case MouseState::Bonds:
             G->PS->BondsStop(GetDomainMousePosition());
+            break;
+          case MouseState::Pick:
+            G->PS->PickStop(GetDomainMousePosition());
             break;
           case MouseState::None:
             break;

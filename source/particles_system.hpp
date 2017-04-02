@@ -131,6 +131,9 @@ class particles_system
   void BondsStart(vect point);
   void BondsMove(vect point);
   void BondsStop(vect point);
+  void PickStart(vect point);
+  void PickMove(vect point);
+  void PickStop(vect point);
   Scal GetTime() const { return t; }
   size_t GetNumSteps() const { return static_cast<size_t>(t / dt); } 
   rect_vect GetDomain() const { return domain; }
@@ -181,6 +184,9 @@ class particles_system
   blocks blocks_buffer_;
   int bonds_prev_particle_id_;
   bool bonds_enabled_ = false;
+  int pick_particle_id_;
+  bool pick_enabled_ = false;
+  vect pick_pointer_;
   std::vector<std::pair<size_t, size_t>> bonds_;
   bool renderer_ready_for_next_ = true;
 };
