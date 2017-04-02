@@ -23,6 +23,7 @@ const Scal kRadius = 0.02;
 const Scal kSigma = 0.5;
 const Scal kMass = kRadius * kRadius * 100.;
 const Scal kPointForce = 0.1;
+const Scal kPointForceAttractive = 1.1;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
 const Scal kBlockSize = 4. * kRadius;
@@ -124,6 +125,9 @@ class particles_system
   void SetForce(vect center, bool enabled);
   void SetForce(vect center);
   void SetForce(bool enabled);
+  void SetForceAttractive(bool value) {
+    force_attractive_ = value;
+  }
   void BondsStart(vect point);
   void BondsMove(vect point);
   void BondsStop(vect point);
@@ -165,6 +169,7 @@ class particles_system
   std::vector<std::vector<size_t>> block_envobj_;
   vect force_center;
   bool force_enabled;
+  bool force_attractive_ = false;
   std::vector<particle> particle_buffer_;
   blocks blocks_buffer_;
   int bonds_prev_particle_id_;

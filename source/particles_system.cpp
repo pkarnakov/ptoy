@@ -441,7 +441,13 @@ void particles_system::RHS(size_t i)
     // point force
     if (force_enabled) {
       const vect r = x - force_center; 
-      f += r * (kPointForce / std::pow(r.length(), 4));
+      if (r.length() > kRadius) {
+        if (force_attractive_) {
+          f += r * (-kPointForceAttractive / std::pow(r.length(), 2));
+        } else {
+          f += r * (kPointForce / std::pow(r.length(), 4));
+        }
+      }
     }
 
     // dissipation

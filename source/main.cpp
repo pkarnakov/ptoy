@@ -200,7 +200,7 @@ int main() {
   //Event handler
   SDL_Event e;
 
-  enum class MouseState {None, Force, Bonds};
+  enum class MouseState {None, Force, ForceAttractive, Bonds};
   MouseState mouse_state = MouseState::Force;
 
   //While application is running
@@ -221,6 +221,10 @@ int main() {
             mouse_state = MouseState::Force;
             std::cout << "Mouse switched to Force mode" << std::endl;
             break;
+          case 'a':
+            mouse_state = MouseState::ForceAttractive;
+            std::cout << "Mouse switched to ForceAttractive mode" << std::endl;
+            break;
           case 'b':
             mouse_state = MouseState::Bonds;
             std::cout << "Mouse switched to Bonds mode" << std::endl;
@@ -229,6 +233,7 @@ int main() {
       } else if (e.type == SDL_MOUSEMOTION) {
         switch (mouse_state) {
           case MouseState::Force:
+          case MouseState::ForceAttractive:
             G->PS->SetForce(GetDomainMousePosition());
             break;
           case MouseState::Bonds:
@@ -241,6 +246,11 @@ int main() {
         switch (mouse_state) {
           case MouseState::Force:
             G->PS->SetForce(GetDomainMousePosition(), true);
+            G->PS->SetForceAttractive(false);
+            break;
+          case MouseState::ForceAttractive:
+            G->PS->SetForce(GetDomainMousePosition(), true);
+            G->PS->SetForceAttractive(true);
             break;
           case MouseState::Bonds:
             G->PS->BondsStart(GetDomainMousePosition());
@@ -251,6 +261,7 @@ int main() {
       } else if (e.type == SDL_MOUSEBUTTONUP) {
         switch (mouse_state) {
           case MouseState::Force:
+          case MouseState::ForceAttractive:
             G->PS->SetForce(false);
             break;
           case MouseState::Bonds:
