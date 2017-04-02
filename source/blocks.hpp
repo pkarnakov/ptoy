@@ -60,19 +60,23 @@ class blocks
       }
 
       // TODO: consider updating block_by_id_ here
+      for (auto& pair : parent->block_by_id_) {
+        pair.first = kBlockNone;
+      }
     }
     void RemoveParticle(
         size_t src, // source block 
         size_t idx  // particle index within the source block
         ) {
-      parent->block_by_id_[id[src][idx]].first = kBlockNone;
-
       std::swap(position[src][idx], position[src].back());
       std::swap(position_tmp[src][idx], position_tmp[src].back());
       std::swap(velocity[src][idx], velocity[src].back());
       std::swap(velocity_tmp[src][idx], velocity_tmp[src].back());
       std::swap(force[src][idx], force[src].back());
       std::swap(id[src][idx], id[src].back());
+
+      parent->block_by_id_[id[src][idx]] = {src, idx};
+      parent->block_by_id_[id[src].back()].first = kBlockNone;
 
       position[src].pop_back();
       position_tmp[src].pop_back();
@@ -96,7 +100,8 @@ class blocks
 
       RemoveParticle(src, idx);
 
-      parent->block_by_id_[id[dest].back()] = {dest, id[dest].size() - 1};
+      parent->block_by_id_[id[dest].back()] = 
+          {dest, position[dest].size() - 1};
     }
     void AddParticle(
         size_t dest, // destination block
@@ -116,7 +121,7 @@ class blocks
       if (parent->block_by_id_.size() <= pid) {
         parent->block_by_id_.resize(pid + 1);
       }
-      parent->block_by_id_[pid] = {dest, id[dest].size() - 1};
+      parent->block_by_id_[pid] = {dest, position[dest].size() - 1};
     }
   };
   void SetDomain(rect_vect proposal) {
@@ -217,6 +222,7 @@ class blocks
         if (i != j) {
           if (j != kBlockNone) {
             data_.MoveParticle(i, p, j);
+            // if the new block is already processed, increase the counter
             if (j < i) {
               ++lnum_particles_;
             }

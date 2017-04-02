@@ -135,14 +135,6 @@ public:
           data.position[a.first][a.second],
           data.position[b.first][b.second]);
     }
-    if (PS->GetParticles().size()) {
-      draw_circle(PS->GetParticles()[0].p,
-          kRadius*1.1, rgb(0.,0.,1.));
-    }
-    if (bbi.size() && bbi[0].first != blocks::kBlockNone) {
-      draw_circle(data.position[bbi[0].first][bbi[0].second],
-          kRadius*1.1, rgb(0.,1.,0.));
-    }
     glPopMatrix();
   }
   void DrawAll() {

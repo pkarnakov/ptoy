@@ -25,6 +25,7 @@ const Scal kMass = kRadius * kRadius * 100.;
 const Scal kPointForce = 0.2;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
+const Scal kBlockSize = 4. * kRadius;
 
 const int kParticleIdNone = -1;
 

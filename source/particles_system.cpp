@@ -2,7 +2,7 @@
 
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
-    Blocks(domain, vect(4*kRadius, 4*kRadius)),
+    Blocks(domain, vect(kBlockSize, kBlockSize)),
     blocks_buffer_(Blocks)
 {
   force_enabled = false;
