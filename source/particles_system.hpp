@@ -11,6 +11,7 @@
 #include <mutex>
 #include "blocks.hpp"
 #include <atomic>
+#include <set>
 
 #include <x86intrin.h>
 
@@ -117,8 +118,11 @@ class particles_system
   void PushResize(rect_vect new_domain) {
     resize_queue_ = new_domain;
   }
-  const std::vector<std::pair<size_t, size_t>> GetBonds() const {
+  const std::vector<std::pair<int, int>>& GetBonds() const {
     return bonds_;
+  }
+  const std::set<int>& GetFrozen() const {
+    return frozen_;
   }
   void status(std::ostream& out);
   void step(Scal time_target, const std::atomic<bool>& quit);
@@ -131,6 +135,9 @@ class particles_system
   void BondsStart(vect point);
   void BondsMove(vect point);
   void BondsStop(vect point);
+  void FreezeStart(vect point);
+  void FreezeMove(vect point);
+  void FreezeStop(vect point);
   void PickStart(vect point);
   void PickMove(vect point);
   void PickStop(vect point);
@@ -187,7 +194,10 @@ class particles_system
   int pick_particle_id_;
   bool pick_enabled_ = false;
   vect pick_pointer_;
-  std::vector<std::pair<size_t, size_t>> bonds_;
+  std::vector<std::pair<int, int>> bonds_;
+  std::set<int> frozen_; // particle id
+  bool freeze_enabled_ = false;
+  int freeze_last_id_;
   bool renderer_ready_for_next_ = true;
 };
 

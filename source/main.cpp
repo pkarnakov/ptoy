@@ -207,7 +207,7 @@ int main() {
   //Event handler
   SDL_Event e;
 
-  enum class MouseState {None, Force, Bonds, Pick};
+  enum class MouseState {None, Force, Bonds, Pick, Freeze};
   MouseState mouse_state = MouseState::Force;
 
   //While application is running
@@ -224,10 +224,14 @@ int main() {
             mouse_state = MouseState::None;
             std::cout << "Mouse switched to None mode" << std::endl;
             break;
-          case 'f':
+          case 'r':
             mouse_state = MouseState::Force;
-            std::cout << "Mouse switched to Force mode" << std::endl;
+            std::cout << "Mouse switched to Repulsive mode" << std::endl;
             G->PS->SetForceAttractive(false);
+            break;
+          case 'f':
+            mouse_state = MouseState::Freeze;
+            std::cout << "Mouse switched to Freeze mode" << std::endl;
             break;
           case 'p':
             mouse_state = MouseState::Pick;
@@ -235,7 +239,7 @@ int main() {
             break;
           case 'a':
             mouse_state = MouseState::Force;
-            std::cout << "Mouse switched to ForceAttractive mode" << std::endl;
+            std::cout << "Mouse switched to Attractive mode" << std::endl;
             G->PS->SetForceAttractive(true);
             break;
           case 'b':
@@ -263,6 +267,9 @@ int main() {
           case MouseState::Pick:
             G->PS->PickMove(GetDomainMousePosition());
             break;
+          case MouseState::Freeze:
+            G->PS->FreezeMove(GetDomainMousePosition());
+            break;
           case MouseState::None:
             break;
         }
@@ -274,8 +281,8 @@ int main() {
           case MouseState::Bonds:
             G->PS->BondsStart(GetDomainMousePosition());
             break;
-          case MouseState::Pick:
-            G->PS->PickStart(GetDomainMousePosition());
+          case MouseState::Freeze:
+            G->PS->FreezeStart(GetDomainMousePosition());
             break;
           case MouseState::None:
             break;
@@ -288,8 +295,8 @@ int main() {
           case MouseState::Bonds:
             G->PS->BondsStop(GetDomainMousePosition());
             break;
-          case MouseState::Pick:
-            G->PS->PickStop(GetDomainMousePosition());
+          case MouseState::Freeze:
+            G->PS->FreezeStop(GetDomainMousePosition());
             break;
           case MouseState::None:
             break;

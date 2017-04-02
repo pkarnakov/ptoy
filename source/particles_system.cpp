@@ -204,6 +204,7 @@ void particles_system::PickStop(vect point) {
   }
   pick_enabled_ = false;
 }
+
 void particles_system::BondsStart(vect point) {
   bonds_enabled_ = true;
   int id = kParticleIdNone;
@@ -257,6 +258,44 @@ void particles_system::BondsStop(vect point) {
     std::cout << "(" << bond.first << ", " << bond.second << ") ";
   }
   std::cout << std::endl;
+}
+
+void particles_system::FreezeStart(vect point) {
+  freeze_last_id_ = -1;
+  freeze_enabled_ = true;
+  FreezeMove(point);
+}
+
+void particles_system::FreezeMove(vect point) {
+  if (!freeze_enabled_) {
+    return;
+  }
+
+  for (size_t i = 0; i < blocks_buffer_.GetNumBlocks(); ++i) {
+    auto& data = blocks_buffer_.GetData();
+    for (size_t p = 0; p < data.position[i].size(); ++p) {
+      if (data.position[i][p].dist(point) < kRadius) {
+        const int id = data.id[i][p];
+        if (id != freeze_last_id_) {
+          if (frozen_.count(id)) {
+            frozen_.erase(id);
+            std::cout << "Unfreeze particle id=" << id << std::endl;
+          } else {
+            frozen_.insert(id);
+            std::cout << "Freeze particle id=" << id << std::endl;
+          }
+        }
+        freeze_last_id_ = id;
+      }
+    }
+  }
+}
+
+void particles_system::FreezeStop(vect point) {
+  if (!freeze_enabled_) {
+    return;
+  }
+  freeze_enabled_ = false;
 }
 
 vect F12(vect p1, vect p2)

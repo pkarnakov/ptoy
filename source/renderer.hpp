@@ -137,10 +137,28 @@ public:
     }
     glPopMatrix();
   }
+  void DrawFrozen() {
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
+    glLineWidth(3.0);
+    const auto& data = PS->GetBlockData();
+    const auto& bbi = PS->GetBlockById();
+    for (auto id : PS->GetFrozen()) {
+      const auto& a = bbi[id];
+      assert(a.first != blocks::kBlockNone);
+      draw_circle(data.position[a.first][a.second], 
+                 kRadius * 0.5, rgb(0.,0.,0.));
+    }
+    glPopMatrix();
+  }
   void DrawAll() {
     draw_particles();
     draw_frame();
     DrawBonds();
+    DrawFrozen();
   }
   renderer_opengl(particles_system* _PS) : renderer(_PS)
   {
