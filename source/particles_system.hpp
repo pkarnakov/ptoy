@@ -22,7 +22,7 @@ using std::min;
 const Scal kRadius = 0.02;
 const Scal kSigma = 0.5;
 const Scal kMass = kRadius * kRadius * 100.;
-const Scal kPointForce = 0.2;
+const Scal kPointForce = 0.1;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
 const Scal kBlockSize = 4. * kRadius;

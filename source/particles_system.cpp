@@ -320,8 +320,10 @@ void CalcForceAvx(
       // d12 = d6 * d6
       const __m256 d12 = _mm256_mul_ps(d6, d6);
       // k = (d12 - d6) * sigma * c2
-      const __m256 k = _mm256_mul_ps(
+      __m256 k = _mm256_mul_ps(
           sigma, _mm256_mul_ps(c2, _mm256_sub_ps(d12, d6)));
+
+      k = _mm256_max_ps(k, threshold);
 
       // lo = k([3] [3] [2] [2] [1] [1] [0] [0])
       const __m256 kxy_l = _mm256_unpacklo_ps(k, k);
@@ -439,7 +441,7 @@ void particles_system::RHS(size_t i)
     // point force
     if (force_enabled) {
       const vect r = x - force_center; 
-      f += r * (kPointForce / std::pow(r.length(), 3));
+      f += r * (kPointForce / std::pow(r.length(), 4));
     }
 
     // dissipation
