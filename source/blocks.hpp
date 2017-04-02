@@ -24,6 +24,9 @@ class blocks
   struct BlockData {
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
+    blocks* parent;
+    BlockData() = delete;
+    BlockData(blocks* parent) : parent(parent) {}
     void clear() {
       position.clear();
       position_tmp.clear();
@@ -31,6 +34,10 @@ class blocks
       velocity_tmp.clear();
       force.clear();
       id.clear();
+
+      for (auto pair : parent->block_by_id_) {
+        pair.first = kBlockNone;
+      }
     }
     void resize(size_t size) {
       position.resize(size);
@@ -49,11 +56,15 @@ class blocks
         force[i].reserve(kBlockPadding);
         id[i].reserve(kBlockPadding);
       }
+
+      // TODO: consider updating block_by_id_ here
     }
     void RemoveParticle(
         size_t src, // source block 
         size_t idx  // particle index within the source block
         ) {
+      parent->block_by_id_[id[src][idx]].first = kBlockNone;
+
       std::swap(position[src][idx], position[src].back());
       std::swap(position_tmp[src][idx], position_tmp[src].back());
       std::swap(velocity[src][idx], velocity[src].back());
@@ -81,6 +92,8 @@ class blocks
       id[dest].push_back(id[src][idx]);
 
       RemoveParticle(src, idx);
+
+      parent->block_by_id_[id[dest].back()] = {dest, id[dest].size() - 1};
     }
     void AddParticle(
         size_t dest, // destination block
@@ -94,6 +107,12 @@ class blocks
       velocity_tmp[dest].push_back(vect::kNan);
       force[dest].push_back(vect::kNan);
       id[dest].push_back(particle_id);
+
+      const auto pid = id[dest].back();
+      if (parent->block_by_id_.size() <= pid) {
+        parent->block_by_id_.resize(pid + 1);
+      }
+      parent->block_by_id_[pid] = {dest, id[dest].size() - 1};
     }
   };
   void SetDomain(rect_vect proposal) {
@@ -121,7 +140,7 @@ class blocks
         vect((0.5 + m.i) * block_size_.x, (0.5 + m.j) * block_size_.y);
   }
   blocks(rect_vect domain, vect block_size) 
-      : num_particles_(0), num_per_cell_(0) {
+      : data_(this), num_particles_(0), num_per_cell_(0) {
     InitEmptyBlocks(domain, block_size);
   }
   size_t FindBlock(vect position) const {
@@ -164,6 +183,9 @@ class blocks
   }
   BlockData& GetData() {
     return data_;
+  }
+  const std::vector<std::pair<size_t, size_t>> GetBlockById() const {
+    return block_by_id_;
   }
   size_t GetNumBlocks() const {
     return num_blocks_;
@@ -214,6 +236,7 @@ class blocks
   mindex dims_;
   size_t num_blocks_;
   std::array<int, kNumNeighbors> neighbor_offsets_;
+  std::vector<std::pair<size_t, size_t>> block_by_id_;
   size_t num_particles_;
   size_t num_per_cell_;
   void InitEmptyBlocks(rect_vect domain, vect block_size) {
