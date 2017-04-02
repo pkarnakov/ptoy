@@ -27,6 +27,7 @@ GLdouble width, height;   /* window width and height */
 
 std::atomic<bool> flag_display;
 std::atomic<bool> quit;
+std::atomic<bool> pause;
 
 using std::cout;
 using std::endl;
@@ -39,6 +40,7 @@ void init()
   height = 800.0;                  /* within which we draw. */
 
   last_frame_game_time = 0.;
+  pause = false;
 }
 
 /* Callback functions for GLUT */
@@ -90,7 +92,9 @@ void display(void)
   
   const Scal game_rate_target = 10.;
   //const Scal game_rate_target = 1.;
-  next_game_time_target = new_frame_game_time + game_rate_target / fps;
+  if (!pause) {
+    next_game_time_target = new_frame_game_time + game_rate_target / fps;
+  }
 
   last_frame_time = new_frame_time;
   last_frame_game_time = new_frame_game_time;
@@ -138,7 +142,10 @@ void cycle()
   }
 
   while (!quit) { 
-    G->PS->step(next_game_time_target, quit);
+    G->PS->step(next_game_time_target, pause);
+    if (pause) {
+      std::this_thread::sleep_for(milliseconds(100));
+    }
   }
   std::cout << "Computation finished" << std::endl;
 }
@@ -236,6 +243,10 @@ int main() {
             std::cout 
               << (G->PS->GetGravity() ? "Gravity on" : "Gravity off")
               << std::endl;
+            break;
+          case 'p':
+          case ' ':
+            pause = !pause;
             break;
         }
       } else if (e.type == SDL_MOUSEMOTION) {
