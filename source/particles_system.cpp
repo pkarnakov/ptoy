@@ -47,8 +47,7 @@ particles_system::particles_system() :
 
   t = 0.0;
   dt = kTimeStep;
-  const Scal gravity = 10.;
-  g = vect(0.0, -1.0) * gravity;
+  g = vect(0.0, -1.0) * kGravity;
 
   SetDomain(domain);
   SetParticleBuffer();
@@ -88,6 +87,9 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       RHS(i);
     }
 
+    #pragma omp single
+    RHS_bonds();
+
     #pragma omp for 
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       auto& data = Blocks.GetData();
@@ -106,6 +108,9 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       RHS(i);
     }
+
+    #pragma omp single
+    RHS_bonds();
 
     #pragma omp for
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
@@ -390,6 +395,29 @@ void particles_system::UpdateEnvObj() {
         block_envobj_[i].push_back(k);
       }
     }
+  }
+}
+
+vect F12_bond(vect p1, vect p2) {
+  const Scal sigma = kSigma * 1e6;
+  const Scal R = 2. * kRadius;
+  const vect dp = p1 - p2;
+  const Scal r = dp.length();
+  const Scal k = (R - r) / R;
+
+  return dp * (sigma * k);
+}
+
+void particles_system::RHS_bonds() {
+  const auto& bbi = Blocks.GetBlockById();
+  auto& data = Blocks.GetData();
+  for (auto bond : bonds_) {
+    const auto& a = bbi[bond.first];
+    const auto& b = bbi[bond.second];
+    const auto f = F12_bond(data.position[a.first][a.second],
+                        data.position[b.first][b.second]);
+    data.force[a.first][a.second] += f;
+    data.force[b.first][b.second] -= f;
   }
 }
 

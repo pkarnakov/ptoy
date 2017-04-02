@@ -123,7 +123,7 @@ public:
     glLoadIdentity();
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
-    glLineWidth(5.0);
+    glLineWidth(3.0);
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
     for (auto bond : PS->GetBonds()) {

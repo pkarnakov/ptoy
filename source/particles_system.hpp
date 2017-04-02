@@ -26,6 +26,7 @@ const Scal kPointForce = 0.2;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
 const Scal kBlockSize = 4. * kRadius;
+const Scal kGravity = 10.;
 
 const int kParticleIdNone = -1;
 
@@ -159,6 +160,7 @@ class particles_system
   Scal dt;
   vect g;
   void RHS(size_t i);
+  void RHS_bonds();
   vector<std::unique_ptr<env_object>> ENVOBJ;
   std::vector<std::vector<size_t>> block_envobj_;
   vect force_center;
