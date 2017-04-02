@@ -87,8 +87,11 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       RHS(i);
     }
 
-    #pragma omp single
-    RHS_bonds();
+    #pragma omp single 
+    {
+      RHS_bonds();
+      ApplyFrozen();
+    }
 
     #pragma omp for 
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
@@ -109,8 +112,11 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       RHS(i);
     }
 
-    #pragma omp single
-    RHS_bonds();
+    #pragma omp single 
+    {
+      RHS_bonds();
+      ApplyFrozen();
+    }
 
     #pragma omp for
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
@@ -494,6 +500,17 @@ void particles_system::RHS_bonds() {
                         data.position[b.first][b.second]);
     data.force[a.first][a.second] += f;
     data.force[b.first][b.second] -= f;
+  }
+}
+
+void particles_system::ApplyFrozen() {
+  const auto& bbi = Blocks.GetBlockById();
+  auto& data = Blocks.GetData();
+  for (int id : frozen_) {
+    const auto i = bbi[id].first;
+    const auto p = bbi[id].second;
+    data.velocity[i][p] *= 0.;
+    data.force[i][p] *= 0.;
   }
 }
 

@@ -181,6 +181,7 @@ class particles_system
   vect g;
   void RHS(size_t i);
   void RHS_bonds();
+  void ApplyFrozen();
   vector<std::unique_ptr<env_object>> ENVOBJ;
   std::vector<std::vector<size_t>> block_envobj_;
   vect force_center;

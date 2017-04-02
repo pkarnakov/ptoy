@@ -281,6 +281,9 @@ int main() {
           case MouseState::Bonds:
             G->PS->BondsStart(GetDomainMousePosition());
             break;
+          case MouseState::Pick:
+            G->PS->PickStart(GetDomainMousePosition());
+            break;
           case MouseState::Freeze:
             G->PS->FreezeStart(GetDomainMousePosition());
             break;
@@ -294,6 +297,9 @@ int main() {
             break;
           case MouseState::Bonds:
             G->PS->BondsStop(GetDomainMousePosition());
+            break;
+          case MouseState::Pick:
+            G->PS->PickStop(GetDomainMousePosition());
             break;
           case MouseState::Freeze:
             G->PS->FreezeStop(GetDomainMousePosition());
