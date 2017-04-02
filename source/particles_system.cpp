@@ -4,8 +4,6 @@ particles_system::particles_system() :
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
     Blocks(domain, vect(4*kRadius, 4*kRadius))
 {
-  std::lock_guard<std::mutex> lg(m_step);
-
   force_enabled = false;
   force_center = vect(0., 0.);
 
@@ -46,14 +44,20 @@ particles_system::particles_system() :
 
   Blocks.AddParticles(position, velocity, id);
 
-  t=0.0;
-  dt=kTimeStep;
+  t = 0.0;
+  dt = kTimeStep;
   const Scal gravity = 10.;
-  g=vect(0.0, -1.0) * gravity;
+  g = vect(0.0, -1.0) * gravity;
+
+  SetDomain(domain);
+  resize_queue_ = domain;
+  ResetEnvObjFrame(domain);
 }
 particles_system::~particles_system() {}
-std::vector<particle> particles_system::GetParticles() {
-  //std::lock_guard<std::mutex> lg(m_step);
+const std::vector<particle>& particles_system::GetParticles() {
+  return particle_buffer_;
+}
+void particles_system::SetParticleBuffer() {
   std::vector<particle> res;
   for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
     const auto& data = Blocks.GetData();
@@ -63,7 +67,7 @@ std::vector<particle> particles_system::GetParticles() {
           0.01, kRadius, kSigma, 0x1, rgb(1., 0., 0.)));
     }
   }
-  return res;
+  particle_buffer_ = res;
 }
 void particles_system::AddEnvObj(env_object* env) {
   ENVOBJ.push_back(std::unique_ptr<env_object>(env));
@@ -75,8 +79,6 @@ void particles_system::status(std::ostream& out)
 }
 void particles_system::step(Scal time_target)
 {
-  std::lock_guard<std::mutex> lg(m_step);
-
   #pragma omp parallel
   {
 
@@ -122,6 +124,25 @@ void particles_system::step(Scal time_target)
 
     #pragma omp single
     {
+      auto limited = [](Scal& current, const Scal target) {
+        const Scal limit = 0.02;
+        current = std::min(current + limit,
+                           std::max(current - limit, target));
+      };
+
+      rect_vect new_domain = domain;
+      limited(new_domain.A.x, resize_queue_.A.x);
+      limited(new_domain.A.y, resize_queue_.A.y);
+      limited(new_domain.B.x, resize_queue_.B.x);
+      limited(new_domain.B.y, resize_queue_.B.y);
+
+      if (int(t / dt) % int(0.01 / dt) == 0) {
+        if (new_domain != domain) {
+          SetDomain(new_domain);
+          ResetEnvObjFrame(new_domain);
+        }
+      }
+      SetParticleBuffer();
       t += 0.5 * dt;
       Blocks.SortParticles();
     }
@@ -301,6 +322,7 @@ void TestUni() {
 
 
 void particles_system::UpdateEnvObj() { 
+  block_envobj_.clear();
   block_envobj_.resize(Blocks.GetNumBlocks());
   for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
     for (size_t k = 0; k < ENVOBJ.size(); ++k) {

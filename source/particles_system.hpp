@@ -90,31 +90,27 @@ class particles_system
  public:
   particles_system(); 
   ~particles_system();
-  std::vector<particle> GetParticles();
+  const std::vector<particle>& GetParticles();
+  void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
   void UpdateEnvObj();
+  void ResetEnvObjFrame(rect_vect new_domain) {
+    const vect A = new_domain.A, B = new_domain.B;
+    ClearEnvObj();
+    //std::cout << "envobj:" << domain.A << " " << domain.B << std::endl;
+    AddEnvObj(new line(vect(A.x, A.y), vect(B.x, A.y)));
+    AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y)));
+    AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y)));
+    AddEnvObj(new line(vect(B.x, A.y), vect(B.x, B.y)));
+    UpdateEnvObj();
+  }
   void SetDomain(rect_vect new_domain) { 
-    std::lock_guard<std::mutex> lg(m_step);
-    domain = new_domain; 
-    // TODO: window resize
-
-    const auto& data = Blocks.GetData();
-    ArrayVect position;
-    ArrayVect velocity;
-    std::vector<int> id;
-    for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
-      position.insert(position.end(), 
-                      data.position[i].begin(), data.position[i].end()); 
-      velocity.insert(velocity.end(), 
-                      data.velocity[i].begin(), data.velocity[i].end()); 
-      id.insert(id.end(), 
-                data.id[i].begin(), data.id[i].end()); 
-    }
-
-    Blocks = blocks(domain, vect(4 * kRadius, 4 * kRadius));  
-    Blocks.AddParticles(position, velocity, id);
-    //Blocks.SetDomain(domain);
+    domain = new_domain;
+    Blocks.SetDomain(domain);
+  }
+  void PushResize(rect_vect new_domain) {
+    resize_queue_ = new_domain;
   }
   void status(std::ostream& out);
   void step(Scal time_target);
@@ -123,10 +119,7 @@ class particles_system
   void SetForce(bool enabled);
   Scal GetTime() const { return t; }
   rect_vect GetDomain() const { return domain; }
-  mutable std::mutex m_ENVOBJ;
-  mutable std::mutex m_step;
   size_t GetNumParticles() const { 
-    //std::lock_guard<std::mutex> lg(m_step);
     return Blocks.GetNumParticles(); 
   }
   size_t GetNumPerCell() const {
@@ -135,6 +128,7 @@ class particles_system
 
  private:
   rect_vect domain;
+  rect_vect resize_queue_;
   blocks Blocks;
   Scal t;
   Scal dt;
@@ -144,5 +138,6 @@ class particles_system
   std::vector<std::vector<size_t>> block_envobj_;
   vect force_center;
   bool force_enabled;
+  std::vector<particle> particle_buffer_;
 };
 

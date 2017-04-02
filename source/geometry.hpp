@@ -65,6 +65,9 @@ public:
   {
     return (v-*this).length();
   }
+  bool operator==(vect other) const {
+    return x == other.x && y == other.y;
+  }
 };
 
 class mindex
@@ -92,9 +95,16 @@ class rect_vect
 public:
   vect A,B;
   rect_vect(vect _A, vect _B) : A(_A), B(_B) {;}
+  rect_vect() = default;
   vect size() const
   {
     return B-A;
+  }
+  bool operator==(const rect_vect& other) const {
+    return A == other.A && B == other.B;
+  }
+  bool operator!=(const rect_vect& other) const {
+    return !(other == *this);
   }
 };
 

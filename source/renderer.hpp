@@ -20,7 +20,12 @@ public:
 
 class renderer_opengl : public renderer
 {
+  int width_, height_;
 public:
+  void SetWindowSize(int width, int height) {
+    width_ = width;
+    height_ = height;
+  }
   void draw_circle(Scal x, Scal y, Scal r, rgb color)
   {
     glColor3f(color.r, color.g, color.b);
@@ -78,8 +83,8 @@ public:
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    rect_vect R = PS->GetDomain();
-    glOrtho(R.A.x, R.B.x, R.A.y, R.B.y, -1.f, 1.f);
+    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     auto particles = PS->GetParticles();
     for(std::size_t k=0; k<particles.size(); ++k)
     {
@@ -100,14 +105,16 @@ public:
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     rect_vect R = PS->GetDomain();
     glLineWidth(5.0);
-    vect A = R.A;
-    vect B = R.B;
-    draw_line(vect(A.x,A.y), vect(B.x,A.y));
-    draw_line(vect(A.x,B.y), vect(B.x,B.y));
-    draw_line(vect(A.x,A.y), vect(A.x,B.y));
-    draw_line(vect(B.x,A.y), vect(B.x,B.y));
+    vect dA = R.A;
+    vect dB = R.B;
+    draw_line(vect(dA.x,dA.y), vect(dB.x,dA.y));
+    draw_line(vect(dA.x,dB.y), vect(dB.x,dB.y));
+    draw_line(vect(dA.x,dA.y), vect(dA.x,dB.y));
+    draw_line(vect(dB.x,dA.y), vect(dB.x,dB.y));
     glPopMatrix();
   }
   renderer_opengl(particles_system* _PS) : renderer(_PS)

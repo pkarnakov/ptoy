@@ -12,28 +12,20 @@ class game
 {
 public:
   std::unique_ptr<particles_system> PS;
-  std::unique_ptr<renderer> R;
+  std::unique_ptr<renderer_opengl> R;
+  int width_;
+  int height_;
   game(int width, int height)
   {
     PS=std::unique_ptr<particles_system>(new particles_system);
-    R=std::unique_ptr<renderer>(new renderer_opengl(PS.get()));
+    R=std::unique_ptr<renderer_opengl>(new renderer_opengl(PS.get()));
     SetWindowSize(width, height);
   }
   void SetWindowSize(int width, int height) {
+    width_ = width;
+    height_ = height;
     vect A(-1.,-1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
-    rect_vect R(A, B);
-
-    std::lock_guard<std::mutex> lg(PS->m_ENVOBJ);
-
-    PS->SetDomain(R);
-
-    // place env_objects
-    PS->ClearEnvObj();
-    PS->AddEnvObj(new line(vect(A.x, A.y), vect(B.x, A.y)));
-    PS->AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y)));
-    PS->AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y)));
-    PS->AddEnvObj(new line(vect(B.x, A.y), vect(B.x, B.y)));
-
-    PS->UpdateEnvObj();
+    PS->PushResize(rect_vect(A, B));
+    R->SetWindowSize(width, height);
   }
 };
