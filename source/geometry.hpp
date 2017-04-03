@@ -68,6 +68,10 @@ public:
   bool operator==(vect other) const {
     return x == other.x && y == other.y;
   }
+  vect GetNormalized() const {
+    const Scal len = length();
+    return vect(x / len, y / len);
+  }
 };
 
 class mindex

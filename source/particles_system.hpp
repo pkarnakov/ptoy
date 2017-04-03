@@ -24,7 +24,7 @@ const Scal kRadius = 0.02;
 const Scal kSigma = 0.5;
 const Scal kMass = kRadius * kRadius * 100.;
 const Scal kPointForce = 0.1;
-const Scal kPointForceAttractive = 1.1;
+const Scal kPointForceAttractive = 0.1;
 const Scal kDissipation = 0.01;
 const Scal kTimeStep = 0.0003;
 const Scal kBlockSize = 4. * kRadius;
@@ -104,6 +104,7 @@ class particles_system
   const std::vector<PortalPair>& GetPortals() const {
     return portals_;
   }
+  void ApplyPortals();
   void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }

@@ -10,8 +10,9 @@ particles_system::particles_system() :
 
   // place particles in the domain
   const Scal r = kRadius;
-  const int row=1. / r;
-  const int N=row * row;
+  const int row = 1. / r;
+  const int col = 0.5 / r;
+  const int N = row * col;
 
   std::vector<particle> P;
   for(int i=0; i<N; ++i)
@@ -135,6 +136,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
 
     #pragma omp single
     {
+      // Resize the frame if needed (with a limited speed)
       auto limited = [](Scal& current, const Scal target) {
         const Scal limit = 0.02;
         current = std::min(current + limit,
@@ -153,17 +155,24 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
           ResetEnvObjFrame(new_domain);
         }
       }
+
       Blocks.SortParticles();
+      ApplyPortals();
+
+      // Pass the data to renderer if ready
       if (renderer_ready_for_next_) {
         std::lock_guard<std::mutex> lg(m_buffer_);
         SetParticleBuffer();
         renderer_ready_for_next_ = false;
       }
+
+      // Advance in time (another half)
       t += 0.5 * dt;
     }
   }
   }
 }
+
 void particles_system::SetForce(vect center, bool enabled) {
   force_center = center;
   force_enabled = enabled;
@@ -209,6 +218,64 @@ void particles_system::PickStop(vect) {
     return;
   }
   pick_enabled_ = false;
+}
+
+void particles_system::ApplyPortals() {
+  // Assume that the particles have just been moved 
+  // with their velocity
+  // so that (position - dt * velocity) is the previous position
+  
+  for (auto portal : portals_) {
+    bool moved = false;
+    for (int d = 0; d <= 1; ++d) {
+      vect a = portal.first_begin;
+      vect b = portal.first_end;
+      vect other_a = portal.second_begin;
+      vect other_b = portal.second_end;
+      if (d == 1) {
+        std::swap(a, other_a);
+        std::swap(b, other_b);
+      }
+
+      const vect r = b - a; 
+      const vect n = vect(-r.y, r.x).GetNormalized();
+      const vect other_r = other_b - other_a;
+      const vect other_n = vect(-other_r.y, other_r.x).GetNormalized();
+      auto& data = Blocks.GetData();
+      for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+        for (size_t p = 0; p < data.position[i].size(); ++p) {
+          const vect prev = data.position[i][p] - data.velocity[i][p] * dt;
+          Scal lambda_prev = r.dot(prev - a) / r.dot(r);
+          const vect curr = data.position[i][p];
+          Scal lambda_curr = r.dot(curr - a) / r.dot(r);
+
+          if (!moved && (prev - a).dot(n) * (curr - a).dot(n) < 0.) {
+            if (lambda_prev > 0. && lambda_prev < 1. &&
+                lambda_curr > 0. && lambda_prev < 1.) {
+              // Transfer to the other portal
+              // TODO: revise the variable names
+              const vect q_curr = a + r * lambda_curr;
+              const vect q_prev = a + r * lambda_prev;
+              const vect other_q_curr = other_a + other_r * lambda_curr;
+              const vect other_q_prev = other_a + other_r * lambda_prev;
+              const Scal offset_curr = (curr - q_curr).dot(n);
+              const Scal offset_prev = (prev - q_prev).dot(n);
+              const vect other_pos_curr = 
+                  other_q_curr + other_n * offset_curr;
+              const vect other_pos_prev =
+                  other_q_prev + other_n * offset_prev;
+              data.position[i][p] = other_pos_curr;
+              data.velocity[i][p] = 
+                  (other_pos_curr - other_pos_prev) * (1. / dt);
+
+              moved = true;
+            }
+          }
+        }
+      }
+    }
+
+  }
 }
 
 void particles_system::PortalStart(vect point) {
@@ -564,7 +631,7 @@ void particles_system::RHS(size_t i)
       const vect r = x - force_center; 
       if (r.length() > kRadius) {
         if (force_attractive_) {
-          f += r * (-kPointForceAttractive / std::pow(r.length(), 2));
+          f += r * (-kPointForceAttractive / std::pow(r.length(), 3));
         } else {
           f += r * (kPointForce / std::pow(r.length(), 4));
         }
