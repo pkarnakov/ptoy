@@ -101,6 +101,9 @@ class particles_system
     vect first_begin, first_end;
     vect second_begin, second_end;
   };
+  const std::vector<PortalPair>& GetPortals() const {
+    return portals_;
+  }
   void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }

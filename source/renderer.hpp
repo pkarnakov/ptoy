@@ -50,23 +50,23 @@ public:
 
     glEnd();
   }
-  void draw_circle(vect c, Scal r, rgb color)
-  {
+  void draw_circle(vect c, Scal r, rgb color) {
     draw_circle(c.x, c.y, r, color);
   }
-  void draw_circle(mindex c, int r, rgb color)
-  {
+  void draw_circle(mindex c, int r, rgb color) {
     draw_circle(c.i, c.j, r, color);
   }
-  void draw_line(vect A, vect B)
-  {
-    glColor3f(1., 1., 1.);
-    glBegin( GL_LINES ); // OR GL_LINE_LOOP
+  void draw_line(vect A, vect B, rgb color) {
+    glColor3f(color.r, color.g, color.b);
+    glBegin(GL_LINES); // OR GL_LINE_LOOP
 
     glVertex2f(A.x, A.y);
     glVertex2f(B.x, B.y);
 
     glEnd();
+  }
+  void draw_line(vect A, vect B) {
+    draw_line(A, B, rgb(1., 1., 1.));
   }
   void draw_line(mindex A, mindex B)
   {
@@ -154,11 +154,26 @@ public:
     }
     glPopMatrix();
   }
+  void DrawPortals() {
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
+    glLineWidth(3.0);
+    const auto& portals = PS->GetPortals();
+    for (auto portal : portals) {
+      draw_line(portal.first_begin, portal.first_end, rgb(0., .5, 1.));
+      draw_line(portal.second_begin, portal.second_end, rgb(1., .5, 0.));
+    }
+    glPopMatrix();
+  }
   void DrawAll() {
     draw_particles();
     draw_frame();
     DrawBonds();
     DrawFrozen();
+    DrawPortals();
   }
   renderer_opengl(particles_system* _PS) : renderer(_PS)
   {

@@ -204,7 +204,7 @@ void particles_system::PickMove(vect point) {
   pick_pointer_ = point;
 }
 
-void particles_system::PickStop(vect point) {
+void particles_system::PickStop(vect) {
   if (!pick_enabled_) {
     return;
   }
