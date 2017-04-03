@@ -97,6 +97,10 @@ class particles_system
  public:
   particles_system(); 
   ~particles_system();
+  struct PortalPair {
+    vect first_begin, first_end;
+    vect second_begin, second_end;
+  };
   void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
@@ -141,6 +145,9 @@ class particles_system
   void PickStart(vect point);
   void PickMove(vect point);
   void PickStop(vect point);
+  void PortalStart(vect point);
+  void PortalMove(vect point);
+  void PortalStop(vect point);
   Scal GetTime() const { return t; }
   size_t GetNumSteps() const { return static_cast<size_t>(t / dt); } 
   rect_vect GetDomain() const { return domain; }
@@ -172,6 +179,7 @@ class particles_system
   }
 
   mutable std::mutex m_buffer_;
+
  private:
   rect_vect domain;
   rect_vect resize_queue_;
@@ -200,5 +208,9 @@ class particles_system
   bool freeze_enabled_ = false;
   int freeze_last_id_;
   bool renderer_ready_for_next_ = true;
+  bool portal_enabled_ = false;
+  int portal_stage_ = 0;
+  vect portal_begin_;
+  std::vector<PortalPair> portals_;
 };
 

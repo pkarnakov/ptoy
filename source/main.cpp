@@ -207,7 +207,7 @@ int main() {
   //Event handler
   SDL_Event e;
 
-  enum class MouseState {None, Force, Bonds, Pick, Freeze};
+  enum class MouseState {None, Force, Bonds, Pick, Freeze, Portal};
   MouseState mouse_state = MouseState::Force;
 
   //While application is running
@@ -246,6 +246,10 @@ int main() {
             mouse_state = MouseState::Bonds;
             std::cout << "Mouse switched to Bonds mode" << std::endl;
             break;
+          case 'o':
+            mouse_state = MouseState::Portal;
+            std::cout << "Mouse switched to Portal mode" << std::endl;
+            break;
           case 'g':
             G->PS->InvertGravity();
             std::cout 
@@ -270,6 +274,9 @@ int main() {
           case MouseState::Freeze:
             G->PS->FreezeMove(GetDomainMousePosition());
             break;
+          case MouseState::Portal:
+            G->PS->PortalMove(GetDomainMousePosition());
+            break;
           case MouseState::None:
             break;
         }
@@ -287,6 +294,9 @@ int main() {
           case MouseState::Freeze:
             G->PS->FreezeStart(GetDomainMousePosition());
             break;
+          case MouseState::Portal:
+            G->PS->PortalStart(GetDomainMousePosition());
+            break;
           case MouseState::None:
             break;
         }
@@ -303,6 +313,9 @@ int main() {
             break;
           case MouseState::Freeze:
             G->PS->FreezeStop(GetDomainMousePosition());
+            break;
+          case MouseState::Portal:
+            G->PS->PortalStop(GetDomainMousePosition());
             break;
           case MouseState::None:
             break;

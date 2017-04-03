@@ -211,6 +211,35 @@ void particles_system::PickStop(vect point) {
   pick_enabled_ = false;
 }
 
+void particles_system::PortalStart(vect point) {
+  portal_enabled_ = true;
+  portal_begin_ = point;
+}
+
+void particles_system::PortalMove(vect) {
+  if (!portal_enabled_) {
+    return;
+  }
+}
+
+void particles_system::PortalStop(vect point) {
+  if (!portal_enabled_) {
+    return;
+  }
+  portal_enabled_ = false;
+  if (portal_stage_ == 0) {
+    PortalPair tmp;
+    tmp.first_begin = portal_begin_;
+    tmp.first_end = point;
+    portals_.push_back(tmp);
+    portal_stage_ = 1;
+  } else {
+    portals_.back().second_begin = portal_begin_;
+    portals_.back().second_end = point;
+    portal_stage_ = 0;
+  }
+}
+
 void particles_system::BondsStart(vect point) {
   bonds_enabled_ = true;
   int id = kParticleIdNone;
@@ -255,7 +284,7 @@ void particles_system::BondsMove(vect point) {
   }
 }
 
-void particles_system::BondsStop(vect point) {
+void particles_system::BondsStop(vect) {
   if (!bonds_enabled_) {
     return;
   }
@@ -297,7 +326,7 @@ void particles_system::FreezeMove(vect point) {
   }
 }
 
-void particles_system::FreezeStop(vect point) {
+void particles_system::FreezeStop(vect) {
   if (!freeze_enabled_) {
     return;
   }
