@@ -98,11 +98,11 @@ class particles_system
  public:
   particles_system(); 
   ~particles_system();
-  struct PortalPair {
-    vect first_begin, first_end;
-    vect second_begin, second_end;
+  struct Portal {
+    vect begin, end;
+    std::vector<size_t> blocks;
   };
-  const std::vector<PortalPair>& GetPortals() const {
+  const std::vector<std::pair<Portal, Portal>>& GetPortals() const {
     return portals_;
   }
   void ApplyPortals();
@@ -218,6 +218,6 @@ class particles_system
   int portal_stage_ = 0;
   vect portal_begin_;
   std::pair<vect, vect> portal_prev_;
-  std::vector<PortalPair> portals_;
+  std::vector<std::pair<Portal, Portal>> portals_;
 };
 

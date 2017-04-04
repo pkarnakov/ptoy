@@ -162,9 +162,9 @@ public:
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     glLineWidth(3.0);
     const auto& portals = PS->GetPortals();
-    for (auto portal : portals) {
-      draw_line(portal.first_begin, portal.first_end, rgb(0., .5, 1.));
-      draw_line(portal.second_begin, portal.second_end, rgb(1., .5, 0.));
+    for (auto& pair : portals) {
+      draw_line(pair.first.begin, pair.first.end, rgb(0., .5, 1.));
+      draw_line(pair.second.begin, pair.second.end, rgb(1., .5, 0.));
     }
     glPopMatrix();
   }

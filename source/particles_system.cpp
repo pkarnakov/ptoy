@@ -227,12 +227,12 @@ void particles_system::ApplyPortalsForces() {
   // with their velocity
   // so that (position - dt * velocity) is the previous position
   
-  for (auto portal : portals_) {
+  for (auto& pair : portals_) {
     for (int d = 0; d <= 1; ++d) {
-      vect a = portal.first_begin;
-      vect b = portal.first_end;
-      vect other_a = portal.second_begin;
-      vect other_b = portal.second_end;
+      vect a = pair.first.begin;
+      vect b = pair.first.end;
+      vect other_a = pair.second.begin;
+      vect other_b = pair.second.end;
       if (d == 1) {
         std::swap(a, other_a);
         std::swap(b, other_b);
@@ -247,11 +247,12 @@ void particles_system::ApplyPortalsForces() {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
           const vect curr = data.position[i][p];
           Scal lambda_curr = r.dot(curr - a) / r.dot(r);
+          const vect q_curr = a + r * lambda_curr;
+          const Scal offset_curr = (curr - q_curr).dot(n);
 
           // Check particle forces
-          if (lambda_curr > 0. && lambda_curr < 1.) {
-            const vect q_curr = a + r * lambda_curr;
-            const Scal offset_curr = (curr - q_curr).dot(n);
+          if (lambda_curr > 0. && lambda_curr < 1. 
+              && std::abs(offset_curr) < kRadius) {
             for (size_t j = 0; j < Blocks.GetNumBlocks(); ++j) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
@@ -293,13 +294,13 @@ void particles_system::ApplyPortals() {
   // with their velocity
   // so that (position - dt * velocity) is the previous position
   
-  for (auto portal : portals_) {
+  for (auto& pair : portals_) {
     bool moved = false;
     for (int d = 0; d <= 1; ++d) {
-      vect a = portal.first_begin;
-      vect b = portal.first_end;
-      vect other_a = portal.second_begin;
-      vect other_b = portal.second_end;
+      vect a = pair.first.begin;
+      vect b = pair.first.end;
+      vect other_a = pair.second.begin;
+      vect other_b = pair.second.end;
       if (d == 1) {
         std::swap(a, other_a);
         std::swap(b, other_b);
@@ -368,15 +369,15 @@ void particles_system::PortalStop(vect point) {
     portal_prev_.second = point;
     portal_stage_ = 1;
   } else {
-    PortalPair tmp;
-    tmp.first_begin = portal_prev_.first;
-    tmp.first_end = portal_prev_.second;
-    tmp.second_begin = portal_begin_;
-    tmp.second_end = point;
-    tmp.second_end = tmp.second_begin +  
-        (tmp.second_end - tmp.second_begin).GetNormalized() * 
-        tmp.first_begin.dist(tmp.first_end);
-    portals_.push_back(tmp);
+    std::pair<Portal, Portal> pair;
+    pair.first.begin = portal_prev_.first;
+    pair.first.end = portal_prev_.second;
+    pair.second.begin = portal_begin_;
+    pair.second.end = point;
+    pair.second.end = pair.second.begin +
+        (pair.second.end - pair.second.begin).GetNormalized() *
+        pair.first.begin.dist(pair.first.end);
+    portals_.push_back(pair);
     portal_stage_ = 0;
   }
 }
