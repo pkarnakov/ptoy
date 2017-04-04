@@ -59,6 +59,7 @@ struct alignas(64) particle
 };
 
 vect F12(vect p1, vect v1, vect p2, vect v2, Scal sigma, Scal R);
+vect F12(vect p1, vect v1);
 
 class env_object
 {
@@ -105,6 +106,7 @@ class particles_system
     return portals_;
   }
   void ApplyPortals();
+  void ApplyPortalsForces();
   void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
@@ -215,6 +217,7 @@ class particles_system
   bool portal_enabled_ = false;
   int portal_stage_ = 0;
   vect portal_begin_;
+  std::pair<vect, vect> portal_prev_;
   std::vector<PortalPair> portals_;
 };
 

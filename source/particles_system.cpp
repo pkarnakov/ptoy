@@ -91,6 +91,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
     #pragma omp single 
     {
       RHS_bonds();
+      ApplyPortalsForces();
       ApplyFrozen();
     }
 
@@ -116,6 +117,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
     #pragma omp single 
     {
       RHS_bonds();
+      ApplyPortalsForces();
       ApplyFrozen();
     }
 
@@ -220,6 +222,72 @@ void particles_system::PickStop(vect) {
   pick_enabled_ = false;
 }
 
+void particles_system::ApplyPortalsForces() {
+  // Assume that the particles have just been moved 
+  // with their velocity
+  // so that (position - dt * velocity) is the previous position
+  
+  for (auto portal : portals_) {
+    for (int d = 0; d <= 1; ++d) {
+      vect a = portal.first_begin;
+      vect b = portal.first_end;
+      vect other_a = portal.second_begin;
+      vect other_b = portal.second_end;
+      if (d == 1) {
+        std::swap(a, other_a);
+        std::swap(b, other_b);
+      }
+
+      const vect r = b - a; 
+      const vect n = vect(-r.y, r.x).GetNormalized();
+      const vect other_r = other_b - other_a;
+      const vect other_n = vect(-other_r.y, other_r.x).GetNormalized();
+      auto& data = Blocks.GetData();
+      for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+        for (size_t p = 0; p < data.position[i].size(); ++p) {
+          const vect curr = data.position[i][p];
+          Scal lambda_curr = r.dot(curr - a) / r.dot(r);
+
+          // Check particle forces
+          if (lambda_curr > 0. && lambda_curr < 1.) {
+            const vect q_curr = a + r * lambda_curr;
+            const Scal offset_curr = (curr - q_curr).dot(n);
+            for (size_t j = 0; j < Blocks.GetNumBlocks(); ++j) {
+              for (size_t q = 0; q < data.position[j].size(); ++q) {
+                const vect neighbor = data.position[j][q];
+                Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
+                const vect q_neighbor = a + r * lambda_neighbor;
+                const Scal offset_neighbor = (neighbor - q_neighbor).dot(n);
+                if (lambda_neighbor > 0. && lambda_neighbor < 1.) {
+                  if (offset_neighbor * offset_curr < 0.) {
+                    data.force[i][p] -= F12(curr, neighbor);
+                  }
+                }
+
+                Scal other_lambda_neighbor = 
+                    other_r.dot(neighbor - other_a) / other_r.dot(other_r);
+                const vect other_q_neighbor = 
+                    other_a + other_r * other_lambda_neighbor;
+                const Scal other_offset_neighbor = 
+                    (neighbor - other_q_neighbor).dot(other_n);
+                if (other_lambda_neighbor > 0. && 
+                    other_lambda_neighbor < 1.) {
+                  if (other_offset_neighbor * offset_curr < 0.) {
+                    data.force[i][p] += 
+                        F12(curr, 
+                            a + r * other_lambda_neighbor + 
+                            n * other_offset_neighbor);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+  }
+}
 void particles_system::ApplyPortals() {
   // Assume that the particles have just been moved 
   // with their velocity
@@ -249,9 +317,10 @@ void particles_system::ApplyPortals() {
           const vect curr = data.position[i][p];
           Scal lambda_curr = r.dot(curr - a) / r.dot(r);
 
+          // Check if the particle has crossed the portal line
           if (!moved && (prev - a).dot(n) * (curr - a).dot(n) < 0.) {
             if (lambda_prev > 0. && lambda_prev < 1. &&
-                lambda_curr > 0. && lambda_prev < 1.) {
+                lambda_curr > 0. && lambda_curr < 1.) {
               // Transfer to the other portal
               // TODO: revise the variable names
               const vect q_curr = a + r * lambda_curr;
@@ -295,14 +364,16 @@ void particles_system::PortalStop(vect point) {
   }
   portal_enabled_ = false;
   if (portal_stage_ == 0) {
-    PortalPair tmp;
-    tmp.first_begin = portal_begin_;
-    tmp.first_end = point;
-    portals_.push_back(tmp);
+    portal_prev_.first = portal_begin_;
+    portal_prev_.second = point;
     portal_stage_ = 1;
   } else {
-    portals_.back().second_begin = portal_begin_;
-    portals_.back().second_end = point;
+    PortalPair tmp;
+    tmp.first_begin = portal_prev_.first;
+    tmp.first_end = portal_prev_.second;
+    tmp.second_begin = portal_begin_;
+    tmp.second_end = point;
+    portals_.push_back(tmp);
     portal_stage_ = 0;
   }
 }
@@ -410,7 +481,7 @@ vect F12(vect p1, vect p2)
   const Scal d2 = ad2 * (R * R);
   const Scal d6 = d2 * d2 * d2;
   const Scal d12 = d6 * d6;
-  return r * (sigma * (d12 - d6) * ad2);
+  return r * std::max<Scal>(0., sigma * (d12 - d6) * ad2);
 }
 
 template <bool ApplyThreshold=true>
