@@ -351,12 +351,15 @@ void particles_system::ApplyPortals() {
 void particles_system::PortalStart(vect point) {
   portal_enabled_ = true;
   portal_begin_ = point;
+  portal_current_ = point;
+  portal_mouse_moving_ = true;
 }
 
-void particles_system::PortalMove(vect) {
+void particles_system::PortalMove(vect point) {
   if (!portal_enabled_) {
     return;
   }
+  portal_current_ = point;
 }
 
 void particles_system::PortalStop(vect point) {
@@ -364,6 +367,7 @@ void particles_system::PortalStop(vect point) {
     return;
   }
   portal_enabled_ = false;
+  portal_mouse_moving_ = false;
   if (portal_stage_ == 0) {
     portal_prev_.first = portal_begin_;
     portal_prev_.second = point;

@@ -215,8 +215,11 @@ class particles_system
   int freeze_last_id_;
   bool renderer_ready_for_next_ = true;
   bool portal_enabled_ = false;
+ public:
   int portal_stage_ = 0;
+  bool portal_mouse_moving_ = false;
   vect portal_begin_;
+  vect portal_current_;
   std::pair<vect, vect> portal_prev_;
   std::vector<std::pair<Portal, Portal>> portals_;
 };
