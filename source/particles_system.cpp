@@ -229,17 +229,19 @@ void particles_system::ApplyPortalsForces() {
   
   for (auto& pair : portals_) {
     for (int d = 0; d <= 1; ++d) {
-      vect a = pair[d].begin;
-      vect b = pair[d].end;
-      vect other_a = pair[1-d].begin;
-      vect other_b = pair[1-d].end;
+      auto& portal = pair[d];
+      auto& other = pair[1-d];
+      vect a = portal.begin;
+      vect b = portal.end;
+      vect other_a = other.begin;
+      vect other_b = other.end;
 
       const vect r = b - a; 
       const vect n = vect(-r.y, r.x).GetNormalized();
       const vect other_r = other_b - other_a;
       const vect other_n = vect(-other_r.y, other_r.x).GetNormalized();
       auto& data = Blocks.GetData();
-      for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+      for (size_t i : portal.blocks) {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
           const vect curr = data.position[i][p];
           Scal lambda_curr = r.dot(curr - a) / r.dot(r);
@@ -247,9 +249,8 @@ void particles_system::ApplyPortalsForces() {
           const Scal offset_curr = (curr - q_curr).dot(n);
 
           // Check particle forces
-          if (lambda_curr > 0. && lambda_curr < 1. 
-              && std::abs(offset_curr) < kRadius) {
-            for (size_t j = 0; j < Blocks.GetNumBlocks(); ++j) {
+          if (lambda_curr > 0. && lambda_curr < 1.) {
+            for (size_t j : other.blocks) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
                 Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
@@ -293,17 +294,19 @@ void particles_system::ApplyPortals() {
   for (auto& pair : portals_) {
     bool moved = false;
     for (int d = 0; d <= 1; ++d) {
-      vect a = pair[d].begin;
-      vect b = pair[d].end;
-      vect other_a = pair[1-d].begin;
-      vect other_b = pair[1-d].end;
+      auto& portal = pair[d];
+      auto& other = pair[1-d];
+      vect a = portal.begin;
+      vect b = portal.end;
+      vect other_a = other.begin;
+      vect other_b = other.end;
 
       const vect r = b - a; 
       const vect n = vect(-r.y, r.x).GetNormalized();
       const vect other_r = other_b - other_a;
       const vect other_n = vect(-other_r.y, other_r.x).GetNormalized();
       auto& data = Blocks.GetData();
-      for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+      for (size_t i : portal.blocks) {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
           const vect prev = data.position[i][p] - data.velocity[i][p] * dt;
           Scal lambda_prev = r.dot(prev - a) / r.dot(r);
