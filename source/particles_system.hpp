@@ -101,6 +101,20 @@ class particles_system
   struct Portal {
     vect begin, end;
     std::vector<size_t> blocks;
+    vect GetNearest(vect p) {
+      const vect A = begin, B = end;
+      vect Q;
+      Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
+      if (lambda > 0. && lambda < 1.) {
+        Q = A + (B-A) * lambda;
+      } else {
+        Q = (p.dist(A) < p.dist(B)) ? A : B;
+      }
+      return Q;
+    }
+    bool IsClose(vect p, Scal R) {
+      return GetNearest(p).dist(p) < R + kRadius;
+    }
   };
   const std::vector<std::array<Portal, 2>>& GetPortals() const {
     return portals_;

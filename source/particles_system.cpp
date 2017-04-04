@@ -377,7 +377,13 @@ void particles_system::PortalStop(vect point) {
     portal_stage_ = 0;
 
     for (auto& portal : portals_.back()) {
-
+      for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+        if (portal.IsClose(Blocks.GetCenter(i),
+                           Blocks.GetCircumRadius())) {
+          portal.blocks.push_back(i);
+          std::cout << "add block " << i << std::endl;
+        }
+      }
     }
   }
 }
