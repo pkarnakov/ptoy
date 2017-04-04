@@ -102,7 +102,7 @@ class particles_system
     vect begin, end;
     std::vector<size_t> blocks;
   };
-  const std::vector<std::pair<Portal, Portal>>& GetPortals() const {
+  const std::vector<std::array<Portal, 2>>& GetPortals() const {
     return portals_;
   }
   void ApplyPortals();
@@ -221,6 +221,6 @@ class particles_system
   vect portal_begin_;
   vect portal_current_;
   std::pair<vect, vect> portal_prev_;
-  std::vector<std::pair<Portal, Portal>> portals_;
+  std::vector<std::array<Portal, 2>> portals_;
 };
 

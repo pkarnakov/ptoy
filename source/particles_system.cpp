@@ -229,14 +229,10 @@ void particles_system::ApplyPortalsForces() {
   
   for (auto& pair : portals_) {
     for (int d = 0; d <= 1; ++d) {
-      vect a = pair.first.begin;
-      vect b = pair.first.end;
-      vect other_a = pair.second.begin;
-      vect other_b = pair.second.end;
-      if (d == 1) {
-        std::swap(a, other_a);
-        std::swap(b, other_b);
-      }
+      vect a = pair[d].begin;
+      vect b = pair[d].end;
+      vect other_a = pair[1-d].begin;
+      vect other_b = pair[1-d].end;
 
       const vect r = b - a; 
       const vect n = vect(-r.y, r.x).GetNormalized();
@@ -297,14 +293,10 @@ void particles_system::ApplyPortals() {
   for (auto& pair : portals_) {
     bool moved = false;
     for (int d = 0; d <= 1; ++d) {
-      vect a = pair.first.begin;
-      vect b = pair.first.end;
-      vect other_a = pair.second.begin;
-      vect other_b = pair.second.end;
-      if (d == 1) {
-        std::swap(a, other_a);
-        std::swap(b, other_b);
-      }
+      vect a = pair[d].begin;
+      vect b = pair[d].end;
+      vect other_a = pair[1-d].begin;
+      vect other_b = pair[1-d].end;
 
       const vect r = b - a; 
       const vect n = vect(-r.y, r.x).GetNormalized();
@@ -373,16 +365,20 @@ void particles_system::PortalStop(vect point) {
     portal_prev_.second = point;
     portal_stage_ = 1;
   } else {
-    std::pair<Portal, Portal> pair;
-    pair.first.begin = portal_prev_.first;
-    pair.first.end = portal_prev_.second;
-    pair.second.begin = portal_begin_;
-    pair.second.end = point;
-    pair.second.end = pair.second.begin +
-        (pair.second.end - pair.second.begin).GetNormalized() *
-        pair.first.begin.dist(pair.first.end);
+    std::array<Portal, 2> pair;
+    pair[0].begin = portal_prev_.first;
+    pair[0].end = portal_prev_.second;
+    pair[1].begin = portal_begin_;
+    pair[1].end = point;
+    pair[1].end = pair[1].begin +
+        (pair[1].end - pair[1].begin).GetNormalized() *
+        pair[0].begin.dist(pair[0].end);
     portals_.push_back(pair);
     portal_stage_ = 0;
+
+    for (auto& portal : portals_.back()) {
+
+    }
   }
 }
 

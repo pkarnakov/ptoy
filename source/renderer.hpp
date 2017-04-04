@@ -154,8 +154,8 @@ public:
     glLineWidth(3.0);
     const auto& portals = PS->GetPortals();
     for (auto& pair : portals) {
-      draw_line(pair.first.begin, pair.first.end, rgb(0., .5, 1.));
-      draw_line(pair.second.begin, pair.second.end, rgb(1., .5, 0.));
+      draw_line(pair[0].begin, pair[0].end, rgb(0., .5, 1.));
+      draw_line(pair[1].begin, pair[1].end, rgb(1., .5, 0.));
     }
     if (PS->portal_stage_ == 0) {
       if (PS->portal_mouse_moving_) {
