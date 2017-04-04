@@ -10,17 +10,8 @@
 
 class renderer
 {
-protected:
-  particles_system* PS;
-public:
-  renderer(particles_system* _PS) : PS(_PS) {;}
-  virtual void draw_particles() = 0;
-  virtual void draw_frame() = 0;
-};
-
-class renderer_opengl : public renderer
-{
   int width_, height_;
+  particles_system* PS;
 public:
   void SetWindowSize(int width, int height) {
     width_ = width;
@@ -175,8 +166,5 @@ public:
     DrawFrozen();
     DrawPortals();
   }
-  renderer_opengl(particles_system* _PS) : renderer(_PS)
-  {
-
-  }
+  renderer(particles_system* _PS) : PS(_PS) {}
 };
