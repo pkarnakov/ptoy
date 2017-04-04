@@ -373,6 +373,9 @@ void particles_system::PortalStop(vect point) {
     tmp.first_end = portal_prev_.second;
     tmp.second_begin = portal_begin_;
     tmp.second_end = point;
+    tmp.second_end = tmp.second_begin +  
+        (tmp.second_end - tmp.second_begin).GetNormalized() * 
+        tmp.first_begin.dist(tmp.first_end);
     portals_.push_back(tmp);
     portal_stage_ = 0;
   }
