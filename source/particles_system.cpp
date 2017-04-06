@@ -10,13 +10,13 @@ particles_system::particles_system() :
 
   // place particles in the domain
   const Scal r = kRadius;
+  /*
   const int row = 1. / r;
   const int col = 0.5 / r;
   const int N = row * col;
 
   std::vector<particle> P;
-  for(int i=0; i<N; ++i)
-  {
+  for(int i=0; i<N; ++i) {
     const vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
     const vect v(0., 0.);
     // TODO: adjust sigma so that with r->0 it converges to a solid body
@@ -33,6 +33,23 @@ particles_system::particles_system() :
         break;
     }
   }
+  */
+
+  std::vector<particle> P;
+  rect_vect box(vect(-0.2, -0.99), vect(0.2, -0.99 + 2. * kRadius));
+  for (Scal x = box.A.x + r; x + r < box.B.x; x += 2. * r) {
+    for (Scal y = box.A.y +r; y + r < box.B.y; y += 2. * r) {
+      P.push_back(particle(
+          vect(x, y), vect(0., 0.), 
+          kMass, r, kSigma, 0x1, rgb(1., 0., 0.)));
+    }
+  }
+
+  PortalStart(vect(box.A.x, box.A.y));
+  PortalStop(vect(box.A.x, box.A.y + 0.1));
+  PortalStart(vect(box.B.x, box.A.y));
+  PortalStop(vect(box.B.x, box.A.y + 0.1));
+
 
   ArrayVect position;
   ArrayVect velocity;

@@ -53,6 +53,17 @@ public:
     res-=v;
     return res;
   }
+  vect& operator*=(vect v)
+  {
+    x*=v.x; y*=v.y;
+    return *this;
+  }
+  vect operator*(vect v)
+  {
+    vect res=*this;
+    res*=v;
+    return res;
+  }
   Scal dot(vect v) const
   {
     return v.x*x+v.y*y;
