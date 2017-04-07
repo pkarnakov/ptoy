@@ -143,6 +143,7 @@ void cycle()
 
   while (!quit) { 
     G->PS->step(next_game_time_target, pause);
+    std::this_thread::sleep_for(milliseconds(50));
     if (pause) {
       std::this_thread::sleep_for(milliseconds(100));
     }

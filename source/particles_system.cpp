@@ -1,4 +1,6 @@
 #include "particles_system.hpp"
+#include <thread>
+#include <chrono>
 
 particles_system::particles_system() : 
     domain(rect_vect(vect(-1.,-1.),vect(1.,1.))),
@@ -35,21 +37,22 @@ particles_system::particles_system() :
   }
   */
 
+  const Scal coeff = 1;
   std::vector<particle> P;
-  rect_vect box(vect(-0.2, -0.99), vect(0.2, -0.99 + 2. * kRadius));
+  rect_vect box(vect(-0.2, -1.), vect(0.2, -1. + 30. * kRadius));
   for (Scal x = box.A.x + r; x + r < box.B.x; x += 2. * r) {
-    for (Scal y = box.A.y +r; y + r < box.B.y; y += 2. * r) {
+    for (Scal y = box.A.y + r; y + r < box.B.y; y += 2. * r) {
       P.push_back(particle(
-          vect(x, y), vect(0., 0.), 
+          vect(x*coeff, y), vect(0., 0.), 
           kMass, r, kSigma, 0x1, rgb(1., 0., 0.)));
     }
   }
 
-  PortalStart(vect(box.A.x, box.A.y));
-  PortalStop(vect(box.A.x, box.A.y + 0.1));
-  PortalStart(vect(box.B.x, box.A.y));
-  PortalStop(vect(box.B.x, box.A.y + 0.1));
-
+  const Scal dx = -0.*kRadius;
+  PortalStart(vect(box.A.x * coeff-dx, box.A.y));
+  PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
+  PortalStart(vect(box.B.x * coeff +dx, box.A.y));
+  PortalStop(vect(box.B.x * coeff +dx, box.B.y + 0.2));
 
   ArrayVect position;
   ArrayVect velocity;
@@ -110,22 +113,23 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       RHS_bonds();
       ApplyPortalsForces();
       ApplyFrozen();
+      ApplyPortals();
     }
 
     #pragma omp for 
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       auto& data = Blocks.GetData();
       for (size_t p = 0; p < data.position[i].size(); ++p) {
-        data.position_tmp[i][p] = data.position[i][p]; 
         data.velocity_tmp[i][p] = data.velocity[i][p]; 
-        data.position[i][p] += data.velocity[i][p] * dt * 0.5;
+        data.position_tmp[i][p] = data.position[i][p]; 
         data.velocity[i][p] += data.force[i][p] * dt * 0.5;
+        data.position[i][p] += data.velocity[i][p] * dt * 0.5;
       }
     }
 
     #pragma omp single
     t += 0.5 * dt;
-
+    
     #pragma omp for 
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       RHS(i);
@@ -136,37 +140,38 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       RHS_bonds();
       ApplyPortalsForces();
       ApplyFrozen();
+      ApplyPortals();
     }
 
     #pragma omp for
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       auto& data = Blocks.GetData();
       for (size_t p = 0; p < data.position[i].size(); ++p) {
+        data.position[i][p] = 
+            data.position_tmp[i][p] + data.velocity[i][p] * dt;
         data.velocity[i][p] = 
             data.velocity_tmp[i][p] + data.force[i][p] * dt;
         const Scal limit = 10.;
         if (data.velocity[i][p].length() > limit) {
           data.velocity[i][p] *= limit / data.velocity[i][p].length();
         }
-        data.position[i][p] = 
-            data.position_tmp[i][p] + data.velocity[i][p] * dt;
       }
     }
 
     #pragma omp single
     {
       // Resize the frame if needed (with a limited speed)
-      auto limited = [](Scal& current, const Scal target) {
+      auto limit = [](Scal& current, const Scal target) {
         const Scal limit = 0.02;
         current = std::min(current + limit,
                            std::max(current - limit, target));
       };
 
       rect_vect new_domain = domain;
-      limited(new_domain.A.x, resize_queue_.A.x);
-      limited(new_domain.A.y, resize_queue_.A.y);
-      limited(new_domain.B.x, resize_queue_.B.x);
-      limited(new_domain.B.y, resize_queue_.B.y);
+      limit(new_domain.A.x, resize_queue_.A.x);
+      limit(new_domain.A.y, resize_queue_.A.y);
+      limit(new_domain.B.x, resize_queue_.B.x);
+      limit(new_domain.B.y, resize_queue_.B.y);
 
       if (int(t / dt) % int(0.01 / dt) == 0) {
         if (new_domain != domain) {
@@ -176,13 +181,13 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       }
 
       Blocks.SortParticles();
-      ApplyPortals();
 
       // Pass the data to renderer if ready
       if (renderer_ready_for_next_) {
         std::lock_guard<std::mutex> lg(m_buffer_);
         SetParticleBuffer();
         renderer_ready_for_next_ = false;
+        //std::this_thread::sleep_for(std::chrono::milliseconds(25));
       }
 
       // Advance in time (another half)
@@ -267,7 +272,7 @@ void particles_system::ApplyPortalsForces() {
 
           // Check particle forces
           if (lambda_curr > 0. && lambda_curr < 1.) {
-            for (size_t j : other.blocks) {
+            for (size_t j : portal.blocks) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
                 Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
@@ -278,7 +283,14 @@ void particles_system::ApplyPortalsForces() {
                     data.force[i][p] -= F12(curr, neighbor);
                   }
                 }
+              }
+            }
+          }
 
+          if (lambda_curr > 0. && lambda_curr < 1.) {
+            for (size_t j : other.blocks) {
+              for (size_t q = 0; q < data.position[j].size(); ++q) {
+                const vect neighbor = data.position[j][q];
                 Scal other_lambda_neighbor = 
                     other_r.dot(neighbor - other_a) / other_r.dot(other_r);
                 const vect other_q_neighbor = 
@@ -300,7 +312,6 @@ void particles_system::ApplyPortalsForces() {
         }
       }
     }
-
   }
 }
 void particles_system::ApplyPortals() {
@@ -331,7 +342,10 @@ void particles_system::ApplyPortals() {
           Scal lambda_curr = r.dot(curr - a) / r.dot(r);
 
           // Check if the particle has crossed the portal line
-          if (!moved && (prev - a).dot(n) * (curr - a).dot(n) < 0.) {
+          if(!moved)
+          if (d == 0 && (curr - a).dot(n) > 0.
+          || d == 1 && (curr - a).dot(n) < 0.) {
+          //if (!moved && (prev - a).dot(n) * (curr - a).dot(n) < 0.) {
             if (lambda_prev > 0. && lambda_prev < 1. &&
                 lambda_curr > 0. && lambda_curr < 1.) {
               // Transfer to the other portal
@@ -347,8 +361,8 @@ void particles_system::ApplyPortals() {
               const vect other_pos_prev =
                   other_q_prev + other_n * offset_prev;
               data.position[i][p] = other_pos_curr;
-              data.velocity[i][p] = 
-                  (other_pos_curr - other_pos_prev) * (1. / dt);
+              //data.velocity[i][p] = 
+              //    (other_pos_curr - other_pos_prev) * (1. / dt);
 
               moved = true;
             }
@@ -356,7 +370,6 @@ void particles_system::ApplyPortals() {
         }
       }
     }
-
   }
 }
 
@@ -501,17 +514,39 @@ void particles_system::FreezeStop(vect) {
   freeze_enabled_ = false;
 }
 
-vect F12(vect p1, vect p2)
-{
-  const Scal sigma = kSigma;
-  const Scal R = 2. * kRadius;
-  const vect r = p1 - p2;
-  const Scal ar2 = r.dot(r);
-  const Scal ad2 = 1. / ar2;
-  const Scal d2 = ad2 * (R * R);
+vect F12(vect p1, vect p2, Scal R, Scal sigma) {
+  const vect dp = p1 - p2;
+  const Scal r2 = dp.dot(dp);
+  const Scal r2inv = 1. / r2;
+  const Scal d2 = r2inv * (R * R);
   const Scal d6 = d2 * d2 * d2;
   const Scal d12 = d6 * d6;
-  return r * std::max<Scal>(0., sigma * (d12 - d6) * ad2);
+  return dp * std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
+}
+
+vect F12wall(vect p1, vect p2) {
+  const Scal sigma = kSigma;
+  const Scal R = kRadius;
+  const vect dp = p1 - p2;
+  const Scal r2 = dp.dot(dp);
+  const Scal r2inv = 1. / r2;
+  const Scal d2 = r2inv * (R * R);
+  const Scal d6 = d2 * d2 * d2;
+  const Scal d12 = d6 * d6;
+  return dp * std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
+}
+
+vect F12(vect p1, vect p2) {
+  const Scal threshold = std::pow(kRadius, 2) * 1e-3;
+  const Scal sigma = kSigma;
+  const Scal R = 2. * kRadius;
+  const vect dp = p1 - p2;
+  const Scal r2 = std::max(threshold, dp.dot(dp));
+  const Scal r2inv = 1. / r2;
+  const Scal d2 = r2inv * (R * R);
+  const Scal d6 = d2 * d2 * d2;
+  const Scal d12 = d6 * d6;
+  return dp * std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
 }
 
 template <bool ApplyThreshold=true>
@@ -527,6 +562,7 @@ if (&position[p] != &position_other[q])
   }
 }
 
+template <bool ApplyThreshold=true>
 void CalcForceSerialPadded(ArrayVect& force,
                ArrayVect& position,
                ArrayVect& position_other) {
@@ -565,6 +601,8 @@ void CalcForceAvx(
   // threshold = kRadius ^ 2 * 1e-3
   const float tmp_th = std::pow(kRadius, 2) * 1e-3;
   const __m256 threshold = _mm256_broadcast_ss(&tmp_th);
+  const float tmp_zero = 0.;
+  const __m256 zero = _mm256_broadcast_ss(&tmp_zero);
 
   for (size_t q = 0; q < position_other.size(); ++q) {
     const __m256 qx = _mm256_broadcast_ss((float*)&position_other[q].x);
@@ -600,7 +638,7 @@ void CalcForceAvx(
       __m256 k = _mm256_mul_ps(
           sigma, _mm256_mul_ps(c2, _mm256_sub_ps(d12, d6)));
 
-      k = _mm256_max_ps(k, threshold);
+      k = _mm256_max_ps(k, zero);
 
       // lo = k([3] [3] [2] [2] [1] [1] [0] [0])
       const __m256 kxy_l = _mm256_unpacklo_ps(k, k);
@@ -659,9 +697,9 @@ void TestUni() {
   }
 }
 
-#define CALC_FORCE CalcForceAvx
+//#define CALC_FORCE CalcForceAvx
 //#define CALC_FORCE CalcForceSerial
-//#define CALC_FORCE CalcForceSerialPadded
+#define CALC_FORCE CalcForceSerialPadded
 
 
 void particles_system::UpdateEnvObj() { 
@@ -776,12 +814,8 @@ void particles_system::RHS(size_t i)
     for (size_t p = 0; p < data.position[i].size(); ++p) {
       auto& obj=ENVOBJ[k];
       data.force[i][p] += obj->F(
-          data.position[i][p], data.velocity[i][p], kRadius,kSigma);
+          data.position[i][p], data.velocity[i][p]);
     }
   }
 }
 
-vect F12(vect p1, vect /*v1*/, vect p2, vect /*v2*/, 
-         Scal /*sigma*/, Scal /*R*/) {
-  return F12(p1, p2);
-}

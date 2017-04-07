@@ -25,7 +25,7 @@ const Scal kSigma = 0.5;
 const Scal kMass = kRadius * kRadius * 100.;
 const Scal kPointForce = 0.1;
 const Scal kPointForceAttractive = 0.1;
-const Scal kDissipation = 0.01;
+const Scal kDissipation = 1.;
 const Scal kTimeStep = 0.0003;
 const Scal kBlockSize = 4. * kRadius;
 const Scal kGravity = 10.;
@@ -58,13 +58,13 @@ struct alignas(64) particle
   {;}
 };
 
-vect F12(vect p1, vect v1, vect p2, vect v2, Scal sigma, Scal R);
-vect F12(vect p1, vect v1);
+vect F12(vect p1, vect p2, Scal sigma, Scal R);
+vect F12wall(vect p1, vect p2);
+vect F12(vect p1, vect p2);
 
-class env_object
-{
+class env_object {
 public:
-  virtual vect F(vect p, vect v, Scal R, Scal sigma) = 0;
+  virtual vect F(vect p, vect v) = 0;
   virtual bool IsClose(vect p, Scal R) = 0;
 };
 
@@ -84,8 +84,8 @@ class line : public env_object
   }
 public:
   line(vect _A, vect _B) : A(_A), B(_B) {;}
-  vect F(vect p, vect /*v*/, Scal R, Scal sigma) override {
-    return F12(p, vect(0.,0.), GetNearest(p), vect(0.,0.), sigma, R);
+  vect F(vect p, vect /*v*/) override {
+    return F12wall(p, GetNearest(p));
   }
   bool IsClose(vect p, Scal R) override {
     return GetNearest(p).dist(p) < R + kRadius;

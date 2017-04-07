@@ -99,7 +99,7 @@ public:
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     rect_vect R = PS->GetDomain();
-    glLineWidth(5.0);
+    glLineWidth(1.0);
     vect dA = R.A;
     vect dB = R.B;
     draw_line(vect(dA.x,dA.y), vect(dB.x,dA.y));
