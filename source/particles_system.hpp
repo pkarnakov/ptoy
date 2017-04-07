@@ -121,6 +121,9 @@ class particles_system
   }
   void ApplyPortals();
   void ApplyPortalsForces();
+  void DetectPortals(const Scal local_dt);
+  void MoveToPortal(vect& position, vect& velocity,
+                    const Portal& src, const Portal& dest);
   void SetParticleBuffer();
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
@@ -236,5 +239,6 @@ class particles_system
   vect portal_current_;
   std::pair<vect, vect> portal_prev_;
   std::vector<std::array<Portal, 2>> portals_;
+  std::vector<int> particle_to_move_; // 1: to move, 0: otherwise
 };
 

@@ -79,8 +79,8 @@ void display(void)
             last_frame_game_time) / frame_real_duration_s
         << ", particles=" 
         << G->PS->GetNumParticles()
-        << ", max_per_cell=" 
-        << G->PS->GetNumPerCell()
+        //<< ", max_per_cell=" 
+        //<< G->PS->GetNumPerCell()
         << ", t=" 
         << G->PS->GetTime()
         << ", steps=" 

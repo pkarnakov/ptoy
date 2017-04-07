@@ -111,9 +111,9 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
     #pragma omp single 
     {
       RHS_bonds();
+      DetectPortals(dt);
       ApplyPortalsForces();
       ApplyFrozen();
-      ApplyPortals();
     }
 
     #pragma omp for 
@@ -138,23 +138,24 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
     #pragma omp single 
     {
       RHS_bonds();
+      DetectPortals(dt * 0.5);
       ApplyPortalsForces();
+      DetectPortals(dt * 0.5);
       ApplyFrozen();
-      ApplyPortals();
     }
 
     #pragma omp for
     for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
       auto& data = Blocks.GetData();
       for (size_t p = 0; p < data.position[i].size(); ++p) {
-        data.position[i][p] = 
-            data.position_tmp[i][p] + data.velocity[i][p] * dt;
         data.velocity[i][p] = 
             data.velocity_tmp[i][p] + data.force[i][p] * dt;
         const Scal limit = 10.;
         if (data.velocity[i][p].length() > limit) {
           data.velocity[i][p] *= limit / data.velocity[i][p].length();
         }
+        data.position[i][p] = 
+            data.position_tmp[i][p] + data.velocity[i][p] * dt;
       }
     }
 
@@ -180,6 +181,9 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
         }
       }
 
+      ApplyPortals();
+      Blocks.SortParticles();
+      ApplyPortals();
       Blocks.SortParticles();
 
       // Pass the data to renderer if ready
@@ -244,6 +248,64 @@ void particles_system::PickStop(vect) {
   pick_enabled_ = false;
 }
 
+void particles_system::MoveToPortal(
+    vect& position, vect& velocity,
+    const Portal& src, const Portal& dest) {
+  const vect src_a = src.begin;
+  const vect src_b = src.end; 
+  const vect src_r = src_b - src_a; 
+  const vect src_n = vect(-src_r.y, src_r.x).GetNormalized();
+
+  const vect dest_a = dest.begin;
+  const vect dest_b = dest.end; 
+  const vect dest_r = dest_b - dest_a; 
+  const vect dest_n = vect(-dest_r.y, dest_r.x).GetNormalized();
+
+  auto Move = [src_a, src_r, src_n, dest_a, dest_r, dest_n](
+      vect& v) {
+    const Scal lambda = src_r.dot(v - src_a) / src_r.dot(src_r);
+    const Scal offset = src_n.dot(v - src_a);
+
+    v = dest_a + dest_r * lambda + dest_n * offset;
+  };
+
+  Move(position);
+  Move(velocity); 
+}
+
+void particles_system::DetectPortals(const Scal local_dt) {
+  for (auto& pair : portals_) {
+    for (int d = 0; d <= 1; ++d) {
+      const auto& portal = pair[d];
+
+      const vect a = portal.begin;
+      const vect b = portal.end;
+      const vect r = b - a; 
+      const vect n = vect(-r.y, r.x).GetNormalized();
+
+      auto& data = Blocks.GetData();
+      for (size_t i : portal.blocks) {
+        for (size_t p = 0; p < data.position[i].size(); ++p) {
+          auto id = static_cast<size_t>(data.id[i][p]);
+          if (particle_to_move_.size() <= id) {
+            particle_to_move_.resize(id + 1);
+          }
+          const vect curr = data.position[i][p];
+          const vect prev = curr - data.velocity[i][p] * local_dt;
+          const Scal lambda_curr = (curr - a).dot(r) / r.dot(r);
+          const Scal offset_curr = (curr - a).dot(n);
+          const Scal offset_prev = (prev - a).dot(n);
+          if (lambda_curr > 0. && lambda_curr < 1. &&
+            offset_curr * offset_prev < 0.) {
+            particle_to_move_[id] = 1 - particle_to_move_[id];
+            std::cout << "tomove: " << id << std::endl;
+          }
+        }
+      }
+    }
+  }
+}
+
 void particles_system::ApplyPortalsForces() {
   // Assume that the particles have just been moved 
   // with their velocity
@@ -266,22 +328,27 @@ void particles_system::ApplyPortalsForces() {
       for (size_t i : portal.blocks) {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
           const vect curr = data.position[i][p];
-          Scal lambda_curr = r.dot(curr - a) / r.dot(r);
+          const auto id_curr = data.id[i][p];
+          const Scal lambda_curr = r.dot(curr - a) / r.dot(r);
           const vect q_curr = a + r * lambda_curr;
           const Scal offset_curr = (curr - q_curr).dot(n);
+          const Scal moffset_curr = 
+              offset_curr * (particle_to_move_[id_curr] - 0.5);
 
           // Check particle forces
           if (lambda_curr > 0. && lambda_curr < 1.) {
             for (size_t j : portal.blocks) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
+                const auto id_neighbor = data.id[i][p];
                 Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
                 const vect q_neighbor = a + r * lambda_neighbor;
                 const Scal offset_neighbor = (neighbor - q_neighbor).dot(n);
-                if (lambda_neighbor > 0. && lambda_neighbor < 1.) {
-                  if (offset_neighbor * offset_curr < 0.) {
-                    data.force[i][p] -= F12(curr, neighbor);
-                  }
+                const Scal moffset_neighbor =
+                    offset_neighbor * (particle_to_move_[id_neighbor] - 0.5);
+                if (lambda_neighbor > 0. && lambda_neighbor < 1.
+                    && moffset_neighbor * moffset_curr < 0.) {
+                  data.force[i][p] -= F12(curr, neighbor);
                 }
               }
             }
@@ -291,15 +358,19 @@ void particles_system::ApplyPortalsForces() {
             for (size_t j : other.blocks) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
+                const auto id_neighbor = data.id[j][q];
                 Scal other_lambda_neighbor = 
                     other_r.dot(neighbor - other_a) / other_r.dot(other_r);
                 const vect other_q_neighbor = 
                     other_a + other_r * other_lambda_neighbor;
                 const Scal other_offset_neighbor = 
                     (neighbor - other_q_neighbor).dot(other_n);
+                const Scal other_moffset_neighbor =
+                    other_offset_neighbor *
+                    (particle_to_move_[id_neighbor] - 0.5);
                 if (other_lambda_neighbor > 0. && 
                     other_lambda_neighbor < 1.) {
-                  if (other_offset_neighbor * offset_curr < 0.) {
+                  if (other_moffset_neighbor * moffset_curr < 0.) {
                     data.force[i][p] += 
                         F12(curr, 
                             a + r * other_lambda_neighbor + 
@@ -319,54 +390,21 @@ void particles_system::ApplyPortals() {
   // with their velocity
   // so that (position - dt * velocity) is the previous position
   
+  auto& data = Blocks.GetData();
   for (auto& pair : portals_) {
-    bool moved = false;
     for (int d = 0; d <= 1; ++d) {
       auto& portal = pair[d];
       auto& other = pair[1-d];
-      vect a = portal.begin;
-      vect b = portal.end;
-      vect other_a = other.begin;
-      vect other_b = other.end;
 
-      const vect r = b - a; 
-      const vect n = vect(-r.y, r.x).GetNormalized();
-      const vect other_r = other_b - other_a;
-      const vect other_n = vect(-other_r.y, other_r.x).GetNormalized();
-      auto& data = Blocks.GetData();
       for (size_t i : portal.blocks) {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
-          const vect prev = data.position[i][p] - data.velocity[i][p] * dt;
-          Scal lambda_prev = r.dot(prev - a) / r.dot(r);
-          const vect curr = data.position[i][p];
-          Scal lambda_curr = r.dot(curr - a) / r.dot(r);
-
-          // Check if the particle has crossed the portal line
-          if(!moved)
-          if (d == 0 && (curr - a).dot(n) > 0.
-          || d == 1 && (curr - a).dot(n) < 0.) {
-          //if (!moved && (prev - a).dot(n) * (curr - a).dot(n) < 0.) {
-            if (lambda_prev > 0. && lambda_prev < 1. &&
-                lambda_curr > 0. && lambda_curr < 1.) {
-              // Transfer to the other portal
-              // TODO: revise the variable names
-              const vect q_curr = a + r * lambda_curr;
-              const vect q_prev = a + r * lambda_prev;
-              const vect other_q_curr = other_a + other_r * lambda_curr;
-              const vect other_q_prev = other_a + other_r * lambda_prev;
-              const Scal offset_curr = (curr - q_curr).dot(n);
-              const Scal offset_prev = (prev - q_prev).dot(n);
-              const vect other_pos_curr = 
-                  other_q_curr + other_n * offset_curr;
-              const vect other_pos_prev =
-                  other_q_prev + other_n * offset_prev;
-              data.position[i][p] = other_pos_curr;
-              //data.velocity[i][p] = 
-              //    (other_pos_curr - other_pos_prev) * (1. / dt);
-
-              moved = true;
-            }
-          }
+          const auto id = data.id[i][p];
+          if (particle_to_move_[id]) {
+            MoveToPortal(data.position[i][p], data.velocity[i][p],
+                portal, other);
+            particle_to_move_[id] = 0;
+            std::cout << "moved: " << id << std::endl;
+          } 
         }
       }
     }
