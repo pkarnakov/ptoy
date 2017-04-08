@@ -211,15 +211,25 @@ int main() {
   enum class MouseState {None, Force, Bonds, Pick, Freeze, Portal};
   MouseState mouse_state = MouseState::Force;
 
+  size_t quit_count = 0;
+
   //While application is running
   while (!quit) {
     while (SDL_PollEvent( &e ) != 0) {
       if (e.type == SDL_QUIT) {
         quit = true;
       } else if (e.type == SDL_KEYDOWN) {
+        if (e.key.keysym.sym != 'q') {
+          quit_count = 0;
+        }
         switch( e.key.keysym.sym ) {
           case 'q':
-            quit = true;
+            if (++quit_count >= 3) {
+              quit = true;
+            } else {
+              std::cout << "Quit counter: " 
+                << quit_count << "/3" << std::endl;
+            }
             break;
           case 'n':
             mouse_state = MouseState::None;
