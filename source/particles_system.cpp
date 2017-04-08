@@ -40,10 +40,11 @@ particles_system::particles_system() :
   const Scal coeff = 1;
   std::vector<particle> P;
   rect_vect box(vect(-0.2, -1.), vect(0.2, -1. + 30. * kRadius));
-  for (Scal x = box.A.x + r; x + r * 0.9 < box.B.x; x += 2. * r) {
-    for (Scal y = box.A.y + r; y + r * 0.9 < box.B.y; y += 2. * r) {
+  for (Scal y = box.A.y + r, x0 = 0.; 
+      y + r * 0.9 < box.B.y; y += std::sqrt(3.) * r, x0 = kRadius - x0) {
+    for (Scal x = box.A.x + r; x + r * 0.9 < box.B.x; x += 2. * r) {
       P.push_back(particle(
-          vect(x*coeff, y), vect(0., 0.), 
+          vect((x + x0) * coeff, y), vect(0., 0.), 
           kMass, r, kSigma, 0x1, rgb(1., 0., 0.)));
     }
   }
@@ -113,9 +114,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
     #pragma omp single 
     {
       RHS_bonds();
-      DetectPortals(dt);
       ApplyPortalsForces();
-      DetectPortals(dt);
       ApplyFrozen();
     }
 
@@ -141,9 +140,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
     #pragma omp single 
     {
       RHS_bonds();
-      DetectPortals(dt * 0.5);
       ApplyPortalsForces();
-      DetectPortals(dt * 0.5);
       ApplyFrozen();
     }
 
@@ -164,7 +161,6 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
 
     #pragma omp single
     {
-      DetectPortals(dt);
       // Resize the frame if needed (with a limited speed)
       auto limit = [](Scal& current, const Scal target) {
         const Scal limit = 0.02;
@@ -185,7 +181,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
         }
       }
 
-      Blocks.SortParticles();
+      DetectPortals(dt);
       ApplyPortals();
       Blocks.SortParticles();
 
@@ -334,24 +330,18 @@ void particles_system::ApplyPortalsForces() {
       for (size_t i : portal.blocks) {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
           const vect curr = data.position[i][p];
-          const auto id_curr = data.id[i][p];
           const Scal lambda_curr = r.dot(curr - a) / r.dot(r);
           const Scal offset_curr = (curr - a).dot(n);
-          const Scal moffset_curr = 
-              offset_curr * (particle_to_move_[id_curr] - 0.5);
 
           // Check particle forces
           if (lambda_curr > 0. && lambda_curr < 1.) {
             for (size_t j : portal.blocks) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
-                const auto id_neighbor = data.id[j][q];
                 const Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
                 const Scal offset_neighbor = (neighbor - a).dot(n);
-                const Scal moffset_neighbor =
-                    offset_neighbor * (particle_to_move_[id_neighbor] - 0.5);
                 if (lambda_neighbor > 0. && lambda_neighbor < 1.
-                    && moffset_neighbor * moffset_curr < 0.) {
+                    && offset_neighbor * offset_curr < 0.) {
                   data.force[i][p] -= F12(curr, neighbor);
                 }
               }
@@ -362,7 +352,6 @@ void particles_system::ApplyPortalsForces() {
             for (size_t j : other.blocks) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
-                const auto id_neighbor = data.id[j][q];
                 const Scal other_lambda_neighbor = 
                     other_r.dot(neighbor - other_a) / other_r.dot(other_r);
                 const vect other_q_neighbor = 
@@ -377,10 +366,6 @@ void particles_system::ApplyPortalsForces() {
                   } else {
                     nof = other_offset_neighbor - 2. * kPortalThickness;
                   }
-                  //data.force[i][p] += 
-                  //    F12(curr, 
-                  //        a + r * other_lambda_neighbor + 
-                  //        n * other_offset_neighbor);
                   const vect proj = a + r * other_lambda_neighbor + n * nof;
                   data.force[i][p] += F12(curr, proj);
                 }
