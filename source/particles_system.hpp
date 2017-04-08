@@ -24,7 +24,7 @@ const Scal kRadius = 0.02;
 const Scal kSigma = 1.;
 const Scal kSigmaWall = 1.;
 const Scal kSigmaBond = 1e4;
-const Scal kSigmaPick = 1e3;
+const Scal kSigmaPick = 1e2;
 const Scal kMass = kRadius * kRadius * 100.;
 const Scal kPointForce = 0.1;
 const Scal kPointForceAttractive = 0.1;
@@ -125,7 +125,7 @@ class particles_system
   }
   void ApplyPortals();
   void ApplyPortalsForces();
-  void DetectPortals(const Scal local_dt);
+  void DetectPortals();
   void MoveToPortal(vect& position, vect& velocity,
                     const Portal& src, const Portal& dest);
   void SetParticleBuffer();

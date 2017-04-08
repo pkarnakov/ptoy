@@ -181,7 +181,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
         }
       }
 
-      DetectPortals(dt);
+      DetectPortals();
       ApplyPortals();
       Blocks.SortParticles();
       CheckBonds();
@@ -285,7 +285,7 @@ void particles_system::MoveToPortal(
   velocity = dest_r * lambda_vel + dest_n * offset_vel;
 }
 
-void particles_system::DetectPortals(const Scal local_dt) {
+void particles_system::DetectPortals() {
   for (auto& pair : portals_) {
     for (int d = 0; d <= 1; ++d) {
       const auto& portal = pair[d];
@@ -324,10 +324,10 @@ void particles_system::ApplyPortalsForces() {
     for (int d = 0; d <= 1; ++d) {
       auto& portal = pair[d];
       auto& other = pair[1-d];
-      vect a = portal.begin;
-      vect b = portal.end;
-      vect other_a = other.begin;
-      vect other_b = other.end;
+      const vect a = portal.begin;
+      const vect b = portal.end;
+      const vect other_a = other.begin;
+      const vect other_b = other.end;
 
       const vect r = b - a; 
       const vect n = vect(-r.y, r.x).GetNormalized();
@@ -365,13 +365,9 @@ void particles_system::ApplyPortalsForces() {
                     (neighbor - other_a).dot(other_n);
                 if (other_lambda_neighbor > 0. && other_lambda_neighbor < 1.
                     && other_offset_neighbor * offset_curr < 0.) {
-                  Scal nof;
-                  if (offset_curr > 0.) {
-                    nof = other_offset_neighbor + 2. * kPortalThickness;
-                  } else {
-                    nof = other_offset_neighbor - 2. * kPortalThickness;
-                  }
-                  const vect proj = a + r * other_lambda_neighbor + n * nof;
+                  const Scal sign = (offset_curr > 0. ? 1. : -1.);
+                  const vect proj = a + r * other_lambda_neighbor + n * 
+                      (other_offset_neighbor + 2. * sign * kPortalThickness);
                   data.force[i][p] += F12(curr, proj);
                 }
               }
@@ -784,13 +780,63 @@ void particles_system::RHS_bonds() {
   const auto& bbi = Blocks.GetBlockById();
   auto& data = Blocks.GetData();
   for (auto bond : bonds_) {
-    const auto& a = bbi[bond.first];
-    const auto& b = bbi[bond.second];
-    assert(a.first != blocks::kBlockNone);
-    assert(b.first != blocks::kBlockNone);
-    const auto f = F12_bond(data.position[a.first][a.second],
-                            data.position[b.first][b.second]);
-    data.force[a.first][a.second] += f;
+    const auto& p = bbi[bond.first];
+    const auto& q = bbi[bond.second];
+    assert(p.first != blocks::kBlockNone);
+    assert(q.first != blocks::kBlockNone);
+
+    const vect p_pos = data.position[p.first][p.second];
+    const vect q_pos = data.position[q.first][q.second];
+
+    vect res;
+
+    // TODO: revise 
+    const Scal kCutoff = 8. * kRadius;
+    // If particles are close, just apply the bond force
+    if (p_pos.dist(q_pos) < kCutoff) {
+      res = F12_bond(p_pos, q_pos);
+    } else {
+      bool found = false;
+      // Otherwise, apply the force through the portals (if any)
+      for (auto& pair : portals_) {
+        for (size_t d = 0; d <= 1; ++d) {
+          const auto& portal = pair[d];
+          const auto& other = pair[1-d];
+
+          const vect a = portal.begin;
+          const vect b = portal.end;
+          const vect other_a = other.begin;
+          const vect other_b = other.end;
+
+          const vect r = b - a; 
+          const vect n = vect(-r.y, r.x).GetNormalized();
+          const vect other_r = other_b - other_a;
+          const vect other_n = vect(-other_r.y, other_r.x).GetNormalized();
+
+          const Scal p_lambda = r.dot(p_pos - a) / r.dot(r);
+          const Scal p_offset = (p_pos - a).dot(n);
+          const Scal q_lambda_other = 
+              other_r.dot(q_pos - other_a) / other_r.dot(other_r);
+          const Scal q_offset_other = (q_pos - other_a).dot(other_n);
+
+          if (p_lambda > 0. && p_lambda < 1.
+              && q_lambda_other > 0. && q_lambda_other < 1.
+              && p_offset * q_offset_other < 0.
+              && std::abs(p_offset - q_offset_other) < 
+                 2. * kPortalThickness + kCutoff) {
+            const Scal sign = (p_offset > 0. ? 1. : -1.);
+            const vect proj = a + r * q_lambda_other + n * 
+                (q_offset_other + 2. * sign * kPortalThickness);
+            res = F12_bond(p_pos, proj);
+            found = true;
+          }
+        }
+      }
+      if (!found) {
+        res = F12_bond(p_pos, q_pos);
+      }
+    }
+    data.force[p.first][p.second] += res; 
   }
 }
 
