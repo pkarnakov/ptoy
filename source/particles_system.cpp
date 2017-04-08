@@ -125,7 +125,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       for (size_t p = 0; p < data.position[i].size(); ++p) {
         data.velocity_tmp[i][p] = data.velocity[i][p]; 
         data.position_tmp[i][p] = data.position[i][p]; 
-        data.velocity[i][p] += data.force[i][p] * dt * 0.5;
+        data.velocity[i][p] += data.force[i][p] * (dt * 0.5 / kMass);
         data.position[i][p] += data.velocity[i][p] * dt * 0.5;
       }
     }
@@ -152,7 +152,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       auto& data = Blocks.GetData();
       for (size_t p = 0; p < data.position[i].size(); ++p) {
         data.velocity[i][p] = 
-            data.velocity_tmp[i][p] + data.force[i][p] * dt;
+            data.velocity_tmp[i][p] + data.force[i][p] * (dt / kMass);
         const Scal limit = 10.;
         if (data.velocity[i][p].length() > limit) {
           data.velocity[i][p] *= limit / data.velocity[i][p].length();
@@ -845,11 +845,6 @@ void particles_system::RHS(size_t i)
     if (i == j) { // apply threshold to distance to avoid self-force 
       CALC_FORCE<true>(data.force[i], data.position[i], data.position[j]);
     }
-  }
-
-  for (size_t p = 0; p < data.position[i].size(); ++p) {
-    auto& f = data.force[i][p];
-    f *= 1. / kMass;
   }
 
   // environment objects
