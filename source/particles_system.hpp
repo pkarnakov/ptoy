@@ -21,10 +21,10 @@ using std::size_t;
 using std::min;
 
 const Scal kRadius = 0.02;
-const Scal kSigma = 0.5;
-const Scal kSigmaWall = 0.5;
-const Scal kSigmaBond = 0.5e6;
-const Scal kSigmaPick = 0.5e3;
+const Scal kSigma = 1.;
+const Scal kSigmaWall = 1.;
+const Scal kSigmaBond = 1e4;
+const Scal kSigmaPick = 1e3;
 const Scal kMass = kRadius * kRadius * 100.;
 const Scal kPointForce = 0.1;
 const Scal kPointForceAttractive = 0.1;
@@ -135,7 +135,6 @@ class particles_system
   void ResetEnvObjFrame(rect_vect new_domain) {
     const vect A = new_domain.A, B = new_domain.B;
     ClearEnvObj();
-    //std::cout << "envobj:" << domain.A << " " << domain.B << std::endl;
     AddEnvObj(new line(vect(A.x, A.y), vect(B.x, A.y)));
     AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y)));
     AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y)));
@@ -149,7 +148,7 @@ class particles_system
   void PushResize(rect_vect new_domain) {
     resize_queue_ = new_domain;
   }
-  const std::vector<std::pair<int, int>>& GetBonds() const {
+  const std::set<std::pair<int, int>>& GetBonds() const {
     return bonds_;
   }
   const std::set<int>& GetFrozen() const {
@@ -166,6 +165,7 @@ class particles_system
   void BondsStart(vect point);
   void BondsMove(vect point);
   void BondsStop(vect point);
+  void CheckBonds();
   void FreezeStart(vect point);
   void FreezeMove(vect point);
   void FreezeStop(vect point);
@@ -230,7 +230,7 @@ class particles_system
   int pick_particle_id_;
   bool pick_enabled_ = false;
   vect pick_pointer_;
-  std::vector<std::pair<int, int>> bonds_;
+  std::set<std::pair<int, int>> bonds_;
   std::set<int> frozen_; // particle id
   bool freeze_enabled_ = false;
   int freeze_last_id_;

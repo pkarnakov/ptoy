@@ -49,14 +49,6 @@ particles_system::particles_system() :
     }
   }
 
-  const Scal dx = kPortalThickness;
-  if (1) {
-    PortalStart(vect(box.A.x * coeff-dx, box.A.y));
-    PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
-    PortalStart(vect(box.B.x * coeff +dx, box.A.y));
-    PortalStop(vect(box.B.x * coeff +dx, box.B.y + 0.2));
-  }
-
   ArrayVect position;
   ArrayVect velocity;
   std::vector<int> id;
@@ -77,6 +69,14 @@ particles_system::particles_system() :
   SetParticleBuffer();
   resize_queue_ = domain;
   ResetEnvObjFrame(domain);
+
+  const Scal dx = kPortalThickness;
+  if (0) {
+    PortalStart(vect(box.A.x * coeff-dx, box.A.y));
+    PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
+    PortalStart(vect(box.B.x * coeff +dx, box.A.y));
+    PortalStop(vect(box.B.x * coeff +dx, box.B.y + 0.2));
+  }
 }
 particles_system::~particles_system() {}
 void particles_system::SetParticleBuffer() {
@@ -184,6 +184,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       DetectPortals(dt);
       ApplyPortals();
       Blocks.SortParticles();
+      CheckBonds();
 
       // Pass the data to renderer if ready
       if (renderer_ready_for_next_) {
@@ -197,6 +198,18 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       t += 0.5 * dt;
     }
   }
+  }
+}
+
+void particles_system::CheckBonds() {
+  const auto bbi = Blocks.GetBlockById();
+  for (auto it = bonds_.begin(); it != bonds_.end(); ) {
+    if (bbi[it->first].first == blocks::kBlockNone ||
+        bbi[it->second].first == blocks::kBlockNone) {
+      it = bonds_.erase(it);
+    } else {
+      ++it;
+    }
   }
 }
 
@@ -297,10 +310,7 @@ void particles_system::DetectPortals(const Scal local_dt) {
           if (lambda_curr > 0. && lambda_curr < 1.
               && std::abs(offset_curr) <= kPortalThickness 
               && std::abs(offset_prev) > kPortalThickness) {
-            //particle_to_move_[id] = 1 - particle_to_move_[id];
             particle_to_move_[id] = 1;
-            //std::cout << "tomove(" << id << "): " 
-            //    << particle_to_move_[id] << std::endl;
           }
         }
       }
@@ -398,7 +408,6 @@ void particles_system::ApplyPortals() {
             MoveToPortal(data.position[i][p], data.velocity[i][p],
                 portal, other);
             particle_to_move_[id] = 0;
-            //std::cout << "moved: " << id << std::endl;
           } 
         }
       }
@@ -456,7 +465,6 @@ void particles_system::BondsStart(vect point) {
     for (size_t p = 0; p < data.position[i].size(); ++p) {
       if (data.position[i][p].dist(point) < kRadius) {
         id = data.id[i][p];
-        std::cout << "Found particle id=" << id << std::endl;
       }
     }
   }
@@ -476,7 +484,6 @@ void particles_system::BondsMove(vect point) {
       if (data.position[i][p].dist(point) < kRadius &&
           data.id[i][p] != bonds_prev_particle_id_) {
         id = data.id[i][p];
-        std::cout << "Found next particle id=" << id << std::endl;
       }
     }
   }
@@ -484,8 +491,10 @@ void particles_system::BondsMove(vect point) {
   if (bonds_prev_particle_id_ != kParticleIdNone && 
       id != kParticleIdNone) {
     assert(bonds_prev_particle_id_ != id);
-    bonds_.emplace_back(bonds_prev_particle_id_, id);
+    bonds_.emplace(bonds_prev_particle_id_, id);
+    bonds_.emplace(id, bonds_prev_particle_id_);
   }
+
   if (id != kParticleIdNone) {
     bonds_prev_particle_id_ = id;
   }
@@ -496,10 +505,6 @@ void particles_system::BondsStop(vect) {
     return;
   }
   bonds_enabled_ = false;
-  for (auto bond : bonds_) {
-    std::cout << "(" << bond.first << ", " << bond.second << ") ";
-  }
-  std::cout << std::endl;
 }
 
 void particles_system::FreezeStart(vect point) {
@@ -736,7 +741,6 @@ void particles_system::UpdatePortalBlocks(Portal& portal) {
     if (portal.IsClose(Blocks.GetCenter(i),
                        Blocks.GetCircumRadius())) {
       portal.blocks.push_back(i);
-      std::cout << "add block " << i << std::endl;
     }
   }
 }
@@ -766,7 +770,7 @@ vect F12_bond(vect p1, vect p2) {
   const Scal R = 2. * kRadius;
   const vect dp = p1 - p2;
   const Scal r = dp.length();
-  const Scal k = (R - r) / R;
+  const Scal k = std::max(1. - r / R, -1.);
 
   return dp * (sigma * k);
 }
@@ -787,10 +791,11 @@ void particles_system::RHS_bonds() {
   for (auto bond : bonds_) {
     const auto& a = bbi[bond.first];
     const auto& b = bbi[bond.second];
+    assert(a.first != blocks::kBlockNone);
+    assert(b.first != blocks::kBlockNone);
     const auto f = F12_bond(data.position[a.first][a.second],
-                        data.position[b.first][b.second]);
+                            data.position[b.first][b.second]);
     data.force[a.first][a.second] += f;
-    data.force[b.first][b.second] -= f;
   }
 }
 

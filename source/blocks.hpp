@@ -173,6 +173,7 @@ class blocks
         }
       }
     }
+    SortParticles();
   }
   void AddParticles(
       const ArrayVect& position, 
@@ -189,6 +190,7 @@ class blocks
         data_.AddParticle(i, position[p], velocity[p], id[p]);
       }
     }
+    SortParticles();
   }
   const BlockData& GetData() const {
     return data_;
