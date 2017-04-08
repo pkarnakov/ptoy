@@ -48,7 +48,7 @@ particles_system::particles_system() :
     }
   }
 
-  const Scal dx = -0.*kRadius;
+  const Scal dx = kPortalThickness;
   if (1) {
     PortalStart(vect(box.A.x * coeff-dx, box.A.y));
     PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
@@ -268,12 +268,20 @@ void particles_system::MoveToPortal(
       vect& v) {
     const Scal lambda = src_r.dot(v - src_a) / src_r.dot(src_r);
     const Scal offset = src_n.dot(v - src_a);
+    
+    Scal nof;
 
-    v = dest_a + dest_r * lambda + dest_n * offset;
+    if (offset < 0.) {
+      nof = offset + 2. * kPortalThickness;
+    } else {
+      nof = offset - 2. * kPortalThickness;
+    }
+
+    v = dest_a + dest_r * lambda + dest_n * nof;
   };
 
   Move(position);
-  Move(velocity); 
+  //Move(velocity); 
 }
 
 void particles_system::DetectPortals(const Scal local_dt) {
@@ -298,9 +306,11 @@ void particles_system::DetectPortals(const Scal local_dt) {
           const Scal lambda_curr = (curr - a).dot(r) / r.dot(r);
           const Scal offset_curr = (curr - a).dot(n);
           const Scal offset_prev = (prev - a).dot(n);
-          if (lambda_curr > 0. && lambda_curr < 1. &&
-            offset_curr * offset_prev < 0.) {
-            particle_to_move_[id] = 1 - particle_to_move_[id];
+          if (lambda_curr > 0. && lambda_curr < 1.
+              && std::abs(offset_curr) <= kPortalThickness 
+              && std::abs(offset_prev) > kPortalThickness) {
+            //particle_to_move_[id] = 1 - particle_to_move_[id];
+            particle_to_move_[id] = 1;
             //std::cout << "tomove(" << id << "): " 
             //    << particle_to_move_[id] << std::endl;
           }
@@ -367,15 +377,20 @@ void particles_system::ApplyPortalsForces() {
                     other_a + other_r * other_lambda_neighbor;
                 const Scal other_offset_neighbor = 
                     (neighbor - other_a).dot(other_n);
-                const Scal other_moffset_neighbor =
-                    other_offset_neighbor *
-                    (particle_to_move_[id_neighbor] - 0.5);
                 if (other_lambda_neighbor > 0. && other_lambda_neighbor < 1.
-                    && other_moffset_neighbor * moffset_curr < 0.) {
-                    data.force[i][p] += 
-                        F12(curr, 
-                            a + r * other_lambda_neighbor + 
-                            n * other_offset_neighbor);
+                    && other_offset_neighbor * offset_curr < 0.) {
+                  Scal nof;
+                  if (offset_curr > 0.) {
+                    nof = other_offset_neighbor + 2. * kPortalThickness;
+                  } else {
+                    nof = other_offset_neighbor - 2. * kPortalThickness;
+                  }
+                  //data.force[i][p] += 
+                  //    F12(curr, 
+                  //        a + r * other_lambda_neighbor + 
+                  //        n * other_offset_neighbor);
+                  const vect proj = a + r * other_lambda_neighbor + n * nof;
+                  data.force[i][p] += F12(curr, proj);
                 }
               }
             }
@@ -399,6 +414,9 @@ void particles_system::ApplyPortals() {
       for (size_t i : portal.blocks) {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
           const auto id = data.id[i][p];
+          if (particle_to_move_.size() <= id) {
+            particle_to_move_.resize(id + 1);
+          }
           if (particle_to_move_[id]) {
             MoveToPortal(data.position[i][p], data.velocity[i][p],
                 portal, other);
@@ -447,15 +465,8 @@ void particles_system::PortalStop(vect point) {
     portals_.push_back(pair);
     portal_stage_ = 0;
 
-    for (auto& portal : portals_.back()) {
-      for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
-        if (portal.IsClose(Blocks.GetCenter(i),
-                           Blocks.GetCircumRadius())) {
-          portal.blocks.push_back(i);
-          std::cout << "add block " << i << std::endl;
-        }
-      }
-    }
+    UpdatePortalBlocks(portals_.back()[0]);
+    UpdatePortalBlocks(portals_.back()[1]);
   }
 }
 
@@ -744,6 +755,17 @@ void TestUni() {
 }
 #endif
 
+void particles_system::UpdatePortalBlocks(Portal& portal) {
+  portal.blocks.clear();
+  for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
+    if (portal.IsClose(Blocks.GetCenter(i),
+                       Blocks.GetCircumRadius())) {
+      portal.blocks.push_back(i);
+      std::cout << "add block " << i << std::endl;
+    }
+  }
+}
+
 
 void particles_system::UpdateEnvObj() { 
   block_envobj_.clear();
@@ -754,6 +776,12 @@ void particles_system::UpdateEnvObj() {
                              Blocks.GetCircumRadius())) {
         block_envobj_[i].push_back(k);
       }
+    }
+  }
+
+  for (auto& pair : portals_) {
+    for (int d = 0; d <= 1; ++d) {
+      UpdatePortalBlocks(pair[d]);
     }
   }
 }

@@ -31,6 +31,7 @@ const Scal kDissipation = .1;
 const Scal kTimeStep = 0.00003;
 const Scal kBlockSize = 4. * kRadius;
 const Scal kGravity = 10.;
+const Scal kPortalThickness = 0.02;
 
 const int kParticleIdNone = -1;
 
@@ -115,7 +116,7 @@ class particles_system
       return Q;
     }
     bool IsClose(vect p, Scal R) {
-      return GetNearest(p).dist(p) < R + kRadius;
+      return GetNearest(p).dist(p) < R + 2 * kPortalThickness;
     }
   };
   const std::vector<std::array<Portal, 2>>& GetPortals() const {
@@ -242,5 +243,6 @@ class particles_system
   std::pair<vect, vect> portal_prev_;
   std::vector<std::array<Portal, 2>> portals_;
   std::vector<int> particle_to_move_; // 1: to move, 0: otherwise
+  void UpdatePortalBlocks(Portal& portal);
 };
 
