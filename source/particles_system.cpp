@@ -40,8 +40,8 @@ particles_system::particles_system() :
   const Scal coeff = 1;
   std::vector<particle> P;
   rect_vect box(vect(-0.2, -1.), vect(0.2, -1. + 30. * kRadius));
-  for (Scal x = box.A.x + r; x + r < box.B.x; x += 2. * r) {
-    for (Scal y = box.A.y + r; y + r < box.B.y; y += 2. * r) {
+  for (Scal x = box.A.x + r; x + r * 0.9 < box.B.x; x += 2. * r) {
+    for (Scal y = box.A.y + r; y + r * 0.9 < box.B.y; y += 2. * r) {
       P.push_back(particle(
           vect(x*coeff, y), vect(0., 0.), 
           kMass, r, kSigma, 0x1, rgb(1., 0., 0.)));
@@ -49,10 +49,12 @@ particles_system::particles_system() :
   }
 
   const Scal dx = -0.*kRadius;
-  PortalStart(vect(box.A.x * coeff-dx, box.A.y));
-  PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
-  PortalStart(vect(box.B.x * coeff +dx, box.A.y));
-  PortalStop(vect(box.B.x * coeff +dx, box.B.y + 0.2));
+  if (1) {
+    PortalStart(vect(box.A.x * coeff-dx, box.A.y));
+    PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
+    PortalStart(vect(box.B.x * coeff +dx, box.A.y));
+    PortalStop(vect(box.B.x * coeff +dx, box.B.y + 0.2));
+  }
 
   ArrayVect position;
   ArrayVect velocity;
@@ -113,6 +115,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       RHS_bonds();
       DetectPortals(dt);
       ApplyPortalsForces();
+      DetectPortals(dt);
       ApplyFrozen();
     }
 
@@ -161,6 +164,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
 
     #pragma omp single
     {
+      DetectPortals(dt);
       // Resize the frame if needed (with a limited speed)
       auto limit = [](Scal& current, const Scal target) {
         const Scal limit = 0.02;
@@ -181,7 +185,6 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
         }
       }
 
-      ApplyPortals();
       Blocks.SortParticles();
       ApplyPortals();
       Blocks.SortParticles();
@@ -298,7 +301,8 @@ void particles_system::DetectPortals(const Scal local_dt) {
           if (lambda_curr > 0. && lambda_curr < 1. &&
             offset_curr * offset_prev < 0.) {
             particle_to_move_[id] = 1 - particle_to_move_[id];
-            std::cout << "tomove: " << id << std::endl;
+            //std::cout << "tomove(" << id << "): " 
+            //    << particle_to_move_[id] << std::endl;
           }
         }
       }
@@ -330,8 +334,7 @@ void particles_system::ApplyPortalsForces() {
           const vect curr = data.position[i][p];
           const auto id_curr = data.id[i][p];
           const Scal lambda_curr = r.dot(curr - a) / r.dot(r);
-          const vect q_curr = a + r * lambda_curr;
-          const Scal offset_curr = (curr - q_curr).dot(n);
+          const Scal offset_curr = (curr - a).dot(n);
           const Scal moffset_curr = 
               offset_curr * (particle_to_move_[id_curr] - 0.5);
 
@@ -340,10 +343,9 @@ void particles_system::ApplyPortalsForces() {
             for (size_t j : portal.blocks) {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
-                const auto id_neighbor = data.id[i][p];
-                Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
-                const vect q_neighbor = a + r * lambda_neighbor;
-                const Scal offset_neighbor = (neighbor - q_neighbor).dot(n);
+                const auto id_neighbor = data.id[j][q];
+                const Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
+                const Scal offset_neighbor = (neighbor - a).dot(n);
                 const Scal moffset_neighbor =
                     offset_neighbor * (particle_to_move_[id_neighbor] - 0.5);
                 if (lambda_neighbor > 0. && lambda_neighbor < 1.
@@ -359,23 +361,21 @@ void particles_system::ApplyPortalsForces() {
               for (size_t q = 0; q < data.position[j].size(); ++q) {
                 const vect neighbor = data.position[j][q];
                 const auto id_neighbor = data.id[j][q];
-                Scal other_lambda_neighbor = 
+                const Scal other_lambda_neighbor = 
                     other_r.dot(neighbor - other_a) / other_r.dot(other_r);
                 const vect other_q_neighbor = 
                     other_a + other_r * other_lambda_neighbor;
                 const Scal other_offset_neighbor = 
-                    (neighbor - other_q_neighbor).dot(other_n);
+                    (neighbor - other_a).dot(other_n);
                 const Scal other_moffset_neighbor =
                     other_offset_neighbor *
                     (particle_to_move_[id_neighbor] - 0.5);
-                if (other_lambda_neighbor > 0. && 
-                    other_lambda_neighbor < 1.) {
-                  if (other_moffset_neighbor * moffset_curr < 0.) {
+                if (other_lambda_neighbor > 0. && other_lambda_neighbor < 1.
+                    && other_moffset_neighbor * moffset_curr < 0.) {
                     data.force[i][p] += 
                         F12(curr, 
                             a + r * other_lambda_neighbor + 
                             n * other_offset_neighbor);
-                  }
                 }
               }
             }
@@ -403,7 +403,7 @@ void particles_system::ApplyPortals() {
             MoveToPortal(data.position[i][p], data.velocity[i][p],
                 portal, other);
             particle_to_move_[id] = 0;
-            std::cout << "moved: " << id << std::endl;
+            //std::cout << "moved: " << id << std::endl;
           } 
         }
       }
@@ -563,7 +563,7 @@ vect F12(vect p1, vect p2, Scal R, Scal sigma) {
 }
 
 vect F12wall(vect p1, vect p2) {
-  const Scal sigma = kSigma;
+  const Scal sigma = kSigmaWall;
   const Scal R = kRadius;
   const vect dp = p1 - p2;
   const Scal r2 = dp.dot(dp);
@@ -586,6 +586,11 @@ vect F12(vect p1, vect p2) {
   const Scal d12 = d6 * d6;
   return dp * std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
 }
+
+//#define CALC_FORCE CalcForceAvx
+#define CALC_FORCE CalcForceSerial
+//#define CALC_FORCE CalcForceSerialPadded
+
 
 template <bool ApplyThreshold=true>
 void CalcForceSerial(ArrayVect& force,
@@ -628,6 +633,7 @@ void print(const __m256& mm) {
   std::cout << std::endl;
 }
 
+#ifdef asdf
 template <bool ApplyThreshold=true>
 void CalcForceAvx(
     ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
@@ -695,7 +701,9 @@ void CalcForceAvx(
     }
   }
 }
+#endif
 
+#ifdef FALSE
 void TestUni() {
   std::cout.precision(8);
   std::cout << std::scientific;
@@ -734,10 +742,7 @@ void TestUni() {
         << std::endl;
   }
 }
-
-//#define CALC_FORCE CalcForceAvx
-//#define CALC_FORCE CalcForceSerial
-#define CALC_FORCE CalcForceSerialPadded
+#endif
 
 
 void particles_system::UpdateEnvObj() { 
@@ -754,7 +759,7 @@ void particles_system::UpdateEnvObj() {
 }
 
 vect F12_bond(vect p1, vect p2) {
-  const Scal sigma = kSigma * 1e6;
+  const Scal sigma = kSigmaBond;
   const Scal R = 2. * kRadius;
   const vect dp = p1 - p2;
   const Scal r = dp.length();
