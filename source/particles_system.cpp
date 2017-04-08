@@ -129,6 +129,10 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
         data.velocity_tmp[i][p] = data.velocity[i][p]; 
         data.position_tmp[i][p] = data.position[i][p]; 
         data.velocity[i][p] += data.force[i][p] * (dt * 0.5 / kMass);
+        if (data.velocity[i][p].length() > kVelocityLimit) {
+          data.velocity[i][p] *= 
+              kVelocityLimit / data.velocity[i][p].length();
+        }
         data.position[i][p] += data.velocity[i][p] * dt * 0.5;
       }
     }
@@ -154,9 +158,9 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       for (size_t p = 0; p < data.position[i].size(); ++p) {
         data.velocity[i][p] = 
             data.velocity_tmp[i][p] + data.force[i][p] * (dt / kMass);
-        const Scal limit = 10.;
-        if (data.velocity[i][p].length() > limit) {
-          data.velocity[i][p] *= limit / data.velocity[i][p].length();
+        if (data.velocity[i][p].length() > kVelocityLimit) {
+          data.velocity[i][p] *= 
+              kVelocityLimit / data.velocity[i][p].length();
         }
         data.position[i][p] = 
             data.position_tmp[i][p] + data.velocity[i][p] * dt;
@@ -194,7 +198,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
         if (portals_.size()) {
           portals_.pop_back();
         }
-        remove_last_portal_;
+        remove_last_portal_ = false;
       }
 
       // Pass the data to renderer if ready

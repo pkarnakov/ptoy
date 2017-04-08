@@ -33,6 +33,7 @@ const Scal kTimeStep = 0.0003;
 const Scal kBlockSize = 4. * kRadius;
 const Scal kGravity = 10.;
 const Scal kPortalThickness = 0.02;
+const Scal kVelocityLimit = 10.;
 
 const int kParticleIdNone = -1;
 
