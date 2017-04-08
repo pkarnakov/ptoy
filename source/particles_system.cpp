@@ -771,6 +771,16 @@ vect F12_bond(vect p1, vect p2) {
   return dp * (sigma * k);
 }
 
+vect F12_pick(vect p1, vect p2) {
+  const Scal sigma = kSigmaPick;
+  const Scal R = 0.1 * kRadius;
+  const vect dp = p1 - p2;
+  const Scal r = dp.length();
+  const Scal k = (R - r) / R;
+
+  return dp * (sigma * k);
+}
+
 void particles_system::RHS_bonds() {
   const auto& bbi = Blocks.GetBlockById();
   auto& data = Blocks.GetData();
@@ -825,7 +835,7 @@ void particles_system::RHS(size_t i)
     
     // pick force
     if (pick_enabled_ && data.id[i][p] == pick_particle_id_) {
-      f += F12_bond(x, pick_pointer_);
+      f += F12_pick(x, pick_pointer_);
     }
 
     // dissipation
