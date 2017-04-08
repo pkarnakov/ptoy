@@ -71,7 +71,7 @@ particles_system::particles_system() :
   ResetEnvObjFrame(domain);
 
   const Scal dx = kPortalThickness;
-  if (0) {
+  if (1) {
     PortalStart(vect(box.A.x * coeff-dx, box.A.y));
     PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
     PortalStart(vect(box.B.x * coeff +dx, box.A.y));
@@ -303,13 +303,10 @@ void particles_system::DetectPortals(const Scal local_dt) {
             particle_to_move_.resize(id + 1);
           }
           const vect curr = data.position[i][p];
-          const vect prev = curr - data.velocity[i][p] * local_dt;
           const Scal lambda_curr = (curr - a).dot(r) / r.dot(r);
           const Scal offset_curr = (curr - a).dot(n);
-          const Scal offset_prev = (prev - a).dot(n);
           if (lambda_curr > 0. && lambda_curr < 1.
-              && std::abs(offset_curr) <= kPortalThickness 
-              && std::abs(offset_prev) > kPortalThickness) {
+              && std::abs(offset_curr) <= kPortalThickness) {
             particle_to_move_[id] = 1;
           }
         }
@@ -364,8 +361,6 @@ void particles_system::ApplyPortalsForces() {
                 const vect neighbor = data.position[j][q];
                 const Scal other_lambda_neighbor = 
                     other_r.dot(neighbor - other_a) / other_r.dot(other_r);
-                const vect other_q_neighbor = 
-                    other_a + other_r * other_lambda_neighbor;
                 const Scal other_offset_neighbor = 
                     (neighbor - other_a).dot(other_n);
                 if (other_lambda_neighbor > 0. && other_lambda_neighbor < 1.
@@ -400,7 +395,7 @@ void particles_system::ApplyPortals() {
 
       for (size_t i : portal.blocks) {
         for (size_t p = 0; p < data.position[i].size(); ++p) {
-          const auto id = data.id[i][p];
+          const auto id = static_cast<size_t>(data.id[i][p]);
           if (particle_to_move_.size() <= id) {
             particle_to_move_.resize(id + 1);
           }
