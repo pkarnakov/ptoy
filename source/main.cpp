@@ -251,6 +251,10 @@ int main() {
             mouse_state = MouseState::Portal;
             std::cout << "Mouse switched to Portal mode" << std::endl;
             break;
+          case 'i':
+            std::cout << "Remove last portal" << std::endl;
+            G->PS->RemoveLastPortal();
+            break;
           case 'g':
             G->PS->InvertGravity();
             std::cout 

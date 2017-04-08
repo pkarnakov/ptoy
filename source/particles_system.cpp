@@ -9,6 +9,7 @@ particles_system::particles_system() :
 {
   force_enabled = false;
   force_center = vect(0., 0.);
+  remove_last_portal_ = false;
 
   // place particles in the domain
   const Scal r = kRadius;
@@ -37,15 +38,18 @@ particles_system::particles_system() :
   }
   */
 
-  const Scal coeff = 1;
+  const size_t rows = 40;
+  const size_t columns = 40;
+  const Scal width = columns * 2. * kRadius;
+  const Scal height = rows * std::sqrt(3.) * kRadius;
   std::vector<particle> P;
-  rect_vect box(vect(-0.2, -1.), vect(0.2, -1. + 30. * kRadius));
-  for (Scal y = box.A.y + r, x0 = 0.; 
-      y + r * 0.9 < box.B.y; y += std::sqrt(3.) * r, x0 = kRadius - x0) {
-    for (Scal x = box.A.x + r; x + r * 0.9 < box.B.x; x += 2. * r) {
-      P.push_back(particle(
-          vect((x + x0) * coeff, y), vect(0., 0.), 
-          kMass, r, kSigma, 0x1, rgb(1., 0., 0.)));
+  rect_vect box(vect(-0.5 * width, -1.), vect(0.5 * width, -1. + height));
+  for (size_t j = 0; j < rows; ++j) {
+    for (size_t i = 0; i < columns; ++i) {
+      const Scal x = box.A.x + kRadius * (2. * i + 1. + (j % 2));
+      const Scal y = box.A.y + kRadius * (std::sqrt(3.) * j + 1.);
+      P.emplace_back(vect(x, y), vect(0., 0.), 
+                 kMass, r, kSigma, 0x1, rgb(1., 0., 0.));
     }
   }
 
@@ -72,10 +76,10 @@ particles_system::particles_system() :
 
   const Scal dx = kPortalThickness;
   if (1) {
-    PortalStart(vect(box.A.x * coeff-dx, box.A.y));
-    PortalStop(vect(box.A.x * coeff -dx, box.B.y + 0.2));
-    PortalStart(vect(box.B.x * coeff +dx, box.A.y));
-    PortalStop(vect(box.B.x * coeff +dx, box.B.y + 0.2));
+    PortalStart(vect(box.A.x - dx, box.A.y));
+    PortalStop(vect(box.A.x - dx, box.B.y + 0.2));
+    PortalStart(vect(box.B.x + dx, box.A.y));
+    PortalStop(vect(box.B.x + dx, box.B.y + 0.2));
   }
 }
 particles_system::~particles_system() {}
@@ -185,6 +189,13 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       ApplyPortals();
       Blocks.SortParticles();
       CheckBonds();
+
+      if (remove_last_portal_) {
+        if (portals_.size()) {
+          portals_.pop_back();
+        }
+        remove_last_portal_;
+      }
 
       // Pass the data to renderer if ready
       if (renderer_ready_for_next_) {

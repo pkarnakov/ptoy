@@ -129,6 +129,9 @@ class particles_system
   void MoveToPortal(vect& position, vect& velocity,
                     const Portal& src, const Portal& dest);
   void SetParticleBuffer();
+  void RemoveLastPortal() {
+    remove_last_portal_ = true;
+  }
   void AddEnvObj(env_object* env);
   void ClearEnvObj() { ENVOBJ.clear(); }
   void UpdateEnvObj();
@@ -236,6 +239,7 @@ class particles_system
   int freeze_last_id_;
   bool renderer_ready_for_next_ = true;
   bool portal_enabled_ = false;
+  std::atomic<bool> remove_last_portal_;
  public:
   int portal_stage_ = 0;
   bool portal_mouse_moving_ = false;
