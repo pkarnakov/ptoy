@@ -264,24 +264,16 @@ void particles_system::MoveToPortal(
   const vect dest_r = dest_b - dest_a; 
   const vect dest_n = vect(-dest_r.y, dest_r.x).GetNormalized();
 
-  auto Move = [src_a, src_r, src_n, dest_a, dest_r, dest_n](
-      vect& v) {
-    const Scal lambda = src_r.dot(v - src_a) / src_r.dot(src_r);
-    const Scal offset = src_n.dot(v - src_a);
-    
-    Scal nof;
+  const Scal lambda_pos = src_r.dot(position - src_a) / src_r.dot(src_r);
+  const Scal offset_pos = src_n.dot(position - src_a);
+  const Scal lambda_vel = src_r.dot(velocity) / src_r.dot(src_r);
+  const Scal offset_vel = src_n.dot(velocity);
 
-    if (offset < 0.) {
-      nof = offset + 2. * kPortalThickness;
-    } else {
-      nof = offset - 2. * kPortalThickness;
-    }
+  const Scal sign = (offset_pos > 0. ? 1. : -1.);
 
-    v = dest_a + dest_r * lambda + dest_n * nof;
-  };
-
-  Move(position);
-  //Move(velocity); 
+  position = dest_a + dest_r * lambda_pos + 
+      dest_n * (offset_pos - sign * 2. * kPortalThickness);
+  velocity = dest_r * lambda_vel + dest_n * offset_vel;
 }
 
 void particles_system::DetectPortals(const Scal local_dt) {
@@ -598,8 +590,8 @@ vect F12(vect p1, vect p2) {
   return dp * std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
 }
 
-//#define CALC_FORCE CalcForceAvx
-#define CALC_FORCE CalcForceSerial
+#define CALC_FORCE CalcForceAvx
+//#define CALC_FORCE CalcForceSerial
 //#define CALC_FORCE CalcForceSerialPadded
 
 
@@ -644,7 +636,6 @@ void print(const __m256& mm) {
   std::cout << std::endl;
 }
 
-#ifdef asdf
 template <bool ApplyThreshold=true>
 void CalcForceAvx(
     ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
@@ -712,7 +703,6 @@ void CalcForceAvx(
     }
   }
 }
-#endif
 
 #ifdef FALSE
 void TestUni() {
