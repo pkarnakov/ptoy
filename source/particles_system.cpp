@@ -499,8 +499,16 @@ void particles_system::BondsMove(vect point) {
   if (bonds_prev_particle_id_ != kParticleIdNone && 
       id != kParticleIdNone) {
     assert(bonds_prev_particle_id_ != id);
-    bonds_.emplace(bonds_prev_particle_id_, id);
-    bonds_.emplace(id, bonds_prev_particle_id_);
+    std::pair<int, int> bond(bonds_prev_particle_id_,id);
+    std::pair<int, int> bond_r(id, bonds_prev_particle_id_);
+
+    if (bonds_.count(bond)) {
+      bonds_.erase(bond);
+      bonds_.erase(bond_r);
+    } else {
+      bonds_.insert(bond);
+      bonds_.insert(bond_r);
+    }
   }
 
   if (id != kParticleIdNone) {
