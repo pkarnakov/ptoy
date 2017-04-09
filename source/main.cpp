@@ -79,8 +79,8 @@ void display(void)
             last_frame_game_time) / frame_real_duration_s
         << ", particles=" 
         << G->PS->GetNumParticles()
-        << ", max_per_cell=" 
-        << G->PS->GetNumPerCell()
+        //<< ", max_per_cell=" 
+        //<< G->PS->GetNumPerCell()
         << ", t=" 
         << G->PS->GetTime()
         << ", steps=" 
@@ -143,6 +143,7 @@ void cycle()
 
   while (!quit) { 
     G->PS->step(next_game_time_target, pause);
+    std::this_thread::sleep_for(milliseconds(50));
     if (pause) {
       std::this_thread::sleep_for(milliseconds(100));
     }
@@ -207,8 +208,10 @@ int main() {
   //Event handler
   SDL_Event e;
 
-  enum class MouseState {None, Force, Bonds, Pick, Freeze};
+  enum class MouseState {None, Force, Bonds, Pick, Freeze, Portal};
   MouseState mouse_state = MouseState::Force;
+
+  size_t quit_count = 0;
 
   //While application is running
   while (!quit) {
@@ -216,9 +219,17 @@ int main() {
       if (e.type == SDL_QUIT) {
         quit = true;
       } else if (e.type == SDL_KEYDOWN) {
+        if (e.key.keysym.sym != 'q') {
+          quit_count = 0;
+        }
         switch( e.key.keysym.sym ) {
           case 'q':
-            quit = true;
+            if (++quit_count >= 3) {
+              quit = true;
+            } else {
+              std::cout << "Quit counter: " 
+                << quit_count << "/3" << std::endl;
+            }
             break;
           case 'n':
             mouse_state = MouseState::None;
@@ -246,6 +257,14 @@ int main() {
             mouse_state = MouseState::Bonds;
             std::cout << "Mouse switched to Bonds mode" << std::endl;
             break;
+          case 'o':
+            mouse_state = MouseState::Portal;
+            std::cout << "Mouse switched to Portal mode" << std::endl;
+            break;
+          case 'i':
+            std::cout << "Remove last portal" << std::endl;
+            G->PS->RemoveLastPortal();
+            break;
           case 'g':
             G->PS->InvertGravity();
             std::cout 
@@ -270,6 +289,9 @@ int main() {
           case MouseState::Freeze:
             G->PS->FreezeMove(GetDomainMousePosition());
             break;
+          case MouseState::Portal:
+            G->PS->PortalMove(GetDomainMousePosition());
+            break;
           case MouseState::None:
             break;
         }
@@ -287,6 +309,9 @@ int main() {
           case MouseState::Freeze:
             G->PS->FreezeStart(GetDomainMousePosition());
             break;
+          case MouseState::Portal:
+            G->PS->PortalStart(GetDomainMousePosition());
+            break;
           case MouseState::None:
             break;
         }
@@ -303,6 +328,9 @@ int main() {
             break;
           case MouseState::Freeze:
             G->PS->FreezeStop(GetDomainMousePosition());
+            break;
+          case MouseState::Portal:
+            G->PS->PortalStop(GetDomainMousePosition());
             break;
           case MouseState::None:
             break;

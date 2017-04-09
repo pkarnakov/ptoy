@@ -12,13 +12,13 @@ class game
 {
 public:
   std::unique_ptr<particles_system> PS;
-  std::unique_ptr<renderer_opengl> R;
+  std::unique_ptr<renderer> R;
   int width_;
   int height_;
   game(int width, int height)
   {
     PS=std::unique_ptr<particles_system>(new particles_system);
-    R=std::unique_ptr<renderer_opengl>(new renderer_opengl(PS.get()));
+    R=std::unique_ptr<renderer>(new renderer(PS.get()));
     SetWindowSize(width, height);
   }
   void SetWindowSize(int width, int height) {

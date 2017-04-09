@@ -10,17 +10,8 @@
 
 class renderer
 {
-protected:
-  particles_system* PS;
-public:
-  renderer(particles_system* _PS) : PS(_PS) {;}
-  virtual void draw_particles() = 0;
-  virtual void draw_frame() = 0;
-};
-
-class renderer_opengl : public renderer
-{
   int width_, height_;
+  particles_system* PS;
 public:
   void SetWindowSize(int width, int height) {
     width_ = width;
@@ -50,23 +41,23 @@ public:
 
     glEnd();
   }
-  void draw_circle(vect c, Scal r, rgb color)
-  {
+  void draw_circle(vect c, Scal r, rgb color) {
     draw_circle(c.x, c.y, r, color);
   }
-  void draw_circle(mindex c, int r, rgb color)
-  {
+  void draw_circle(mindex c, int r, rgb color) {
     draw_circle(c.i, c.j, r, color);
   }
-  void draw_line(vect A, vect B)
-  {
-    glColor3f(1., 1., 1.);
-    glBegin( GL_LINES ); // OR GL_LINE_LOOP
+  void draw_line(vect A, vect B, rgb color) {
+    glColor3f(color.r, color.g, color.b);
+    glBegin(GL_LINES); // OR GL_LINE_LOOP
 
     glVertex2f(A.x, A.y);
     glVertex2f(B.x, B.y);
 
     glEnd();
+  }
+  void draw_line(vect A, vect B) {
+    draw_line(A, B, rgb(1., 1., 1.));
   }
   void draw_line(mindex A, mindex B)
   {
@@ -108,7 +99,7 @@ public:
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     rect_vect R = PS->GetDomain();
-    glLineWidth(5.0);
+    glLineWidth(1.0);
     vect dA = R.A;
     vect dB = R.B;
     draw_line(vect(dA.x,dA.y), vect(dB.x,dA.y));
@@ -124,6 +115,7 @@ public:
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     glLineWidth(3.0);
+    const auto& nr = PS->GetNoRendering();
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
     for (auto bond : PS->GetBonds()) {
@@ -131,9 +123,11 @@ public:
       const auto& b = bbi[bond.second];
       assert(a.first != blocks::kBlockNone);
       assert(b.first != blocks::kBlockNone);
-      draw_line(
-          data.position[a.first][a.second],
-          data.position[b.first][b.second]);
+      if (!nr.count(bond)) {
+        draw_line(
+            data.position[a.first][a.second],
+            data.position[b.first][b.second]);
+      }
     }
     glPopMatrix();
   }
@@ -154,14 +148,38 @@ public:
     }
     glPopMatrix();
   }
+  void DrawPortals() {
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
+    glLineWidth(3.0);
+    const auto& portals = PS->GetPortals();
+    for (auto& pair : portals) {
+      draw_line(pair[0].begin, pair[0].end, rgb(0., .5, 1.));
+      draw_line(pair[1].begin, pair[1].end, rgb(1., .5, 0.));
+    }
+    if (PS->portal_stage_ == 0) {
+      if (PS->portal_mouse_moving_) {
+        draw_line(PS->portal_begin_, PS->portal_current_, rgb(0., .5, 1.));
+      }
+    } else  {
+      draw_line(PS->portal_prev_.first, 
+                PS->portal_prev_.second, rgb(0., .5, 1.));
+      if (PS->portal_mouse_moving_) {
+        draw_line(PS->portal_begin_, PS->portal_current_, rgb(1., .5, 0.));
+
+      }
+    }
+    glPopMatrix();
+  }
   void DrawAll() {
     draw_particles();
     draw_frame();
     DrawBonds();
     DrawFrozen();
+    DrawPortals();
   }
-  renderer_opengl(particles_system* _PS) : renderer(_PS)
-  {
-
-  }
+  renderer(particles_system* _PS) : PS(_PS) {}
 };
