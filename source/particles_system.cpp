@@ -781,6 +781,19 @@ vect F12_bond(vect p1, vect p2) {
   return dp * (sigma * k);
 }
 
+vect F12_portal_edge(vect p1, vect p2) {
+  const Scal sigma = kSigmaPortalEdge;
+  const Scal R = kRadiusPortalEdge;
+  const vect dp = p1 - p2;
+  const Scal r2 = dp.dot(dp);
+  const Scal r2inv = 1. / r2;
+  const Scal d2 = r2inv * (R * R);
+  const Scal d6 = d2 * d2 * d2;
+  const Scal d12 = d6 * d6;
+  const Scal k = std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
+  return dp * k;
+}
+
 vect F12_pick(vect p1, vect p2) {
   const Scal sigma = kSigmaPick;
   const Scal R = 0.1 * kRadius;
@@ -891,6 +904,14 @@ void particles_system::RHS(size_t i)
         } else {
           f += r * (kPointForce / std::pow(r.length(), 4));
         }
+      }
+    }
+
+    // portal edge forces
+    for (auto& pair : portals_) {
+      for (auto& portal : pair) {
+        f += F12_portal_edge(x, portal.begin);
+        f += F12_portal_edge(x, portal.end);
       }
     }
     
