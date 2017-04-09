@@ -47,7 +47,7 @@ T sqr(T a)
 
 void TestUni();
 
-struct alignas(64) particle
+struct particle
 {
   vect p;
   vect v;
