@@ -23,7 +23,7 @@ using std::min;
 const Scal kRadius = 0.02;
 const Scal kSigma = 1.;
 const Scal kSigmaWall = 1.;
-const Scal kSigmaBond = 1e4;
+const Scal kSigmaBond = 1e5;
 const Scal kSigmaPick = 1e3;
 const Scal kSigmaPortalEdge = 1;
 const Scal kRadiusPortalEdge = 3. * kRadius;

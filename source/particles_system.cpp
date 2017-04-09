@@ -205,6 +205,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       if (renderer_ready_for_next_) {
         std::lock_guard<std::mutex> lg(m_buffer_);
         SetParticleBuffer();
+        RHS_bonds();
         no_rendering_buffer_ = no_rendering_;
         renderer_ready_for_next_ = false;
         //std::this_thread::sleep_for(std::chrono::milliseconds(25));
@@ -777,7 +778,8 @@ vect F12_bond(vect p1, vect p2) {
   const Scal R = 2. * kRadius;
   const vect dp = p1 - p2;
   const Scal r = dp.length();
-  const Scal k = std::max(1. - r / R, -1.);
+  const Scal kLimit = 5;
+  const Scal k = std::max(1. - r / R, 1. - kLimit);
 
   return dp * (sigma * k);
 }
