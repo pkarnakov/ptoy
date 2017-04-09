@@ -115,6 +115,7 @@ public:
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     glLineWidth(3.0);
+    const auto& nr = PS->GetNoRendering();
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
     for (auto bond : PS->GetBonds()) {
@@ -122,9 +123,11 @@ public:
       const auto& b = bbi[bond.second];
       assert(a.first != blocks::kBlockNone);
       assert(b.first != blocks::kBlockNone);
-      draw_line(
-          data.position[a.first][a.second],
-          data.position[b.first][b.second]);
+      if (!nr.count(bond)) {
+        draw_line(
+            data.position[a.first][a.second],
+            data.position[b.first][b.second]);
+      }
     }
     glPopMatrix();
   }

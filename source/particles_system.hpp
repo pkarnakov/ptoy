@@ -24,7 +24,7 @@ const Scal kRadius = 0.02;
 const Scal kSigma = 1.;
 const Scal kSigmaWall = 1.;
 const Scal kSigmaBond = 1e4;
-const Scal kSigmaPick = 1e2;
+const Scal kSigmaPick = 1e3;
 const Scal kSigmaPortalEdge = 1;
 const Scal kRadiusPortalEdge = 3. * kRadius;
 const Scal kMass = kRadius * kRadius * 100.;
@@ -252,5 +252,10 @@ class particles_system
   std::vector<std::array<Portal, 2>> portals_;
   std::vector<int> particle_to_move_; // 1: to move, 0: otherwise
   void UpdatePortalBlocks(Portal& portal);
+  std::set<std::pair<int, int>> no_rendering_;
+  std::set<std::pair<int, int>> no_rendering_buffer_;
+  const std::set<std::pair<int, int>>& GetNoRendering() const {
+    return no_rendering_buffer_;
+  }
 };
 

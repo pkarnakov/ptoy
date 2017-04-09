@@ -205,6 +205,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit)
       if (renderer_ready_for_next_) {
         std::lock_guard<std::mutex> lg(m_buffer_);
         SetParticleBuffer();
+        no_rendering_buffer_ = no_rendering_;
         renderer_ready_for_next_ = false;
         //std::this_thread::sleep_for(std::chrono::milliseconds(25));
       }
@@ -807,6 +808,7 @@ vect F12_pick(vect p1, vect p2) {
 void particles_system::RHS_bonds() {
   const auto& bbi = Blocks.GetBlockById();
   auto& data = Blocks.GetData();
+  no_rendering_.clear();
   for (auto bond : bonds_) {
     const auto& p = bbi[bond.first];
     const auto& q = bbi[bond.second];
@@ -857,6 +859,8 @@ void particles_system::RHS_bonds() {
                 (q_offset_other + 2. * sign * kPortalThickness);
             res = F12_bond(p_pos, proj);
             found = true;
+            no_rendering_.emplace(bond.first, bond.second);
+            no_rendering_.emplace(bond.second, bond.first);
           }
         }
       }
