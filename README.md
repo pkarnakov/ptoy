@@ -21,4 +21,4 @@ bin/ptoy
 
 ## Screenshots
 
-<img src="https://github.com/divfree/ptoy/blob/master/doc/screenshot.png" alt="gameplay" width="300">
+<img src="doc/screenshot.png" alt="gameplay" width="300">
