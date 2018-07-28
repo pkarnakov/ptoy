@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 
 project("ptoy" CXX)
 
-set(BINARY_NAME "ptoy")
+set(TARG "ptoy")
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
@@ -17,15 +17,15 @@ set(SOURCE_FILES
 )
 
 # Add target
-add_executable(${BINARY_NAME} ${SOURCE_FILES})
+add_executable(${TARG} ${SOURCE_FILES})
      
 # Threads
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 if (Threads::Threads)
-  set(LIBRARIES ${LIBRARIES} Threads::Threads)
+  set(LIB ${LIB} Threads::Threads)
 else()
-  set(LIBRARIES ${LIBRARIES} pthread)
+  set(LIB ${LIB} pthread)
 endif()
 
 
@@ -50,9 +50,10 @@ if (UNIX)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
+
 # C++11
-set_property(TARGET ${BINARY_NAME} PROPERTY CXX_STANDARD 11)
-set_property(TARGET ${BINARY_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET ${TARG} PROPERTY CXX_STANDARD 11)
+set_property(TARGET ${TARG} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Debug build
 if (DEBUG) 
@@ -67,8 +68,8 @@ else()
 endif()
 if (STATIC_BUILD)
   SET(BUILD_SHARED_LIBRARIES OFF)
-  set_property(TARGET ${BINARY_NAME} PROPERTY LINK_SEARCH_START_STATIC 1)
-  set_property(TARGET ${BINARY_NAME} PROPERTY LINK_SEARCH_END_STATIC 1)
+  set_property(TARGET ${TARG} PROPERTY LINK_SEARCH_START_STATIC 1)
+  set_property(TARGET ${TARG} PROPERTY LINK_SEARCH_END_STATIC 1)
   if (UNIX)
     SET(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
@@ -78,12 +79,17 @@ if (STATIC_BUILD)
 endif()
 
 # OpenGL and GLX 
+set(OpenGL_GL_PREFERENCE "GLVND")
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIRS})
-set(LIBRARIES ${LIBRARIES} ${OPENGL_LIBRARIES})
+set(LIB "${LIB} ${OPENGL_LIBRARIES}")
+
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
-set(LIBRARIES ${LIBRARIES} ${SDL2_LIBRARIES})
+set(LIB "${LIB} ${SDL2_LIBRARY}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lSDL2")
+
+string(STRIP "${LIB}" LIB)
 
 # Multisampling flag
 if (DEFINED MULTISAMPLE)
@@ -95,4 +101,4 @@ if (MULTISAMPLE)
   add_definitions(-D_MULTISAMPLE_)
 endif()
 
-target_link_libraries(${BINARY_NAME} ${LIBRARIES})
+target_link_libraries(${TARG} ${LIB})
