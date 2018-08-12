@@ -1,8 +1,6 @@
-cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
 
 project("ptoy" CXX)
-
-set(TARG "ptoy")
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
@@ -10,24 +8,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)  
 
 # Source folders
-aux_source_directory(source SOURCES_ROOT)
-
-set(SOURCE_FILES
-  ${SOURCES_ROOT}
-)
+aux_source_directory(source SRC)
 
 # Add target
-add_executable(${TARG} ${SOURCE_FILES})
-     
-# Threads
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-if (Threads::Threads)
-  set(LIB ${LIB} Threads::Threads)
-else()
-  set(LIB ${LIB} pthread)
-endif()
+set(T "ptoy")
+add_executable(${T} ${SRC})
 
+# C++11
+set_property(TARGET ${T} PROPERTY CXX_STANDARD 11)
+set_property(TARGET ${T} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # OpenMP 
 if (NOT DEFINED OPENMP)
@@ -47,13 +36,8 @@ endif()
 if (UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -falign-functions=64 -march=native -frename-registers")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+  #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 endif()
-
-
-# C++11
-set_property(TARGET ${TARG} PROPERTY CXX_STANDARD 11)
-set_property(TARGET ${TARG} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Debug build
 if (DEBUG) 
@@ -68,8 +52,8 @@ else()
 endif()
 if (STATIC_BUILD)
   SET(BUILD_SHARED_LIBRARIES OFF)
-  set_property(TARGET ${TARG} PROPERTY LINK_SEARCH_START_STATIC 1)
-  set_property(TARGET ${TARG} PROPERTY LINK_SEARCH_END_STATIC 1)
+  set_property(TARGET ${T} PROPERTY LINK_SEARCH_START_STATIC 1)
+  set_property(TARGET ${T} PROPERTY LINK_SEARCH_END_STATIC 1)
   if (UNIX)
     SET(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
@@ -82,14 +66,11 @@ endif()
 set(OpenGL_GL_PREFERENCE "GLVND")
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIRS})
-set(LIB "${LIB} ${OPENGL_LIBRARIES}")
+target_link_libraries(${T} ${OPENGL_LIBRARIES})
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
-set(LIB "${LIB} ${SDL2_LIBRARY}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lSDL2")
-
-string(STRIP "${LIB}" LIB)
+target_link_libraries(${T} SDL2::SDL2)
 
 # Multisampling flag
 if (DEFINED MULTISAMPLE)
@@ -100,5 +81,3 @@ endif()
 if (MULTISAMPLE)
   add_definitions(-D_MULTISAMPLE_)
 endif()
-
-target_link_libraries(${TARG} ${LIB})
