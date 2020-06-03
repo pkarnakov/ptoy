@@ -1,19 +1,23 @@
 # ptoy
 
+## Clone
+
+    git clone https://github.com/divfree/ptoy.git
+
 ## Prerequisites
 
 - Linux or Mac OS X
 - CMake
 - SDL2
 
-## How to build
+## Build
 
 ```
 cmake .
 make
 ```
 
-## How to run
+## Run
 
 ```
 bin/ptoy
