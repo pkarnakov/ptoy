@@ -24,7 +24,3 @@ make
 ```
 bin/ptoy
 ```
-
-## Screenshots
-
-<img src="doc/screenshot.png" alt="gameplay" width="300">
