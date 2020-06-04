@@ -1,5 +1,7 @@
 # ptoy
 
+<img src="doc/screenshot.png" alt="screenshot" width="300">
+
 ## Clone
 
     git clone https://github.com/divfree/ptoy.git
