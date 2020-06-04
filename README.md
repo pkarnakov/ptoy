@@ -4,7 +4,7 @@
 
 ## Clone
 
-    git clone https://github.com/divfree/ptoy.git
+    git clone https://github.com/pkarnakov/ptoy.git
 
 ## Prerequisites
 
