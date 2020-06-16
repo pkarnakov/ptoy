@@ -32,7 +32,7 @@ endif()
 # GCC warnings and optimizations
 if (UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -falign-functions=64 -march=native -frename-registers")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -falign-functions=64 -march=native -frename-registers")
 endif()
 
 # Debug build

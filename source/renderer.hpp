@@ -30,8 +30,6 @@ public:
     Scal dy = 0.;
 
     glBegin( GL_POLYGON );
-    //glBegin( GL_LINE_LOOP );
-    //glDrawArrays();
 
     for (size_t i = 0; i < num_segments; ++i) {
       glVertex3f(x + dx, y + dy, 0);
@@ -48,27 +46,23 @@ public:
   void draw_circle(mindex c, int r, rgb color) {
     draw_circle(c.i, c.j, r, color);
   }
-  void draw_line(vect A, vect B, rgb color) {
+  void draw_line(vect A, vect B, rgb color, Scal width) {
     glColor3f(color.r, color.g, color.b);
-    glBegin(GL_LINES); // OR GL_LINE_LOOP
+    glBegin(GL_POLYGON);
 
-    glVertex2f(A.x, A.y);
-    glVertex2f(B.x, B.y);
+    const vect n = vect(A.y - B.y , B.x - A.x).GetNormalized();
+    auto v = [](vect p) {
+      glVertex2f(p.x, p.y);
+    };
+    v(A + n * (width * 0.5));
+    v(A - n * (width * 0.5));
+    v(B - n * (width * 0.5));
+    v(B + n * (width * 0.5));
 
     glEnd();
   }
-  void draw_line(vect A, vect B) {
-    draw_line(A, B, rgb(1., 1., 1.));
-  }
-  void draw_line(mindex A, mindex B)
-  {
-    glColor3f(1., 1., 1.);
-    glBegin( GL_LINES ); // OR GL_LINE_LOOP
-
-    glVertex2f(A.i, A.j);
-    glVertex2f(B.i, B.j);
-
-    glEnd();
+  void draw_line(vect A, vect B, Scal width) {
+    draw_line(A, B, rgb(1., 1., 1.), width);
   }
   void draw_particles()
   {
@@ -100,13 +94,13 @@ public:
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     rect_vect R = PS->GetDomain();
-    glLineWidth(1.0);
     vect dA = R.A;
     vect dB = R.B;
-    draw_line(vect(dA.x,dA.y), vect(dB.x,dA.y));
-    draw_line(vect(dA.x,dB.y), vect(dB.x,dB.y));
-    draw_line(vect(dA.x,dA.y), vect(dA.x,dB.y));
-    draw_line(vect(dB.x,dA.y), vect(dB.x,dB.y));
+    const Scal width = 0.005;
+    draw_line(vect(dA.x,dA.y), vect(dB.x,dA.y), width);
+    draw_line(vect(dA.x,dB.y), vect(dB.x,dB.y), width);
+    draw_line(vect(dA.x,dA.y), vect(dA.x,dB.y), width);
+    draw_line(vect(dB.x,dA.y), vect(dB.x,dB.y), width);
     glPopMatrix();
   }
   void DrawBonds() {
@@ -115,7 +109,6 @@ public:
     glLoadIdentity();
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
-    glLineWidth(3.0);
     const auto& nr = PS->GetNoRendering();
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
@@ -125,9 +118,10 @@ public:
       assert(a.first != blocks::kBlockNone);
       assert(b.first != blocks::kBlockNone);
       if (!nr.count(bond)) {
+        const Scal width = 0.0075;
         draw_line(
             data.position[a.first][a.second],
-            data.position[b.first][b.second]);
+            data.position[b.first][b.second], width);
       }
     }
     glPopMatrix();
@@ -138,7 +132,6 @@ public:
     glLoadIdentity();
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
-    glLineWidth(3.0);
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
     for (auto id : PS->GetFrozen()) {
@@ -155,22 +148,21 @@ public:
     glLoadIdentity();
     vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
-    glLineWidth(3.0);
     const auto& portals = PS->GetPortals();
+    const Scal width = 0.0075;
     for (auto& pair : portals) {
-      draw_line(pair[0].begin, pair[0].end, rgb(0., .5, 1.));
-      draw_line(pair[1].begin, pair[1].end, rgb(1., .5, 0.));
+      draw_line(pair[0].begin, pair[0].end, rgb(0., .5, 1.), width);
+      draw_line(pair[1].begin, pair[1].end, rgb(1., .5, 0.), width);
     }
     if (PS->portal_stage_ == 0) {
       if (PS->portal_mouse_moving_) {
-        draw_line(PS->portal_begin_, PS->portal_current_, rgb(0., .5, 1.));
+        draw_line(PS->portal_begin_, PS->portal_current_, rgb(0., .5, 1.), width);
       }
     } else  {
       draw_line(PS->portal_prev_.first, 
-                PS->portal_prev_.second, rgb(0., .5, 1.));
+                PS->portal_prev_.second, rgb(0., .5, 1.), width);
       if (PS->portal_mouse_moving_) {
-        draw_line(PS->portal_begin_, PS->portal_current_, rgb(1., .5, 0.));
-
+        draw_line(PS->portal_begin_, PS->portal_current_, rgb(1., .5, 0.), width);
       }
     }
     glPopMatrix();
