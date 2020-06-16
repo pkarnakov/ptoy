@@ -2,20 +2,17 @@
   BLOCKS
 */
 
-#include "geometry.hpp"
+#include <array>
+#include <cassert>
 #include <cmath>
 #include <vector>
-#include <cassert>
 #include "aligned_allocator.hpp"
-#include <array>
+#include "geometry.hpp"
 
-using ArrayVect = std::vector<vect,
-      hpc15::aligned_allocator<vect,64>>;
-using ArrayInt = std::vector<int,
-      hpc15::aligned_allocator<int,64>>;
+using ArrayVect = std::vector<vect, hpc15::aligned_allocator<vect, 64>>;
+using ArrayInt = std::vector<int, hpc15::aligned_allocator<int, 64>>;
 
-class blocks
-{
+class blocks {
  public:
   static const size_t kNumNeighbors = 9;
   static const size_t kBlockNone = static_cast<size_t>(-1);
@@ -24,6 +21,7 @@ class blocks
   struct BlockData {
    private:
     blocks* parent;
+
    public:
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
@@ -65,9 +63,9 @@ class blocks
       }
     }
     void RemoveParticle(
-        size_t src, // source block 
-        size_t idx  // particle index within the source block
-        ) {
+        size_t src, // source block
+        size_t idx // particle index within the source block
+    ) {
       std::swap(position[src][idx], position[src].back());
       std::swap(position_tmp[src][idx], position_tmp[src].back());
       std::swap(velocity[src][idx], velocity[src].back());
@@ -86,10 +84,10 @@ class blocks
       id[src].pop_back();
     }
     void MoveParticle(
-        size_t src, // source block 
+        size_t src, // source block
         size_t idx, // particle index within the source block
         size_t dest // destination block
-        ) {
+    ) {
       assert(src != dest);
       position[dest].push_back(position[src][idx]);
       position_tmp[dest].push_back(position_tmp[src][idx]);
@@ -100,15 +98,11 @@ class blocks
 
       RemoveParticle(src, idx);
 
-      parent->block_by_id_[id[dest].back()] = 
-          {dest, position[dest].size() - 1};
+      parent->block_by_id_[id[dest].back()] = {dest, position[dest].size() - 1};
     }
     void AddParticle(
         size_t dest, // destination block
-        vect particle_position,
-        vect particle_velocity,
-        int particle_id
-        ) {
+        vect particle_position, vect particle_velocity, int particle_id) {
       position[dest].push_back(particle_position);
       position_tmp[dest].push_back(vect::kNan);
       velocity[dest].push_back(particle_velocity);
@@ -126,17 +120,25 @@ class blocks
   };
   void SetDomain(rect_vect proposal) {
     rect_vect domain = domain_;
-    while (proposal.A.x < domain.A.x) { domain.A.x -= block_size_.x; }
-    while (proposal.A.y < domain.A.y) { domain.A.y -= block_size_.y; }
-    while (proposal.B.x > domain.B.x) { domain.B.x += block_size_.x; }
-    while (proposal.B.y > domain.B.y) { domain.B.y += block_size_.y; }
-    
+    while (proposal.A.x < domain.A.x) {
+      domain.A.x -= block_size_.x;
+    }
+    while (proposal.A.y < domain.A.y) {
+      domain.A.y -= block_size_.y;
+    }
+    while (proposal.B.x > domain.B.x) {
+      domain.B.x += block_size_.x;
+    }
+    while (proposal.B.y > domain.B.y) {
+      domain.B.y += block_size_.y;
+    }
+
     if (domain != domain_) {
       const BlockData old_data = GetData();
       InitEmptyBlocks(domain, block_size_);
       AddParticles(old_data);
-      std::cout << "Create blocks for new domain: " <<
-        domain_.A << " " << domain_.B << std::endl;
+      std::cout << "Create blocks for new domain: " << domain_.A << " "
+                << domain_.B << std::endl;
     }
   }
   Scal GetCircumRadius() const {
@@ -145,16 +147,17 @@ class blocks
   // TODO: draw blocks
   vect GetCenter(size_t block) const {
     const mindex m(block / dims_.j, block % dims_.j);
-    return domain_.A + 
-        vect((0.5 + m.i) * block_size_.x, (0.5 + m.j) * block_size_.y);
+    return domain_.A +
+           vect((0.5 + m.i) * block_size_.x, (0.5 + m.j) * block_size_.y);
   }
-  blocks(rect_vect domain, vect block_size) 
+  blocks(rect_vect domain, vect block_size)
       : data_(this), num_particles_(0), num_per_cell_(0) {
     InitEmptyBlocks(domain, block_size);
   }
   size_t FindBlock(vect position) const {
-    mindex m(static_cast<int>((position.x - domain_.A.x) / block_size_.x),
-             static_cast<int>((position.y - domain_.A.y) / block_size_.y));
+    mindex m(
+        static_cast<int>((position.x - domain_.A.x) / block_size_.x),
+        static_cast<int>((position.y - domain_.A.y) / block_size_.y));
     if (m.i >= 0 && m.i < dims_.i && m.j >= 0 && m.j < dims_.j) {
       return m.i * dims_.j + m.j;
     }
@@ -168,18 +171,16 @@ class blocks
       for (size_t p = 0; p < other.position[k].size(); ++p) {
         size_t i = FindBlock(other.position[k][p]);
         if (i != kBlockNone) {
-          data_.AddParticle(i, other.position[k][p], 
-                            other.velocity[k][p], other.id[k][p]);
+          data_.AddParticle(
+              i, other.position[k][p], other.velocity[k][p], other.id[k][p]);
         }
       }
     }
     SortParticles();
   }
   void AddParticles(
-      const ArrayVect& position, 
-      const ArrayVect& velocity,
-      const std::vector<int>& id
-      ) {
+      const ArrayVect& position, const ArrayVect& velocity,
+      const std::vector<int>& id) {
     const size_t size = position.size();
     assert(velocity.size() == size);
     assert(id.size() == size);
@@ -204,8 +205,8 @@ class blocks
   size_t GetNumBlocks() const {
     return num_blocks_;
   }
-  size_t GetNumParticles() const { 
-    return num_particles_; 
+  size_t GetNumParticles() const {
+    return num_particles_;
   }
   size_t GetNumPerCell() const {
     return num_per_cell_;
@@ -270,7 +271,7 @@ class blocks
     size_t n = 0;
     for (int i = -1; i <= 1; ++i) {
       for (int j = -1; j <= 1; ++j) {
-        neighbor_offsets_[n] = i * dims_.j + j; 
+        neighbor_offsets_[n] = i * dims_.j + j;
         ++n;
       }
     }

@@ -32,7 +32,7 @@ struct Particle {
   Vect position;
   Vect velocity;
   Scal mass;
-  //Family family;
+  // Family family;
 };
 
 struct Bond {
@@ -40,7 +40,7 @@ struct Bond {
 };
 
 struct VisibleState {
-  std::vector<Particle> particles; 
+  std::vector<Particle> particles;
   std::vector<Bond> bonds;
 };
 

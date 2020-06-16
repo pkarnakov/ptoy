@@ -3,22 +3,22 @@
 */
 #pragma once
 
-#include "geometry.hpp"
-#include <vector>
-#include <iostream>
+#include <atomic>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <mutex>
-#include "blocks.hpp"
-#include <atomic>
 #include <set>
+#include <vector>
+#include "blocks.hpp"
+#include "geometry.hpp"
 
 #include <x86intrin.h>
 
 using std::endl;
-using std::vector;
-using std::size_t;
 using std::min;
+using std::size_t;
+using std::vector;
 
 const Scal kRadius = 0.02;
 const Scal kSigma = 1.;
@@ -39,30 +39,32 @@ const Scal kVelocityLimit = 10.;
 
 const int kParticleIdNone = -1;
 
-template<class T>
-T sqr(T a)
-{
-  return a*a;
+template <class T>
+T sqr(T a) {
+  return a * a;
 }
 
 void TestUni();
 
-struct particle
-{
+struct particle {
   vect p;
   vect v;
   vect f;
   vect p0;
   vect v0;
-  //unsigned int layers_mask;
-  //rgb color;
-  particle() {;}
-  particle(vect _p, vect _v, Scal /*_m*/, Scal /*_r*/, 
-      Scal /*_sigma*/, 
-      unsigned int /*_layers_mask*/, 
-      rgb /*_color*/)
-    : p(_p), v(_v)//, layers_mask(_layers_mask), color(_color)
-  {;}
+  // unsigned int layers_mask;
+  // rgb color;
+  particle() {
+    ;
+  }
+  particle(
+      vect _p, vect _v, Scal /*_m*/, Scal /*_r*/, Scal /*_sigma*/,
+      unsigned int /*_layers_mask*/, rgb /*_color*/)
+      : p(_p)
+      , v(_v) //, layers_mask(_layers_mask), color(_color)
+  {
+    ;
+  }
 };
 
 vect F12(vect p1, vect p2, Scal sigma, Scal R);
@@ -70,40 +72,40 @@ vect F12wall(vect p1, vect p2);
 vect F12(vect p1, vect p2);
 
 class env_object {
-public:
+ public:
   virtual vect F(vect p, vect v) = 0;
   virtual bool IsClose(vect p, Scal R) = 0;
 };
 
-class line : public env_object
-{
+class line : public env_object {
   vect A, B;
-  //Scal eps;
+  // Scal eps;
   vect GetNearest(vect p) {
     vect Q;
     Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
     if (lambda > 0. && lambda < 1.) {
-      Q = A + (B-A) * lambda;
+      Q = A + (B - A) * lambda;
     } else {
       Q = (p.dist(A) < p.dist(B)) ? A : B;
     }
     return Q;
   }
-public:
-  line(vect _A, vect _B) : A(_A), B(_B) {;}
+
+ public:
+  line(vect _A, vect _B) : A(_A), B(_B) {
+    ;
+  }
   vect F(vect p, vect /*v*/) override {
     return F12wall(p, GetNearest(p));
   }
   bool IsClose(vect p, Scal R) override {
     return GetNearest(p).dist(p) < R + kRadius;
   }
-
 };
 
-class particles_system
-{
+class particles_system {
  public:
-  particles_system(); 
+  particles_system();
   ~particles_system();
   struct Portal {
     vect begin, end;
@@ -113,7 +115,7 @@ class particles_system
       vect Q;
       Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
       if (lambda > 0. && lambda < 1.) {
-        Q = A + (B-A) * lambda;
+        Q = A + (B - A) * lambda;
       } else {
         Q = (p.dist(A) < p.dist(B)) ? A : B;
       }
@@ -129,14 +131,16 @@ class particles_system
   void ApplyPortals();
   void ApplyPortalsForces();
   void DetectPortals();
-  void MoveToPortal(vect& position, vect& velocity,
-                    const Portal& src, const Portal& dest);
+  void MoveToPortal(
+      vect& position, vect& velocity, const Portal& src, const Portal& dest);
   void SetParticleBuffer();
   void RemoveLastPortal() {
     remove_last_portal_ = true;
   }
   void AddEnvObj(env_object* env);
-  void ClearEnvObj() { ENVOBJ.clear(); }
+  void ClearEnvObj() {
+    ENVOBJ.clear();
+  }
   void UpdateEnvObj();
   void ResetEnvObjFrame(rect_vect new_domain) {
     const vect A = new_domain.A, B = new_domain.B;
@@ -147,7 +151,7 @@ class particles_system
     AddEnvObj(new line(vect(B.x, A.y), vect(B.x, B.y)));
     UpdateEnvObj();
   }
-  void SetDomain(rect_vect new_domain) { 
+  void SetDomain(rect_vect new_domain) {
     domain = new_domain;
     Blocks.SetDomain(domain);
   }
@@ -181,9 +185,15 @@ class particles_system
   void PortalStart(vect point);
   void PortalMove(vect point);
   void PortalStop(vect point);
-  Scal GetTime() const { return t; }
-  size_t GetNumSteps() const { return static_cast<size_t>(t / dt); } 
-  rect_vect GetDomain() const { return domain; }
+  Scal GetTime() const {
+    return t;
+  }
+  size_t GetNumSteps() const {
+    return static_cast<size_t>(t / dt);
+  }
+  rect_vect GetDomain() const {
+    return domain;
+  }
 
   // These are only for external use (TODO: check or ensure)
   bool GetGravity() const {
@@ -195,8 +205,8 @@ class particles_system
   const std::vector<particle>& GetParticles() const {
     return particle_buffer_;
   }
-  size_t GetNumParticles() const { 
-    return blocks_buffer_.GetNumParticles(); 
+  size_t GetNumParticles() const {
+    return blocks_buffer_.GetNumParticles();
   }
   size_t GetNumPerCell() const {
     return blocks_buffer_.GetNumPerCell();
@@ -243,6 +253,7 @@ class particles_system
   bool renderer_ready_for_next_ = true;
   bool portal_enabled_ = false;
   std::atomic<bool> remove_last_portal_;
+
  public:
   int portal_stage_ = 0;
   bool portal_mouse_moving_ = false;
@@ -258,4 +269,3 @@ class particles_system
     return no_rendering_buffer_;
   }
 };
-

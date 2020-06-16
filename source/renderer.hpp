@@ -6,20 +6,19 @@
 #include "particles_system.hpp"
 //#include <GL/glut.h>
 #include <SDL_opengl.h>
-#include <iostream>
 #include <functional>
+#include <iostream>
 
-class renderer
-{
+class renderer {
   int width_, height_;
   particles_system* PS;
-public:
+
+ public:
   void SetWindowSize(int width, int height) {
     width_ = width;
     height_ = height;
   }
-  void draw_circle(Scal x, Scal y, Scal r, rgb color)
-  {
+  void draw_circle(Scal x, Scal y, Scal r, rgb color) {
     glColor3f(color.r, color.g, color.b);
 
     const size_t num_segments = 8;
@@ -29,7 +28,7 @@ public:
     Scal dx = r;
     Scal dy = 0.;
 
-    glBegin( GL_POLYGON );
+    glBegin(GL_POLYGON);
 
     for (size_t i = 0; i < num_segments; ++i) {
       glVertex3f(x + dx, y + dy, 0);
@@ -50,10 +49,8 @@ public:
     glColor3f(color.r, color.g, color.b);
     glBegin(GL_POLYGON);
 
-    const vect n = vect(A.y - B.y , B.x - A.x).GetNormalized();
-    auto v = [](vect p) {
-      glVertex2f(p.x, p.y);
-    };
+    const vect n = vect(A.y - B.y, B.x - A.x).GetNormalized();
+    auto v = [](vect p) { glVertex2f(p.x, p.y); };
     v(A + n * (width * 0.5));
     v(A - n * (width * 0.5));
     v(B - n * (width * 0.5));
@@ -64,50 +61,47 @@ public:
   void draw_line(vect A, vect B, Scal width) {
     draw_line(A, B, rgb(1., 1., 1.), width);
   }
-  void draw_particles()
-  {
+  void draw_particles() {
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     auto particles = PS->GetParticles();
-    for(std::size_t k=0; k<particles.size(); ++k)
-    {
-      auto& part=particles[k];
-      //vect p=part.p;
+    for (std::size_t k = 0; k < particles.size(); ++k) {
+      auto& part = particles[k];
+      // vect p=part.p;
       Scal f = 0.5 + part.v.length() / 7.; // color intensity
       f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
-      //auto c = part.color;
-      //rgb color(c.r * f, c.g * f, c.b * f);
+      // auto c = part.color;
+      // rgb color(c.r * f, c.g * f, c.b * f);
       rgb color(f, 0., 0.);
-      //draw_circle(part.p, part.r, color);
+      // draw_circle(part.p, part.r, color);
       draw_circle(part.p, kRadius * 0.9, color);
     }
     glPopMatrix();
   }
-  void draw_frame()
-  {
+  void draw_frame() {
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     rect_vect R = PS->GetDomain();
     vect dA = R.A;
     vect dB = R.B;
     const Scal width = 0.005;
-    draw_line(vect(dA.x,dA.y), vect(dB.x,dA.y), width);
-    draw_line(vect(dA.x,dB.y), vect(dB.x,dB.y), width);
-    draw_line(vect(dA.x,dA.y), vect(dA.x,dB.y), width);
-    draw_line(vect(dB.x,dA.y), vect(dB.x,dB.y), width);
+    draw_line(vect(dA.x, dA.y), vect(dB.x, dA.y), width);
+    draw_line(vect(dA.x, dB.y), vect(dB.x, dB.y), width);
+    draw_line(vect(dA.x, dA.y), vect(dA.x, dB.y), width);
+    draw_line(vect(dB.x, dA.y), vect(dB.x, dB.y), width);
     glPopMatrix();
   }
   void DrawBonds() {
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& nr = PS->GetNoRendering();
     const auto& data = PS->GetBlockData();
@@ -120,8 +114,8 @@ public:
       if (!nr.count(bond)) {
         const Scal width = 0.0075;
         draw_line(
-            data.position[a.first][a.second],
-            data.position[b.first][b.second], width);
+            data.position[a.first][a.second], data.position[b.first][b.second],
+            width);
       }
     }
     glPopMatrix();
@@ -130,15 +124,15 @@ public:
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
     for (auto id : PS->GetFrozen()) {
       const auto& a = bbi[id];
       assert(a.first != blocks::kBlockNone);
-      draw_circle(data.position[a.first][a.second], 
-                 kRadius * 0.5, rgb(0.,0.,0.));
+      draw_circle(
+          data.position[a.first][a.second], kRadius * 0.5, rgb(0., 0., 0.));
     }
     glPopMatrix();
   }
@@ -146,7 +140,7 @@ public:
     glPushMatrix();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    vect A(-1.,-1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
+    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& portals = PS->GetPortals();
     const Scal width = 0.0075;
@@ -156,13 +150,16 @@ public:
     }
     if (PS->portal_stage_ == 0) {
       if (PS->portal_mouse_moving_) {
-        draw_line(PS->portal_begin_, PS->portal_current_, rgb(0., .5, 1.), width);
+        draw_line(
+            PS->portal_begin_, PS->portal_current_, rgb(0., .5, 1.), width);
       }
-    } else  {
-      draw_line(PS->portal_prev_.first, 
-                PS->portal_prev_.second, rgb(0., .5, 1.), width);
+    } else {
+      draw_line(
+          PS->portal_prev_.first, PS->portal_prev_.second, rgb(0., .5, 1.),
+          width);
       if (PS->portal_mouse_moving_) {
-        draw_line(PS->portal_begin_, PS->portal_current_, rgb(1., .5, 0.), width);
+        draw_line(
+            PS->portal_begin_, PS->portal_current_, rgb(1., .5, 0.), width);
       }
     }
     glPopMatrix();
