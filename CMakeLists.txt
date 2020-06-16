@@ -68,6 +68,11 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 target_link_libraries(${T} SDL2::SDL2)
 
+option(USE_AVX "Enable AVX vectorization" OFF)
+if (USE_AVX)
+  add_definitions(-DUSE_AVX)
+endif()
+
 # Multisampling flag
 if (DEFINED MULTISAMPLE)
   set(MULTISAMPLE ${MULTISAMPLE})

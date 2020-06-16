@@ -592,10 +592,6 @@ vect F12(vect p1, vect p2) {
   return dp * std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
 }
 
-#define CALC_FORCE CalcForceAvx
-//#define CALC_FORCE CalcForceSerial
-//#define CALC_FORCE CalcForceSerialPadded
-
 template <bool ApplyThreshold = true>
 void CalcForceSerial(
     ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
@@ -624,15 +620,9 @@ void CalcForceSerialPadded(
   }
 }
 
-void print(const __m256& mm) {
-  float a[8];
-  _mm256_store_ps(a, mm);
-  for (size_t i = 0; i < 8; ++i) {
-    std::cout << a[i] << " ";
-  }
-  std::cout << std::endl;
-}
-
+#ifdef USE_AVX
+#include <x86intrin.h>
+#define CALC_FORCE CalcForceAvx
 template <bool ApplyThreshold = true>
 void CalcForceAvx(
     ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
@@ -700,8 +690,19 @@ void CalcForceAvx(
     }
   }
 }
+#else
+#define CALC_FORCE CalcForceSerial
+#endif
 
-#ifdef FALSE
+#if 0
+void print(const __m256& mm) {
+  float a[8];
+  _mm256_store_ps(a, mm);
+  for (size_t i = 0; i < 8; ++i) {
+    std::cout << a[i] << " ";
+  }
+  std::cout << std::endl;
+}
 void TestUni() {
   std::cout.precision(8);
   std::cout << std::scientific;

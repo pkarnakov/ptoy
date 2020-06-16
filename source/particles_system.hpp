@@ -13,8 +13,6 @@
 #include "blocks.hpp"
 #include "geometry.hpp"
 
-#include <x86intrin.h>
-
 using std::endl;
 using std::min;
 using std::size_t;
