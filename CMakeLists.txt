@@ -70,7 +70,7 @@ target_link_libraries(${T} ${OPENGL_LIBRARIES})
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
-target_link_libraries(${T} SDL2::SDL2)
+target_link_libraries(${T} ${SDL2_LIBRARIES})
 
 # Multisampling flag
 if (DEFINED MULTISAMPLE)

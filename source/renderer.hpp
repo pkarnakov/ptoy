@@ -4,7 +4,8 @@
 
 #include "geometry.hpp"
 #include "particles_system.hpp"
-#include <GL/glut.h>
+//#include <GL/glut.h>
+#include <SDL_opengl.h>
 #include <iostream>
 #include <functional>
 
