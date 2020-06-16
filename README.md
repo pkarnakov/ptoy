@@ -1,7 +1,7 @@
 # ptoy
 
-|   |   |
-|:---:|:---:|
+|   |   |   |
+|:---:|:---:|:---:|
 |<img src="doc/screenshot0.png" width="200">|<img src="doc/screenshot1.png" width="200">|<img src="doc/screenshot2.png" width="200">|
 
 ## Clone
