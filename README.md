@@ -42,6 +42,7 @@ build/ptoy
 * `n`: switch mouse to *No action* mode
 * `g`: toggle gravity
 * `i`: remove last pair of portals
+* `space`: toggle pause
 * `q`: quit after pressing 3 times
 
 ### Mouse
