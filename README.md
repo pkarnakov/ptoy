@@ -24,7 +24,7 @@ make -j4
 ## Run
 
 ```
-build/bin/ptoy
+build/ptoy
 ```
 
 ## Controls

@@ -4,9 +4,6 @@ project("ptoy" CXX)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)  
-
 # Source folders
 aux_source_directory(source SRC)
 
@@ -36,7 +33,6 @@ endif()
 if (UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -falign-functions=64 -march=native -frename-registers")
-  #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
 # Debug build
