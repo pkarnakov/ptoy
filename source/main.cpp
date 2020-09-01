@@ -192,7 +192,7 @@ void cycle() {
   // omp_set_nested(0);
   // omp_set_num_threads(std::thread::hardware_concurrency());
 #ifdef _OPENMP
-  omp_set_num_threads(1);
+  //omp_set_num_threads(1);
 #endif
 
 #pragma omp parallel
@@ -537,7 +537,6 @@ int main() {
 
     display();
     SDL_GL_SwapWindow(window);
-    SDL_Delay(30);
   }
 
   // Finalize
