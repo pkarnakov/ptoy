@@ -294,6 +294,10 @@ int main() {
 
   init();
 
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
   SDL_Window* window = SDL_CreateWindow(
       "ptoy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height,
       SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
@@ -302,7 +306,6 @@ int main() {
     SDL_Log("Unable to create window: %s\n", SDL_GetError());
     return 1;
   }
-
   SDL_GLContext glcontext = SDL_GL_CreateContext(window);
 
   auto gray = 0.5;
