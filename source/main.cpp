@@ -79,15 +79,6 @@ void display(void) {
       high_resolution_clock::now().time_since_epoch());
   milliseconds time_past_from_last_frame = current_time - last_frame_time;
 
-  // if(time_past_from_last_frame<milliseconds(100)) return;
-
-  milliseconds frame_duration(int(1000.0 / fps));
-  milliseconds time_residual = frame_duration - time_past_from_last_frame;
-
-  // cout<<"sleep for "<<time_residual.count()<<endl;
-  // std::this_thread::sleep_for(time_residual);
-  // std::this_thread::sleep_for(frame_duration);
-
   auto new_frame_time = duration_cast<milliseconds>(
       high_resolution_clock::now().time_since_epoch());
   auto new_frame_game_time = G->PS->GetTime();
@@ -109,8 +100,7 @@ void display(void) {
     // G->PS->Blocks.print_status();
   }
 
-  const Scal game_rate_target = 10.;
-  // const Scal game_rate_target = 1.;
+  const Scal game_rate_target = 1.;
   if (!pause) {
     next_game_time_target = new_frame_game_time + game_rate_target / fps;
   }
@@ -175,8 +165,7 @@ void display(void) {
   vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
   glUniform2ui(glGetUniformLocation(gProgramID, "screenSize"), width, height);
   glUniform1ui(
-      wrap::glGetUniformLocation(gProgramID, "pointSize"),
-      kRadius * 800 * 0.5);
+      glGetUniformLocation(gProgramID, "pointSize"), kRadius * 800 * 0.5);
   glUniform2f(glGetUniformLocation(gProgramID, "domain0"), A.x, A.y);
   glUniform2f(glGetUniformLocation(gProgramID, "domain1"), B.x, B.y);
 
@@ -325,6 +314,7 @@ int main() {
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
+  glEnable(GL_PROGRAM_POINT_SIZE);
 
   auto readfile = [](std::string path) -> std::string {
     std::ifstream fs(path);
