@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
 
 project("ptoy" CXX)
 
-set(CMAKE_VERBOSE_MAKEFILE on)
+#set(CMAKE_VERBOSE_MAKEFILE on)
 
 # Source folders
 aux_source_directory(source SRC)

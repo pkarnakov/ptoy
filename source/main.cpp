@@ -21,6 +21,19 @@
 
 using namespace std::chrono;
 
+namespace wrap {
+  auto glGetAttribLocation = [](GLuint prog, std::string varname) {
+    GLint loc = ::glGetAttribLocation(prog, varname.c_str());
+    fassert(loc != -1, "attribute '" + varname + "' not found");
+    return loc;
+  };
+  auto glGetUniformLocation = [](GLuint prog, std::string varname) {
+    GLint loc = ::glGetUniformLocation(prog, varname.c_str());
+    fassert(loc != -1, "uniform '" + varname + "' not found");
+    return loc;
+  };
+} // namespace wrap
+
 milliseconds last_frame_time;
 Scal last_frame_game_time;
 milliseconds last_report_time;
@@ -39,6 +52,7 @@ using std::endl;
 
 GLuint gProgramID = 0;
 GLint gVertexPos2DLocation = -1;
+GLint gScreenSizeLocation = -1;
 GLuint gVBO = 0;
 GLuint gIBO = 0;
 
@@ -122,8 +136,14 @@ void display(void) {
   glVertexAttribPointer(
       gVertexPos2DLocation, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
 
+  glUniform2ui(
+      wrap::glGetUniformLocation(gProgramID, "screenSize"), width, height);
+  glUniform1ui(
+      wrap::glGetUniformLocation(gProgramID, "pointSize"), 30);
+
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIBO);
-  glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, NULL);
+  //glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, NULL);
+  glDrawElements(GL_POINTS, 4, GL_UNSIGNED_INT, NULL);
 
   glDisableVertexAttribArray(gVertexPos2DLocation);
 
@@ -253,11 +273,14 @@ int main() {
   SDL_GLContext glcontext = SDL_GL_CreateContext(window);
 
   auto gray = 0.5;
-  glClearColor(gray, gray, gray, 0.0);
+  glClearColor(gray, gray, gray, 1.0);
   glClear(GL_COLOR_BUFFER_BIT);
   SDL_GL_SwapWindow(window);
 
   glewInit();
+
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_BLEND);
 
   auto readfile = [](std::string path) -> std::string {
     std::ifstream fs(path);
@@ -324,15 +347,11 @@ int main() {
       fassert(false);
     }
 
-    // Get vertex attribute location
-    gVertexPos2DLocation = glGetAttribLocation(gProgramID, "LVertexPos2D");
-    if (gVertexPos2DLocation == -1) {
-      printf("LVertexPos2D is not a valid glsl program variable!\n");
-      fassert(false);
-    }
+    gVertexPos2DLocation =
+        wrap::glGetAttribLocation(gProgramID, "point");
 
     // Initialize clear color
-    glClearColor(0.f, 0.f, 0.f, 1.f);
+    //glClearColor(0.f, 0.f, 0.f, 1.f);
     GLfloat vertexData[] = {-0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f};
     GLuint indexData[] = {0, 1, 2, 3};
     glGenBuffers(1, &gVBO);
