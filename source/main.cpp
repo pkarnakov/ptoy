@@ -122,26 +122,22 @@ void display(void) {
   /* clear the screen to white */
   glClear(GL_COLOR_BUFFER_BIT);
 
-  {
-    std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
-    G->R->DrawAll();
-    G->PS->SetRendererReadyForNext(true);
-  }
-
-  glFlush();
-
   glUseProgram(gProgramID);
 
   auto& particles = G->PS->GetParticles();
   std::vector<GLfloat> buf(particles.size() * 2);
   std::vector<GLfloat> buf_color(particles.size());
-  for (size_t i = 0; i < particles.size(); ++i) {
-    auto& p = particles[i];
-    buf[i * 2] = p.p.x;
-    buf[i * 2 + 1] = p.p.y;
-    Scal f = 0.5 + p.v.length() / 7.; // color intensity
-    f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
-    buf_color[i] = f;
+
+  {
+    std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
+    for (size_t i = 0; i < particles.size(); ++i) {
+      auto& p = particles[i];
+      buf[i * 2] = p.p.x;
+      buf[i * 2 + 1] = p.p.y;
+      Scal f = 0.5 + p.v.length() / 7.; // color intensity
+      f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
+      buf_color[i] = f;
+    }
   }
 
   glBindBuffer(GL_ARRAY_BUFFER, gVBO_point);
@@ -176,19 +172,28 @@ void display(void) {
   glVertexAttribPointer(
       gColorArray, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
-  glUniform2ui(
-      wrap::glGetUniformLocation(gProgramID, "screenSize"), width, height);
+  vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
+  glUniform2ui(glGetUniformLocation(gProgramID, "screenSize"), width, height);
   glUniform1ui(
       wrap::glGetUniformLocation(gProgramID, "pointSize"),
-      kRadius * height * 0.5);
+      kRadius * 800 * 0.5);
+  glUniform2f(glGetUniformLocation(gProgramID, "domain0"), A.x, A.y);
+  glUniform2f(glGetUniformLocation(gProgramID, "domain1"), B.x, B.y);
 
   glDrawArrays(GL_POINTS, 0, particles.size());
+
   glDisableVertexAttribArray(gPointArray);
   glDisableVertexAttribArray(gColorArray);
 
   glUseProgram(0);
 
-  // glutSwapBuffers();
+  {
+    std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
+    G->R->DrawAll();
+    G->PS->SetRendererReadyForNext(true);
+  }
+
+  glFlush();
 
   flag_display = false;
 }
@@ -198,7 +203,7 @@ void cycle() {
   // omp_set_nested(0);
   // omp_set_num_threads(std::thread::hardware_concurrency());
 #ifdef _OPENMP
-  omp_set_num_threads(2);
+  omp_set_num_threads(1);
 #endif
 
 #pragma omp parallel
