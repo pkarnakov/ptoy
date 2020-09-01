@@ -68,6 +68,9 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 target_link_libraries(${T} SDL2::SDL2)
 
+find_package(GLEW REQUIRED)
+target_link_libraries(${T} GLEW::GLEW)
+
 option(USE_AVX "Enable AVX vectorization" OFF)
 if (USE_AVX)
   add_definitions(-DUSE_AVX)
