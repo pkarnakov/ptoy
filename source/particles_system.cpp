@@ -107,7 +107,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
 #pragma omp parallel
   {
     while (t < time_target && !quit.load()) {
-#pragma omp for
+#pragma omp for schedule(dynamic, 8)
       for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
         RHS(i);
       }
@@ -119,7 +119,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
         ApplyFrozen();
       }
 
-#pragma omp for
+#pragma omp for schedule(dynamic, 8)
       for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
         auto& data = Blocks.GetData();
         for (size_t p = 0; p < data.position[i].size(); ++p) {
@@ -137,7 +137,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
 #pragma omp single
       t += 0.5 * dt;
 
-#pragma omp for
+#pragma omp for schedule(dynamic, 8)
       for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
         RHS(i);
       }
@@ -149,7 +149,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
         ApplyFrozen();
       }
 
-#pragma omp for
+#pragma omp for schedule(dynamic, 8)
       for (size_t i = 0; i < Blocks.GetNumBlocks(); ++i) {
         auto& data = Blocks.GetData();
         for (size_t p = 0; p < data.position[i].size(); ++p) {

@@ -7,7 +7,7 @@ all: $(MAKEFILE)
 
 $(MAKEFILE):
 	mkdir -p "$(BUILDDIR)"
-	(cd "$(BUILDDIR)" && $(CMAKE) ..)
+	(cd "$(BUILDDIR)" && $(CMAKE) -DUSE_AVX=1 ..)
 
 clean:
 	rm -rf $(BUILDDIR)
