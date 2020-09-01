@@ -165,7 +165,7 @@ class renderer {
     glPopMatrix();
   }
   void DrawAll() {
-    draw_particles();
+    //draw_particles();
     draw_frame();
     DrawBonds();
     DrawFrozen();

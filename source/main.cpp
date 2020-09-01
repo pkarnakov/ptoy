@@ -51,7 +51,7 @@ using std::cout;
 using std::endl;
 
 GLuint gProgramID = 0;
-GLint gVertexPos2DLocation = -1;
+GLint gPointArray = -1;
 GLint gScreenSizeLocation = -1;
 GLuint gVBO = 0;
 
@@ -129,20 +129,44 @@ void display(void) {
   glFlush();
 
   glUseProgram(gProgramID);
-  glEnableVertexAttribArray(gVertexPos2DLocation);
+
+  auto& particles = G->PS->GetParticles();
+  std::vector<GLfloat> buf(particles.size() * 2);
+  for (size_t i = 0; i < particles.size(); ++i) {
+    auto& p = particles[i];
+    buf[i * 2] = p.p.x;
+    buf[i * 2 + 1] = p.p.y;
+  }
+
+
+  glGenBuffers(1, &gVBO);
+  glBindBuffer(GL_ARRAY_BUFFER, gVBO);
+
+  GLint size = 0;
+  glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+  if (size < int(buf.size())) { // reallocate
+    glBufferData(
+        GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
+        GL_DYNAMIC_DRAW);
+  } else { // use existing
+    glBufferSubData(
+        GL_ARRAY_BUFFER, 0, buf.size() * sizeof(GLfloat), buf.data());
+  }
+
+  glEnableVertexAttribArray(gPointArray);
 
   glBindBuffer(GL_ARRAY_BUFFER, gVBO);
   glVertexAttribPointer(
-      gVertexPos2DLocation, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+      gPointArray, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
 
   glUniform2ui(
       wrap::glGetUniformLocation(gProgramID, "screenSize"), width, height);
   glUniform1ui(
-      wrap::glGetUniformLocation(gProgramID, "pointSize"), 30);
+      wrap::glGetUniformLocation(gProgramID, "pointSize"),
+      kRadius * height * 0.5);
 
-  glDrawArrays(GL_POINTS, 0, 4);
-
-  glDisableVertexAttribArray(gVertexPos2DLocation);
+  glDrawArrays(GL_POINTS, 0, particles.size());
+  glDisableVertexAttribArray(gPointArray);
 
   glUseProgram(0);
 
@@ -343,15 +367,7 @@ int main() {
       printf("Error linking program %d!\n", gProgramID);
       fassert(false);
     }
-
-    gVertexPos2DLocation =
-        wrap::glGetAttribLocation(gProgramID, "point");
-
-    GLfloat vertexData[] = {-0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f};
-    glGenBuffers(1, &gVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, gVBO);
-    glBufferData(
-        GL_ARRAY_BUFFER, 2 * 4 * sizeof(GLfloat), vertexData, GL_STATIC_DRAW);
+    gPointArray = wrap::glGetAttribLocation(gProgramID, "point");
   };
   shd();
 

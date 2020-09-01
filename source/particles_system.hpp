@@ -52,17 +52,13 @@ struct particle {
   vect v0;
   // unsigned int layers_mask;
   // rgb color;
-  particle() {
-    ;
-  }
+  particle() {}
   particle(
       vect _p, vect _v, Scal /*_m*/, Scal /*_r*/, Scal /*_sigma*/,
       unsigned int /*_layers_mask*/, rgb /*_color*/)
       : p(_p)
       , v(_v) //, layers_mask(_layers_mask), color(_color)
-  {
-    ;
-  }
+  {}
 };
 
 vect F12(vect p1, vect p2, Scal sigma, Scal R);
