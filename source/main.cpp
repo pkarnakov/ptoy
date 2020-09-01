@@ -54,7 +54,6 @@ GLuint gProgramID = 0;
 GLint gVertexPos2DLocation = -1;
 GLint gScreenSizeLocation = -1;
 GLuint gVBO = 0;
-GLuint gIBO = 0;
 
 int frame_number;
 
@@ -141,9 +140,7 @@ void display(void) {
   glUniform1ui(
       wrap::glGetUniformLocation(gProgramID, "pointSize"), 30);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIBO);
-  //glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, NULL);
-  glDrawElements(GL_POINTS, 4, GL_UNSIGNED_INT, NULL);
+  glDrawArrays(GL_POINTS, 0, 4);
 
   glDisableVertexAttribArray(gVertexPos2DLocation);
 
@@ -350,18 +347,11 @@ int main() {
     gVertexPos2DLocation =
         wrap::glGetAttribLocation(gProgramID, "point");
 
-    // Initialize clear color
-    //glClearColor(0.f, 0.f, 0.f, 1.f);
     GLfloat vertexData[] = {-0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f};
-    GLuint indexData[] = {0, 1, 2, 3};
     glGenBuffers(1, &gVBO);
     glBindBuffer(GL_ARRAY_BUFFER, gVBO);
     glBufferData(
         GL_ARRAY_BUFFER, 2 * 4 * sizeof(GLfloat), vertexData, GL_STATIC_DRAW);
-    glGenBuffers(1, &gIBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIBO);
-    glBufferData(
-        GL_ELEMENT_ARRAY_BUFFER, 4 * sizeof(GLuint), indexData, GL_STATIC_DRAW);
   };
   shd();
 
