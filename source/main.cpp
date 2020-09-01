@@ -9,6 +9,8 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <fstream>
+#include <sstream>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -257,21 +259,21 @@ int main() {
 
   glewInit();
 
+  auto readfile = [](std::string path) -> std::string {
+    std::ifstream fs(path);
+    fassert(fs.good(), "can't open file + '" + path + "'");
+    std::stringstream ss;
+    ss << fs.rdbuf();
+    return ss.str();
+  };
+
   auto shd = [&] {
     gProgramID = glCreateProgram();
     // Create vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
-    // Get vertex source
-    const GLchar* vertexShaderSource[] = {
-        R"EOF(#version 140
-in vec2 LVertexPos2D;
-void main() {
-  float x = LVertexPos2D.x;
-  float y = LVertexPos2D.y;
-  gl_Position = vec4(x, x > 0 ? y : y - 0.3, 0, 1);
-}
-)EOF"};
+    const std::string src_vert = readfile("../shaders/s.vert");
+    const GLchar* vertexShaderSource[] = {src_vert.c_str()};
 
     // Set vertex source
     glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
@@ -295,13 +297,8 @@ void main() {
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
     // Get fragment source
-    const GLchar* fragmentShaderSource[] = {
-        R"EOF(#version 140
-out vec4 LFragment;
-void main() {
-  LFragment = vec4(.0, 1.0, 1.0, 1.0 ); 
-}
-)EOF"};
+    const std::string src_frag = readfile("../shaders/s.frag");
+    const GLchar* fragmentShaderSource[] = {src_frag.c_str()};
 
     // Set fragment source
     glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
