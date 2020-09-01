@@ -52,8 +52,10 @@ using std::endl;
 
 GLuint gProgramID = 0;
 GLint gPointArray = -1;
+GLint gColorArray = -1;
 GLint gScreenSizeLocation = -1;
-GLuint gVBO = 0;
+GLuint gVBO_point = 0;
+GLuint gVBO_color = 0;
 
 int frame_number;
 
@@ -132,32 +134,47 @@ void display(void) {
 
   auto& particles = G->PS->GetParticles();
   std::vector<GLfloat> buf(particles.size() * 2);
+  std::vector<GLfloat> buf_color(particles.size());
   for (size_t i = 0; i < particles.size(); ++i) {
     auto& p = particles[i];
     buf[i * 2] = p.p.x;
     buf[i * 2 + 1] = p.p.y;
+    Scal f = 0.5 + p.v.length() / 7.; // color intensity
+    f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
+    buf_color[i] = f;
   }
 
-
-  glGenBuffers(1, &gVBO);
-  glBindBuffer(GL_ARRAY_BUFFER, gVBO);
-
+  glBindBuffer(GL_ARRAY_BUFFER, gVBO_point);
   GLint size = 0;
   glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
   if (size < int(buf.size())) { // reallocate
+    glBindBuffer(GL_ARRAY_BUFFER, gVBO_point);
     glBufferData(
         GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
         GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, gVBO_color);
+    glBufferData(
+        GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
+        GL_DYNAMIC_DRAW);
   } else { // use existing
+    glBindBuffer(GL_ARRAY_BUFFER, gVBO_point);
     glBufferSubData(
         GL_ARRAY_BUFFER, 0, buf.size() * sizeof(GLfloat), buf.data());
+    glBindBuffer(GL_ARRAY_BUFFER, gVBO_color);
+    glBufferSubData(
+        GL_ARRAY_BUFFER, 0, buf_color.size() * sizeof(GLfloat),
+        buf_color.data());
   }
 
   glEnableVertexAttribArray(gPointArray);
+  glEnableVertexAttribArray(gColorArray);
 
-  glBindBuffer(GL_ARRAY_BUFFER, gVBO);
+  glBindBuffer(GL_ARRAY_BUFFER, gVBO_point);
   glVertexAttribPointer(
       gPointArray, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+  glBindBuffer(GL_ARRAY_BUFFER, gVBO_color);
+  glVertexAttribPointer(
+      gColorArray, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
   glUniform2ui(
       wrap::glGetUniformLocation(gProgramID, "screenSize"), width, height);
@@ -167,6 +184,7 @@ void display(void) {
 
   glDrawArrays(GL_POINTS, 0, particles.size());
   glDisableVertexAttribArray(gPointArray);
+  glDisableVertexAttribArray(gColorArray);
 
   glUseProgram(0);
 
@@ -368,6 +386,9 @@ int main() {
       fassert(false);
     }
     gPointArray = wrap::glGetAttribLocation(gProgramID, "point");
+    gColorArray = wrap::glGetAttribLocation(gProgramID, "color");
+    glGenBuffers(1, &gVBO_point);
+    glGenBuffers(1, &gVBO_color);
   };
   shd();
 
