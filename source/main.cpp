@@ -332,7 +332,7 @@ int main() {
     // Create vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
-    const std::string src_vert = readfile("../shaders/s.vert");
+    const std::string src_vert = readfile("../shaders/vert.glsl");
     const GLchar* vertexShaderSource[] = {src_vert.c_str()};
 
     // Set vertex source
@@ -357,7 +357,7 @@ int main() {
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
     // Get fragment source
-    const std::string src_frag = readfile("../shaders/s.frag");
+    const std::string src_frag = readfile("../shaders/frag.glsl");
     const GLchar* fragmentShaderSource[] = {src_frag.c_str()};
 
     // Set fragment source
