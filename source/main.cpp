@@ -56,6 +56,7 @@ GLint gColorArray = -1;
 GLint gScreenSizeLocation = -1;
 GLuint gVBO_point = 0;
 GLuint gVBO_color = 0;
+GLuint gTexture = 0;
 
 int frame_number;
 
@@ -124,7 +125,7 @@ void display(void) {
       auto& p = particles[i];
       buf[i * 2] = p.p.x;
       buf[i * 2 + 1] = p.p.y;
-      Scal f = 0.5 + p.v.length() / 7.; // color intensity
+      Scal f = 0.5 + p.v.length() / 3.; // color intensity
       f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
       buf_color[i] = f;
     }
@@ -384,9 +385,32 @@ int main() {
       fassert(false);
     }
     gPointArray = wrap::glGetAttribLocation(gProgramID, "point");
-    gColorArray = wrap::glGetAttribLocation(gProgramID, "color");
+    gColorArray = glGetAttribLocation(gProgramID, "color");
     glGenBuffers(1, &gVBO_point);
     glGenBuffers(1, &gVBO_color);
+
+    {
+      glGenTextures(1, &gTexture);
+      glBindTexture(GL_TEXTURE_2D, gTexture);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      const int w = 64;
+      const int h = 64;
+      std::vector<float> v(w * h);
+      for (int j = 0; j < h; ++j) {
+        for (int i = 0; i < w; ++i) {
+          using std::sin;
+          float fi = i;
+          float fj = j;
+          v[j * w + i] =
+              (sin(0.2 + (fj / h) * 10 - sqr(fi / w - 0.5) * 10) + 1) * 0.5;
+        }
+      }
+      glTexImage2D(
+          GL_TEXTURE_2D, 0, GL_R32F, w, h, 0, GL_RED, GL_FLOAT, v.data());
+    }
   };
   shd();
 
