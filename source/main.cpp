@@ -57,6 +57,8 @@ GLint gScreenSizeLocation = -1;
 GLuint gVBO_point = 0;
 GLuint gVBO_color = 0;
 GLuint gTexture = 0;
+GLuint gTextureAttach = 0;
+GLuint gFBO = 0;
 
 int frame_number;
 
@@ -109,9 +111,6 @@ void display(void) {
   last_frame_time = new_frame_time;
   last_frame_game_time = new_frame_game_time;
   // cout<<"Frame "<<frame_number++<<endl;
-
-  /* clear the screen to white */
-  glClear(GL_COLOR_BUFFER_BIT);
 
   glUseProgram(gProgramID);
 
@@ -183,7 +182,7 @@ void display(void) {
     G->PS->SetRendererReadyForNext(true);
   }
 
-  glFlush();
+  //glFlush();
 
   flag_display = false;
 }
@@ -308,11 +307,8 @@ int main() {
     return 1;
   }
   SDL_GLContext glcontext = SDL_GL_CreateContext(window);
-
-  auto gray = 0.5;
-  glClearColor(gray, gray, gray, 1.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-  SDL_GL_SwapWindow(window);
+  SDL_GL_SetSwapInterval(1);
+  //SDL_GL_SwapWindow(window);
 
   glewInit();
 
@@ -388,6 +384,16 @@ int main() {
     gColorArray = glGetAttribLocation(gProgramID, "color");
     glGenBuffers(1, &gVBO_point);
     glGenBuffers(1, &gVBO_color);
+
+    /*
+    glGenFramebuffers(1, &gFBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gFBO);
+
+    glGenTextures(1, &gTextureAttach);
+    glFramebfuferTexture2DD(
+        GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, gTextureAttach, 0);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    */
 
     {
       glGenTextures(1, &gTexture);
@@ -562,6 +568,9 @@ int main() {
       }
     }
 
+    auto gray = 0.5;
+    glClearColor(gray, gray, gray, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
     display();
     SDL_GL_SwapWindow(window);
   }

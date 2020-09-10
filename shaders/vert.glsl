@@ -1,4 +1,4 @@
-#version 140
+#version 330
 
 uniform uvec2 screenSize;
 uniform uint pointSize;
