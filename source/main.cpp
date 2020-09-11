@@ -592,6 +592,37 @@ int main() {
     tasks.push_back({program, render});
   }
 
+  { // blur rectangle
+    GLuint program = CreateProgram(
+        "../shaders/blur.vert.glsl", "../shaders/blur.frag.glsl", "");
+
+    GLuint vbo_point;
+    glGenBuffers(1, &vbo_point);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
+    GLint attr_point = wrap::glGetAttribLocation(program, "point");
+    glEnableVertexAttribArray(attr_point);
+
+    auto render = [program, vbo_point, attr_point]() {
+      glUseProgram(program);
+
+      const size_t nprim = 4;
+      std::vector<GLfloat> buf{-1, -1, 1, -1, 1, 1, -1, 1};
+
+      wrap::glBufferDataReuse(
+          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
+          GL_DYNAMIC_DRAW, vbo_point);
+      glVertexAttribPointer(
+          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+
+      CHECK_ERROR();
+      glDrawArrays(GL_TRIANGLE_FAN, 0, nprim);
+      CHECK_ERROR();
+      glUseProgram(0);
+    };
+
+    tasks.push_back({program, render});
+  }
+
   std::thread computation_thread(cycle);
 
   G->PS->SetForce(Vect(0., 0.), false);
