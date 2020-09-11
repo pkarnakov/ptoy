@@ -10,6 +10,7 @@ in float color;
 
 flat out uvec2 upos;
 flat out float colorf;
+
 void main() {
   vec2 rel = (point - domain0) / (domain1 - domain0);
   upos = uvec2(rel * screenSize);

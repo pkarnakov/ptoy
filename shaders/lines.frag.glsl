@@ -1,9 +1,9 @@
 #version 330 core
 
-flat in float fragcolor;
+in float geomcolor;
 
-out vec4 FragColor;
+out vec4 fragcolor;
 
 void main() {
-  FragColor = vec4(fragcolor, 0, 0, 1);
+  fragcolor = vec4(geomcolor, 0, 0, 1);
 }

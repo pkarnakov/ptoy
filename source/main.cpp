@@ -66,63 +66,48 @@ std::string ReadFile(std::string path) {
   return ss.str();
 }
 
-void printShaderLog(GLuint shader) {
-  // Make sure name is shader
+void PrintShaderLog(GLuint shader) {
   if (glIsShader(shader)) {
-    // Shader log length
-    int infoLogLength = 0;
-    int maxLength = infoLogLength;
+    int max_length = 2048;
+    int length = 0;
 
-    // Get info string length
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &max_length);
 
-    // Allocate string
-    char* infoLog = new char[maxLength];
+    char* log = new char[max_length];
 
-    // Get info log
-    glGetShaderInfoLog(shader, maxLength, &infoLogLength, infoLog);
-    if (infoLogLength > 0) {
-      // Print Log
-      printf("%s\n", infoLog);
+    glGetShaderInfoLog(shader, max_length, &length, log);
+    if (length > 0) {
+      printf("%s\n", log);
     }
 
-    // Deallocate string
-    delete[] infoLog;
+    delete[] log;
   } else {
     printf("Name %d is not a shader\n", shader);
   }
 }
 
-void printProgramLog(GLuint program) {
-  // Make sure name is shader
+void PrintProgramLog(GLuint program) {
   if (glIsProgram(program)) {
-    // Program log length
-    int infoLogLength = 0;
-    int maxLength = infoLogLength;
+    int max_length = 2048;
+    int length = 0;
 
-    // Get info string length
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &max_length);
 
-    // Allocate string
-    char* infoLog = new char[maxLength];
+    char* log = new char[max_length];
 
-    // Get info log
-    glGetProgramInfoLog(program, maxLength, &infoLogLength, infoLog);
-    if (infoLogLength > 0) {
-      // Print Log
-      printf("%s\n", infoLog);
+    glGetProgramInfoLog(program, max_length, &length, log);
+    if (length > 0) {
+      printf("%s\n", log);
     }
 
-    // Deallocate string
-    delete[] infoLog;
+    delete[] log;
   } else {
     printf("Name %d is not a program\n", program);
   }
 }
 
-GLuint CompileShader(std::string path, GLenum type) {
+GLuint CompileShaderSource(std::string src, GLenum type, std::string loc="") {
   GLuint shader = glCreateShader(type);
-  const std::string src = ReadFile(path);
   const GLchar* srcc[] = {src.c_str()};
   glShaderSource(shader, 1, srcc, NULL);
   glCompileShader(shader);
@@ -130,36 +115,62 @@ GLuint CompileShader(std::string path, GLenum type) {
   GLint compiled = GL_FALSE;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
   if (compiled != GL_TRUE) {
-    printf("Unable to compile shader %d in '%s'\n", shader, path.c_str());
-    printShaderLog(shader);
+    printf("Unable to compile shader %d in '%s'\n", shader, loc.c_str());
+    PrintShaderLog(shader);
     fassert(false);
   }
   CHECK_ERROR();
   return shader;
 }
 
-GLuint CreateProgram(std::string vert_path, std::string frag_path) {
+GLuint CompileShaderFile(std::string path, GLenum type) {
+  const std::string src = ReadFile(path);
+  return CompileShaderSource(src, type, path);
+}
+
+GLuint CreateProgram(
+    std::string vert_path, std::string frag_path, std::string geom_path) {
   GLuint program = glCreateProgram();
 
-  GLuint vertshader = CompileShader(vert_path, GL_VERTEX_SHADER);
-  glAttachShader(program, vertshader);
-  CHECK_ERROR();
+  std::vector<GLuint> todelete;
 
-  GLuint fragshader = CompileShader(frag_path, GL_FRAGMENT_SHADER);
-  glAttachShader(program, fragshader);
-  CHECK_ERROR();
+  if (vert_path.length()) {
+    GLuint shader = CompileShaderFile(vert_path, GL_VERTEX_SHADER);
+    glAttachShader(program, shader);
+    todelete.push_back(shader);
+    CHECK_ERROR();
+  }
+
+  if (frag_path.length()) {
+    GLuint shader = CompileShaderFile(frag_path, GL_FRAGMENT_SHADER);
+    glAttachShader(program, shader);
+    todelete.push_back(shader);
+    CHECK_ERROR();
+  }
+
+  if (geom_path.length()) {
+    GLuint shader = CompileShaderFile(geom_path, GL_GEOMETRY_SHADER);
+    glAttachShader(program, shader);
+    todelete.push_back(shader);
+    CHECK_ERROR();
+  }
 
   glLinkProgram(program);
   { // error check
     GLint success = GL_TRUE;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (success != GL_TRUE) {
-      printProgramLog(program);
+      PrintProgramLog(program);
       printf("Error linking program %d!\n", program);
       fassert(false);
     }
   }
   CHECK_ERROR();
+
+  for (auto shader : todelete) {
+    glDeleteShader(shader);
+  }
+
   return program;
 }
 
@@ -246,7 +257,7 @@ void display() {
 
   {
     std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
-    G->R->DrawAll();
+    //G->R->DrawAll();
     G->PS->SetRendererReadyForNext(true);
   }
 
@@ -345,8 +356,8 @@ int main() {
   glEnable(GL_PROGRAM_POINT_SIZE);
 
   { // particles
-    GLuint program =
-        CreateProgram("../shaders/vert.glsl", "../shaders/frag.glsl");
+    GLuint program = CreateProgram(
+        "../shaders/vert.glsl", "../shaders/frag.glsl", "../shaders/geom.glsl");
 
     GLuint vbo_point;
     glGenBuffers(1, &vbo_point);
@@ -418,7 +429,9 @@ int main() {
       glUniform1ui(
           glGetUniformLocation(program, "pointSize"), kRadius * kInitHeight / 2);
 
+      CHECK_ERROR();
       glDrawArrays(GL_POINTS, 0, particles.size());
+      CHECK_ERROR();
       glUseProgram(0);
     };
 
@@ -427,7 +440,8 @@ int main() {
 
   { // lines (frame, bonds, portals)
     GLuint program = CreateProgram(
-        "../shaders/lines.vert.glsl", "../shaders/lines.frag.glsl");
+        "../shaders/lines.vert.glsl", "../shaders/lines.frag.glsl",
+        "../shaders/lines.geom.glsl");
 
     GLuint vbo_point;
     glGenBuffers(1, &vbo_point);
@@ -487,7 +501,9 @@ int main() {
           attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
       SetDomainSize(program);
+      CHECK_ERROR();
       glDrawArrays(GL_LINES, 0, size * 2);
+      CHECK_ERROR();
       glUseProgram(0);
     };
 
