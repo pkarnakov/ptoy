@@ -21,6 +21,8 @@
 
 using namespace std::chrono;
 
+using Vect = vect; // TODO rename to Vect everywhere
+
 namespace wrap {
 auto glGetAttribLocation = [](GLuint prog, std::string varname) {
   GLint loc = ::glGetAttribLocation(prog, varname.c_str());
@@ -154,6 +156,9 @@ GLuint CreateProgram(std::string vert_path, std::string frag_path) {
   return program;
 }
 
+const int kInitWidth = 800;
+const int kInitHeight = 800;
+
 milliseconds last_frame_time;
 Scal last_frame_game_time;
 milliseconds last_report_time;
@@ -161,7 +166,16 @@ std::atomic<Scal> next_game_time_target;
 
 std::unique_ptr<game> G;
 
-GLdouble width, height; /* window width and height */
+GLfloat width, height;
+
+void SetDomainSize(GLuint program) {
+  Vect A(-1., -1.);
+  Vect B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
+  glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
+  glUniform2f(glGetUniformLocation(program, "domain0"), A.x, A.y);
+  glUniform2f(glGetUniformLocation(program, "domain1"), B.x, B.y);
+}
+
 
 std::atomic<bool> flag_display;
 std::atomic<bool> quit;
@@ -274,15 +288,15 @@ void cycle() {
 
 // TODO: detect motionless regions
 
-vect GetDomainMousePosition(int x, int y) {
-  vect c;
-  vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
+Vect GetDomainMousePosition(int x, int y) {
+  Vect c;
+  Vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
   c.x = A.x + (B.x - A.x) * (x / width);
   c.y = B.y + (A.y - B.y) * (y / height);
   return c;
 }
 
-vect GetDomainMousePosition() {
+Vect GetDomainMousePosition() {
   int x, y;
   SDL_GetMouseState(&x, &y);
   return GetDomainMousePosition(x, y);
@@ -330,9 +344,19 @@ int main() {
 
     GLuint vbo_point;
     glGenBuffers(1, &vbo_point);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
+    GLint attr_point = wrap::glGetAttribLocation(program, "point");
+    glVertexAttribPointer(
+        attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+    glEnableVertexAttribArray(attr_point);
 
     GLuint vbo_color;
     glGenBuffers(1, &vbo_color);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
+    GLint attr_color = glGetAttribLocation(program, "color");
+    glVertexAttribPointer(
+        attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+    glEnableVertexAttribArray(attr_color);
 
     GLuint tex_circle = 0;
     glGenTextures(1, &tex_circle);
@@ -356,10 +380,8 @@ int main() {
     glTexImage2D(
         GL_TEXTURE_2D, 0, GL_R32F, w, h, 0, GL_RED, GL_FLOAT, v.data());
 
-    auto render = [program, vbo_point, vbo_color, tex_circle, &ps = G->PS]() {
-      GLint attr_point = wrap::glGetAttribLocation(program, "point");
-      GLint attr_color = glGetAttribLocation(program, "color");
-
+    auto render = [program, vbo_point, vbo_color, tex_circle, &ps = G->PS,
+                   attr_point, attr_color]() {
       glUseProgram(program);
 
       auto& particles = ps->GetParticles();
@@ -399,27 +421,88 @@ int main() {
             buf_color.data());
       }
 
-      glEnableVertexAttribArray(attr_point);
-      glEnableVertexAttribArray(attr_color);
-
-      glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-      glVertexAttribPointer(
-          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
-      glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-      glVertexAttribPointer(
-          attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
-
-      vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
-      glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
+      SetDomainSize(program);
       glUniform1ui(
-          glGetUniformLocation(program, "pointSize"), kRadius * 800 * 0.5);
-      glUniform2f(glGetUniformLocation(program, "domain0"), A.x, A.y);
-      glUniform2f(glGetUniformLocation(program, "domain1"), B.x, B.y);
+          glGetUniformLocation(program, "pointSize"), kRadius * 800 / 2);
 
       glDrawArrays(GL_POINTS, 0, particles.size());
 
-      glDisableVertexAttribArray(attr_point);
-      glDisableVertexAttribArray(attr_color);
+      glUseProgram(0);
+    };
+
+    RenderTask rt{program, render};
+    tasks.emplace_back(rt);
+  }
+
+  if(0)
+  { // lines (frame, bonds, portals)
+    GLuint program =
+        CreateProgram("../shaders/vert.glsl", "../shaders/frag.glsl");
+
+    GLuint vbo_point;
+    glGenBuffers(1, &vbo_point);
+    GLint attr_point = wrap::glGetAttribLocation(program, "point");
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
+    glVertexAttribPointer(
+        attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+    glEnableVertexAttribArray(attr_point);
+
+    GLuint vbo_color;
+    glGenBuffers(1, &vbo_color);
+    GLint attr_color = glGetAttribLocation(program, "color");
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
+    glVertexAttribPointer(
+        attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+    glEnableVertexAttribArray(attr_color);
+
+    GLuint vbo_width;
+    glGenBuffers(1, &vbo_width);
+    GLint attr_width = glGetAttribLocation(program, "width");
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_width);
+    glVertexAttribPointer(
+        attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+    glEnableVertexAttribArray(attr_width);
+
+    auto render = [program, vbo_point, vbo_color, vbo_width, &ps = G->PS,
+                   attr_point, attr_color, attr_width]() {
+      glUseProgram(program);
+
+      const int size = 1;
+      std::vector<GLfloat> buf(size * 4);
+      std::vector<GLfloat> buf_color(size);
+      std::vector<GLfloat> buf_width(size);
+      buf[0] = 0;
+      buf[1] = 0;
+      buf[2] = 1;
+      buf[3] = 1;
+      buf_color[0] = 0.5;
+      buf_width[0] = 2.5;
+
+      glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
+      GLint cursize = 0;
+      glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &cursize);
+      if (cursize < int(size)) { // reallocate
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
+        glBufferData(
+            GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
+            GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
+        glBufferData(
+            GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat),
+            buf_color.data(), GL_DYNAMIC_DRAW);
+      } else { // use existing
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
+        glBufferSubData(
+            GL_ARRAY_BUFFER, 0, buf.size() * sizeof(GLfloat), buf.data());
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
+        glBufferSubData(
+            GL_ARRAY_BUFFER, 0, buf_color.size() * sizeof(GLfloat),
+            buf_color.data());
+      }
+
+      SetDomainSize(program);
+
+      glDrawArrays(GL_LINES, 0, size);
 
       glUseProgram(0);
     };
@@ -430,7 +513,7 @@ int main() {
 
   std::thread computation_thread(cycle);
 
-  G->PS->SetForce(vect(0., 0.), false);
+  G->PS->SetForce(Vect(0., 0.), false);
 
   // Main loop flag
   quit = false;
@@ -570,7 +653,7 @@ int main() {
             height = e.window.data2;
             glViewport(0, 0, width, height);
             G->SetWindowSize(width, height);
-            // vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height /
+            // Vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height /
             // 800); glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
             break;
         }
