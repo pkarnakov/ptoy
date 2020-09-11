@@ -1,7 +1,10 @@
 #version 330 core
 
+uniform sampler2D tex;
+
 out vec4 fragcolor;
 
 void main() {
-  fragcolor = vec4(0, 1, 0, 0.25);
+  fragcolor = texture(tex, gl_FragCoord.xy / 30.);
+  fragcolor.a = 0.25;
 }

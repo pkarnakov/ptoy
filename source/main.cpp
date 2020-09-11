@@ -602,7 +602,29 @@ int main() {
     GLint attr_point = wrap::glGetAttribLocation(program, "point");
     glEnableVertexAttribArray(attr_point);
 
-    auto render = [program, vbo_point, attr_point]() {
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    const int w = 64;
+    const int h = 64;
+    std::vector<float> v(w * h);
+    for (int j = 0; j < h; ++j) {
+      for (int i = 0; i < w; ++i) {
+        using std::sin;
+        float fi = i;
+        float fj = j;
+        v[j * w + i] =
+            (sin(0.2 + (fj / h) * 10 - sqr(fi / w - 0.5) * 10) + 1) * 0.5;
+      }
+    }
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_R32F, w, h, 0, GL_RED, GL_FLOAT, v.data());
+
+    auto render = [program, vbo_point, attr_point, tex]() {
       glUseProgram(program);
 
       const size_t nprim = 4;
