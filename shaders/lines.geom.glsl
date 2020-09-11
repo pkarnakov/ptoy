@@ -5,14 +5,14 @@ uniform vec2 domain1;
 
 layout (lines) in;
 in VERT {
-  flat float color;
+  flat vec4 color;
   flat float width;
 } vert[];
 
 layout  (triangle_strip, max_vertices = 4) out;
 
 out GEOM {
-  flat float color;
+  flat vec4 color;
 } geom;
 
 void main() {

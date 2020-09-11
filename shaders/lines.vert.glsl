@@ -4,11 +4,11 @@ uniform vec2 domain0;
 uniform vec2 domain1;
 
 in vec2 point;
-in float color;
+in vec4 color;
 in float width;
 
 out VERT {
-  flat float color;
+  flat vec4 color;
   flat float width;
 } vert;
 

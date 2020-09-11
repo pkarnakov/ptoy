@@ -474,43 +474,50 @@ int main() {
       std::vector<GLfloat> buf_width;
       size_t nprim = 0;
 
-      auto add = [&](Vect a, Vect b, Scal color, Scal width) {
+      using Color = std::array<Scal, 4>;
+      auto add = [&](Vect a, Vect b, Color color, Scal width) {
         buf.push_back(a.x);
         buf.push_back(a.y);
         buf.push_back(b.x);
         buf.push_back(b.y);
-        buf_color.push_back(color);
-        buf_color.push_back(color);
-        buf_width.push_back(width);
-        buf_width.push_back(width);
+        for (auto i : {0, 1}) {
+          (void)i;
+          buf_color.push_back(color[0]);
+          buf_color.push_back(color[1]);
+          buf_color.push_back(color[2]);
+          buf_color.push_back(color[3]);
+          buf_width.push_back(width);
+        }
         ++nprim;
       };
-      auto rgb = [](float r, float g, float b) { return r; };
+      auto rgb = [](float r, float g, float b) -> std::array<Scal, 4> {
+        return {r, g, b, 1};
+      };
 
       { // draw portals
         const auto& portals = ps->GetPortals();
-        const Scal kPortalWidth = 0.01;
+        const Scal kPortalWidth = 0.015;
+        const auto blue = rgb(0., .5, 1.);
+        const auto orange = rgb(1., .5, 0.);
         for (auto& pair : portals) {
-          add(pair[0].begin, pair[0].end, rgb(0., .5, 1.), kPortalWidth);
-          add(pair[1].begin, pair[1].end, rgb(1., .5, 0.), kPortalWidth);
+          add(pair[0].begin, pair[0].end, blue, kPortalWidth);
+          add(pair[1].begin, pair[1].end, orange, kPortalWidth);
         }
         if (ps->portal_stage_ == 0) {
           if (ps->portal_mouse_moving_) {
-            add(ps->portal_begin_, ps->portal_current_, rgb(0., .5, 1.),
-                kPortalWidth);
+            add(ps->portal_begin_, ps->portal_current_, blue, kPortalWidth);
           }
         } else {
-          add(ps->portal_prev_.first, ps->portal_prev_.second, rgb(0., .5, 1.),
+          add(ps->portal_prev_.first, ps->portal_prev_.second, blue,
               kPortalWidth);
           if (ps->portal_mouse_moving_) {
-            add(ps->portal_begin_, ps->portal_current_, rgb(1., .5, 0.),
-                kPortalWidth);
+            add(ps->portal_begin_, ps->portal_current_, orange, kPortalWidth);
           }
         }
       }
 
       { // draw bonds
-        const Scal kBondWidth = 0.02;
+        const Scal kBondWidth = 0.015;
         const auto& nr = ps->GetNoRendering();
         const auto& pos = ps->GetBlockData().position;
         const auto& bbi = ps->GetBlockById();
@@ -518,7 +525,8 @@ int main() {
           const auto& a = bbi[bond.first];
           const auto& b = bbi[bond.second];
           if (!nr.count(bond)) {
-            add(pos[a.first][a.second], pos[b.first][b.second], 1, kBondWidth);
+            add(pos[a.first][a.second], pos[b.first][b.second], rgb(1, 1, 1),
+                kBondWidth);
           }
         }
       }
@@ -537,20 +545,24 @@ int main() {
       }
 
       { // draw frame
-        const Scal kFrameWidth = 0.005;
+        const Scal kFrameWidth = 0.01;
         auto dom = ps->GetDomain();
         Vect dom0 = dom.A;
         Vect dom1 = dom.B;
-        add(Vect(dom0.x, dom0.y), Vect(dom1.x, dom0.y), 1, kFrameWidth);
-        add(Vect(dom1.x, dom0.y), Vect(dom1.x, dom1.y), 1, kFrameWidth);
-        add(Vect(dom1.x, dom1.y), Vect(dom0.x, dom1.y), 1, kFrameWidth);
-        add(Vect(dom0.x, dom1.y), Vect(dom0.x, dom0.y), 1, kFrameWidth);
+        add(Vect(dom0.x, dom0.y), Vect(dom1.x, dom0.y), rgb(1, 1, 1),
+            kFrameWidth);
+        add(Vect(dom1.x, dom0.y), Vect(dom1.x, dom1.y), rgb(1, 1, 1),
+            kFrameWidth);
+        add(Vect(dom1.x, dom1.y), Vect(dom0.x, dom1.y), rgb(1, 1, 1),
+            kFrameWidth);
+        add(Vect(dom0.x, dom1.y), Vect(dom0.x, dom0.y), rgb(1, 1, 1),
+            kFrameWidth);
       }
 
 
       fassert_equal(buf.size(), nprim * 4);
       fassert_equal(buf_width.size(), nprim * 2);
-      fassert_equal(buf_color.size(), nprim * 2);
+      fassert_equal(buf_color.size(), nprim * 8);
 
       wrap::glBufferDataReuse(
           GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
@@ -562,7 +574,7 @@ int main() {
           GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
           GL_DYNAMIC_DRAW, vbo_color);
       glVertexAttribPointer(
-          attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+          attr_color, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), NULL);
 
       wrap::glBufferDataReuse(
           GL_ARRAY_BUFFER, buf_width.size() * sizeof(GLfloat), buf_width.data(),
