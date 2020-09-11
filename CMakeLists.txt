@@ -11,9 +11,10 @@ aux_source_directory(source SRC)
 set(T "ptoy")
 add_executable(${T} ${SRC})
 
-# C++11
-set_property(TARGET ${T} PROPERTY CXX_STANDARD 11)
+# C++14
+set_property(TARGET ${T} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${T} PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET ${T} PROPERTY CXX_EXTENSIONS OFF)
 
 # OpenMP 
 if (NOT DEFINED OPENMP)
