@@ -32,6 +32,13 @@ namespace wrap {
     fassert(loc != -1, "uniform '" + varname + "' not found");
     return loc;
   };
+  void glCheckError() {
+    GLenum e = glGetError();
+    if (e != GL_NO_ERROR) {
+      const std::string s(reinterpret_cast<const char*>(gluErrorString(e)));
+      throw std::runtime_error(s);
+    }
+  }
 } // namespace wrap
 
 milliseconds last_frame_time;
@@ -57,7 +64,7 @@ GLint gScreenSizeLocation = -1;
 GLuint gVBO_point = 0;
 GLuint gVBO_color = 0;
 GLuint gTexture = 0;
-GLuint gTextureAttach = 0;
+GLuint gTextureFrame = 0;
 GLuint gFBO = 0;
 
 int frame_number;
@@ -73,7 +80,7 @@ void init() {
 /* Callback functions for GLUT */
 
 /* Draw the window - this is where all the GL actions are */
-void display(void) {
+void display() {
   if (flag_display) return;
   flag_display = true;
 
@@ -112,6 +119,7 @@ void display(void) {
   last_frame_game_time = new_frame_game_time;
   // cout<<"Frame "<<frame_number++<<endl;
 
+  CHECK_ERROR();
   glUseProgram(gProgramID);
 
   auto& particles = G->PS->GetParticles();
@@ -182,7 +190,10 @@ void display(void) {
     G->PS->SetRendererReadyForNext(true);
   }
 
-  //glFlush();
+  glFlush();
+
+  glBindTexture(GL_TEXTURE_RECTANGLE, gTextureFrame);
+  glCopyTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA, 0, 0, width, height, 0);
 
   flag_display = false;
 }
@@ -385,15 +396,12 @@ int main() {
     glGenBuffers(1, &gVBO_point);
     glGenBuffers(1, &gVBO_color);
 
-    /*
-    glGenFramebuffers(1, &gFBO);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gFBO);
+    //glGenFramebuffers(1, &gFBO);
+    //glBindFramebuffer(GL_READ_FRAMEBUFFER, gFBO);
 
-    glGenTextures(1, &gTextureAttach);
-    glFramebfuferTexture2DD(
-        GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, gTextureAttach, 0);
-    glDrawBuffer(GL_COLOR_ATTACHMENT0);
-    */
+    glGenTextures(1, &gTextureFrame);
+
+    CHECK_ERROR();
 
     {
       glGenTextures(1, &gTexture);

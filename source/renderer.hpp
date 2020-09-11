@@ -1,13 +1,18 @@
-/*
-  RENDERER
-*/
-
-#include "geometry.hpp"
-#include "particles_system.hpp"
-//#include <GL/glut.h>
 #include <SDL_opengl.h>
 #include <functional>
 #include <iostream>
+
+#include "geometry.hpp"
+#include "particles_system.hpp"
+#include "logger.h"
+
+#define CHECK_ERROR()                                         \
+  do {                                                        \
+    GLenum error = glGetError();                              \
+    fassert(                                                  \
+        error == GL_NO_ERROR,                                 \
+        reinterpret_cast<const char*>(gluErrorString(error))) \
+  } while (0);
 
 class renderer {
   int width_, height_;
@@ -62,9 +67,6 @@ class renderer {
     draw_line(A, B, rgb(1., 1., 1.), width);
   }
   void draw_particles() {
-    glPushMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
     vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     auto particles = PS->GetParticles();
@@ -79,12 +81,8 @@ class renderer {
       // draw_circle(part.p, part.r, color);
       draw_circle(part.p, kRadius * 0.9, color);
     }
-    glPopMatrix();
   }
   void draw_frame() {
-    glPushMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
     vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     rect_vect R = PS->GetDomain();
@@ -95,12 +93,8 @@ class renderer {
     draw_line(vect(dA.x, dB.y), vect(dB.x, dB.y), width);
     draw_line(vect(dA.x, dA.y), vect(dA.x, dB.y), width);
     draw_line(vect(dB.x, dA.y), vect(dB.x, dB.y), width);
-    glPopMatrix();
   }
   void DrawBonds() {
-    glPushMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
     vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& nr = PS->GetNoRendering();
@@ -118,12 +112,8 @@ class renderer {
             width);
       }
     }
-    glPopMatrix();
   }
   void DrawFrozen() {
-    glPushMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
     vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& data = PS->GetBlockData();
@@ -134,12 +124,8 @@ class renderer {
       draw_circle(
           data.position[a.first][a.second], kRadius * 0.5, rgb(0., 0., 0.));
     }
-    glPopMatrix();
   }
   void DrawPortals() {
-    glPushMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
     vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
     glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& portals = PS->GetPortals();
@@ -162,10 +148,9 @@ class renderer {
             PS->portal_begin_, PS->portal_current_, rgb(1., .5, 0.), width);
       }
     }
-    glPopMatrix();
   }
   void DrawAll() {
-    //draw_particles();
+    //draw_particles(); // done by shaders in main.cpp
     draw_frame();
     DrawBonds();
     DrawFrozen();
