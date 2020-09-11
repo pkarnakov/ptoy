@@ -105,40 +105,32 @@ void printProgramLog(GLuint program) {
   }
 }
 
+GLuint CompileShader(std::string path, GLenum type) {
+  GLuint shader = glCreateShader(type);
+  const std::string src = ReadFile(path);
+  const GLchar* srcc[] = {src.c_str()};
+  glShaderSource(shader, 1, srcc, NULL);
+  glCompileShader(shader);
+
+  GLint compiled = GL_FALSE;
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+  if (compiled != GL_TRUE) {
+    printf("Unable to compile shader %d in '%s'\n", shader, path.c_str());
+    printShaderLog(shader);
+    fassert(false);
+  }
+  CHECK_ERROR();
+  return shader;
+}
+
 GLuint CreateProgram(std::string vert_path, std::string frag_path) {
   GLuint program = glCreateProgram();
 
-  GLuint vertshader = glCreateShader(GL_VERTEX_SHADER);
-  const std::string vert_src = ReadFile(vert_path);
-  const GLchar* vert_srcc[] = {vert_src.c_str()};
-  glShaderSource(vertshader, 1, vert_srcc, NULL);
-  glCompileShader(vertshader);
-  { // error check
-    GLint compiled = GL_FALSE;
-    glGetShaderiv(vertshader, GL_COMPILE_STATUS, &compiled);
-    if (compiled != GL_TRUE) {
-      printf("Unable to compile vertex shader %d!\n", vertshader);
-      printShaderLog(vertshader);
-      fassert(false);
-    }
-  }
+  GLuint vertshader = CompileShader(vert_path, GL_VERTEX_SHADER);
   glAttachShader(program, vertshader);
   CHECK_ERROR();
 
-  GLuint fragshader = glCreateShader(GL_FRAGMENT_SHADER);
-  const std::string frag_src = ReadFile(frag_path);
-  const GLchar* frag_srcc[] = {frag_src.c_str()};
-  glShaderSource(fragshader, 1, frag_srcc, NULL);
-  glCompileShader(fragshader);
-  { // error check
-    GLint compiled = GL_FALSE;
-    glGetShaderiv(fragshader, GL_COMPILE_STATUS, &compiled);
-    if (compiled != GL_TRUE) {
-      printf("Unable to compile fragment shader %d!\n", fragshader);
-      printShaderLog(fragshader);
-      fassert(false);
-    }
-  }
+  GLuint fragshader = CompileShader(frag_path, GL_FRAGMENT_SHADER);
   glAttachShader(program, fragshader);
   CHECK_ERROR();
 
@@ -241,7 +233,7 @@ void display() {
 
   {
     std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
-    G->R->DrawAll();
+    //G->R->DrawAll();
     G->PS->SetRendererReadyForNext(true);
   }
 
@@ -353,7 +345,7 @@ int main() {
     GLuint vbo_color;
     glGenBuffers(1, &vbo_color);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-    GLint attr_color = glGetAttribLocation(program, "color");
+    GLint attr_color = wrap::glGetAttribLocation(program, "color");
     glVertexAttribPointer(
         attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
     glEnableVertexAttribArray(attr_color);
@@ -426,18 +418,15 @@ int main() {
           glGetUniformLocation(program, "pointSize"), kRadius * 800 / 2);
 
       glDrawArrays(GL_POINTS, 0, particles.size());
-
-      glUseProgram(0);
     };
 
     RenderTask rt{program, render};
     tasks.emplace_back(rt);
   }
 
-  if(0)
   { // lines (frame, bonds, portals)
-    GLuint program =
-        CreateProgram("../shaders/vert.glsl", "../shaders/frag.glsl");
+    GLuint program = CreateProgram(
+        "../shaders/lines.vert.glsl", "../shaders/lines.frag.glsl");
 
     GLuint vbo_point;
     glGenBuffers(1, &vbo_point);
@@ -467,7 +456,7 @@ int main() {
                    attr_point, attr_color, attr_width]() {
       glUseProgram(program);
 
-      const int size = 1;
+      const int size = 2;
       std::vector<GLfloat> buf(size * 4);
       std::vector<GLfloat> buf_color(size);
       std::vector<GLfloat> buf_width(size);
@@ -475,8 +464,14 @@ int main() {
       buf[1] = 0;
       buf[2] = 1;
       buf[3] = 1;
-      buf_color[0] = 0.5;
-      buf_width[0] = 2.5;
+      buf[4] = 0.1;
+      buf[5] = 0.3;
+      buf[6] = 0.6;
+      buf[7] = 0.7;
+      buf_color[0] = 1.5;
+      buf_width[0] = 1.5;
+      buf_color[1] = 0.3;
+      buf_width[1] = 0.3;
 
       glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
       GLint cursize = 0;
@@ -501,10 +496,7 @@ int main() {
       }
 
       SetDomainSize(program);
-
-      glDrawArrays(GL_LINES, 0, size);
-
-      glUseProgram(0);
+      glDrawArrays(GL_LINES, 0, size * 2);
     };
 
     RenderTask rt{program, render};
