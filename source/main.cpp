@@ -478,9 +478,9 @@ int main() {
       buf[6] = 0.6;
       buf[7] = 0.7;
       buf_color[0] = 1.5;
-      buf_width[0] = 1.5;
+      buf_width[0] = 0.02;
       buf_color[1] = 0.3;
-      buf_width[1] = 0.3;
+      buf_width[1] = 0.01;
 
       wrap::glBufferDataReuse(
             GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
@@ -495,7 +495,7 @@ int main() {
           attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
       wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf_width.size() * sizeof(GLfloat), buf_color.data(),
+          GL_ARRAY_BUFFER, buf_width.size() * sizeof(GLfloat), buf_width.data(),
           GL_DYNAMIC_DRAW, vbo_width);
       glVertexAttribPointer(
           attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);

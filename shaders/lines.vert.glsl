@@ -7,10 +7,14 @@ in vec2 point;
 in float color;
 in float width;
 
-out float vertcolor;
+out VERT {
+  flat float color;
+  flat float width;
+} vert;
 
 void main() {
   vec2 rel = (point - domain0) / (domain1 - domain0);
   gl_Position = vec4(rel * 2 - 1, 0, 1);
-  vertcolor = width + color;
+  vert.color = color;
+  vert.width = width;
 }
