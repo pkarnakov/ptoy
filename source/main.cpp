@@ -106,7 +106,7 @@ void PrintProgramLog(GLuint program) {
   }
 }
 
-GLuint CompileShaderSource(std::string src, GLenum type, std::string loc="") {
+GLuint CompileShaderSource(std::string src, GLenum type, std::string loc = "") {
   GLuint shader = glCreateShader(type);
   const GLchar* srcc[] = {src.c_str()};
   glShaderSource(shader, 1, srcc, NULL);
@@ -183,15 +183,19 @@ std::unique_ptr<game> G;
 
 GLfloat width, height;
 
-void SetDomainSize(GLuint program) {
-  Vect A(-1., -1.);
-  Vect B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
-  glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
-  glUniform2f(glGetUniformLocation(program, "domain0"), A.x, A.y);
-  glUniform2f(glGetUniformLocation(program, "domain1"), B.x, B.y);
-  CHECK_ERROR();
+std::array<Vect, 2> GetDomain() {
+  Vect A(-1, -1);
+  Vect B(-1 + 2. * width / kInitWidth, -1 + 2. * height / kInitHeight);
+  return {A, B};
 }
 
+void SetUniformDomainSize(GLuint program) {
+  auto dom = GetDomain();
+  glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
+  glUniform2f(glGetUniformLocation(program, "domain0"), dom[0].x, dom[0].y);
+  glUniform2f(glGetUniformLocation(program, "domain1"), dom[1].x, dom[1].y);
+  CHECK_ERROR();
+}
 
 std::atomic<bool> flag_display;
 std::atomic<bool> quit;
@@ -257,11 +261,11 @@ void display() {
 
   {
     std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
-    //G->R->DrawAll();
+    // G->R->DrawAll();
     G->PS->SetRendererReadyForNext(true);
   }
 
-  //glFlush();
+  // glFlush();
 
   /*
   glGenTextures(1, &gTextureFrame);
@@ -397,7 +401,6 @@ int main() {
                    attr_point, attr_color]() {
       glUseProgram(program);
 
-
       auto& particles = ps->GetParticles();
       std::vector<GLfloat> buf(particles.size() * 2);
       std::vector<GLfloat> buf_color(particles.size());
@@ -425,9 +428,10 @@ int main() {
       glVertexAttribPointer(
           attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
-      SetDomainSize(program);
+      SetUniformDomainSize(program);
       glUniform1ui(
-          glGetUniformLocation(program, "pointSize"), kRadius * kInitHeight / 2);
+          glGetUniformLocation(program, "pointSize"),
+          kRadius * kInitHeight / 2);
 
       CHECK_ERROR();
       glDrawArrays(GL_POINTS, 0, particles.size());
@@ -465,32 +469,98 @@ int main() {
                    attr_point, attr_color, attr_width]() {
       glUseProgram(program);
 
-      const int size = 2;
-      std::vector<GLfloat> buf(size * 4);
-      std::vector<GLfloat> buf_color(size);
-      std::vector<GLfloat> buf_width(size);
-      buf[0] = 0;
-      buf[1] = 0;
-      buf[2] = 1;
-      buf[3] = 1;
-      buf[4] = 0.1;
-      buf[5] = 0.3;
-      buf[6] = 0.6;
-      buf[7] = 0.7;
-      buf_color[0] = 1.5;
-      buf_width[0] = 0.02;
-      buf_color[1] = 0.3;
-      buf_width[1] = 0.01;
+      std::vector<GLfloat> buf;
+      std::vector<GLfloat> buf_color;
+      std::vector<GLfloat> buf_width;
+      size_t nprim = 0;
+
+      auto add = [&](Vect a, Vect b, Scal color, Scal width) {
+        buf.push_back(a.x);
+        buf.push_back(a.y);
+        buf.push_back(b.x);
+        buf.push_back(b.y);
+        buf_color.push_back(color);
+        buf_color.push_back(color);
+        buf_width.push_back(width);
+        buf_width.push_back(width);
+        ++nprim;
+      };
+      auto rgb = [](float r, float g, float b) { return r; };
+
+      { // draw portals
+        const auto& portals = ps->GetPortals();
+        const Scal kPortalWidth = 0.01;
+        for (auto& pair : portals) {
+          add(pair[0].begin, pair[0].end, rgb(0., .5, 1.), kPortalWidth);
+          add(pair[1].begin, pair[1].end, rgb(1., .5, 0.), kPortalWidth);
+        }
+        if (ps->portal_stage_ == 0) {
+          if (ps->portal_mouse_moving_) {
+            add(ps->portal_begin_, ps->portal_current_, rgb(0., .5, 1.),
+                kPortalWidth);
+          }
+        } else {
+          add(ps->portal_prev_.first, ps->portal_prev_.second, rgb(0., .5, 1.),
+              kPortalWidth);
+          if (ps->portal_mouse_moving_) {
+            add(ps->portal_begin_, ps->portal_current_, rgb(1., .5, 0.),
+                kPortalWidth);
+          }
+        }
+      }
+
+      { // draw bonds
+        const Scal kBondWidth = 0.02;
+        const auto& nr = ps->GetNoRendering();
+        const auto& pos = ps->GetBlockData().position;
+        const auto& bbi = ps->GetBlockById();
+        for (auto bond : ps->GetBonds()) {
+          const auto& a = bbi[bond.first];
+          const auto& b = bbi[bond.second];
+          if (!nr.count(bond)) {
+            add(pos[a.first][a.second], pos[b.first][b.second], 1, kBondWidth);
+          }
+        }
+      }
+
+      { // draw frozen
+        // TODO: draw with texture or color of particles instead
+        const Scal kFrozenWidth = kRadius * 2;
+        const auto& pos = ps->GetBlockData().position;
+        const auto& bbi = ps->GetBlockById();
+        for (auto id : ps->GetFrozen()) {
+          const auto& a = bbi[id];
+          Vect c = pos[a.first][a.second];
+          Vect d(kFrozenWidth * 0.25, 0);
+          add(c - d, c + d, rgb(0., 0., 0.), kFrozenWidth);
+        }
+      }
+
+      { // draw frame
+        const Scal kFrameWidth = 0.005;
+        auto dom = ps->GetDomain();
+        Vect dom0 = dom.A;
+        Vect dom1 = dom.B;
+        add(Vect(dom0.x, dom0.y), Vect(dom1.x, dom0.y), 1, kFrameWidth);
+        add(Vect(dom1.x, dom0.y), Vect(dom1.x, dom1.y), 1, kFrameWidth);
+        add(Vect(dom1.x, dom1.y), Vect(dom0.x, dom1.y), 1, kFrameWidth);
+        add(Vect(dom0.x, dom1.y), Vect(dom0.x, dom0.y), 1, kFrameWidth);
+      }
+
+
+      fassert_equal(buf.size(), nprim * 4);
+      fassert_equal(buf_width.size(), nprim * 2);
+      fassert_equal(buf_color.size(), nprim * 2);
 
       wrap::glBufferDataReuse(
-            GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
-            GL_DYNAMIC_DRAW, vbo_point);
+          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
+          GL_DYNAMIC_DRAW, vbo_point);
       glVertexAttribPointer(
           attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
 
       wrap::glBufferDataReuse(
-            GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat),
-            buf_color.data(), GL_DYNAMIC_DRAW, vbo_color);
+          GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
+          GL_DYNAMIC_DRAW, vbo_color);
       glVertexAttribPointer(
           attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
@@ -500,9 +570,9 @@ int main() {
       glVertexAttribPointer(
           attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
-      SetDomainSize(program);
+      SetUniformDomainSize(program);
       CHECK_ERROR();
-      glDrawArrays(GL_LINES, 0, size * 2);
+      glDrawArrays(GL_LINES, 0, nprim * 2);
       CHECK_ERROR();
       glUseProgram(0);
     };
