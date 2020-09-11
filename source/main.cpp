@@ -41,6 +41,21 @@ void glCheckError() {
     throw std::runtime_error(s);
   }
 }
+
+void glBufferDataReuse(
+    GLenum target, GLsizeiptr size, const void* data, GLenum usage,
+    GLuint vbo) {
+  glBindBuffer(target, vbo);
+  GLint cursize = 0;
+  glGetBufferParameteriv(target, GL_BUFFER_SIZE, &cursize);
+
+  if (cursize < size) { // FIXME: possible factor sizeof(GLfloat)
+    glBufferData(target, size, data, usage);
+  } else {
+    glBufferSubData(target, 0, size, data);
+  }
+}
+
 } // namespace wrap
 
 std::string ReadFile(std::string path) {
@@ -148,9 +163,6 @@ GLuint CreateProgram(std::string vert_path, std::string frag_path) {
   return program;
 }
 
-const int kInitWidth = 800;
-const int kInitHeight = 800;
-
 milliseconds last_frame_time;
 Scal last_frame_game_time;
 milliseconds last_report_time;
@@ -166,6 +178,7 @@ void SetDomainSize(GLuint program) {
   glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
   glUniform2f(glGetUniformLocation(program, "domain0"), A.x, A.y);
   glUniform2f(glGetUniformLocation(program, "domain1"), B.x, B.y);
+  CHECK_ERROR();
 }
 
 
@@ -228,16 +241,16 @@ void display() {
 
   for (auto& task : tasks) {
     task.render();
+    CHECK_ERROR();
   }
-  CHECK_ERROR();
 
   {
     std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
-    //G->R->DrawAll();
+    G->R->DrawAll();
     G->PS->SetRendererReadyForNext(true);
   }
 
-  glFlush();
+  //glFlush();
 
   /*
   glGenTextures(1, &gTextureFrame);
@@ -282,7 +295,8 @@ void cycle() {
 
 Vect GetDomainMousePosition(int x, int y) {
   Vect c;
-  Vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
+  Vect A(-1., -1.),
+      B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
   c.x = A.x + (B.x - A.x) * (x / width);
   c.y = B.y + (A.y - B.y) * (y / height);
   return c;
@@ -300,8 +314,8 @@ int main() {
     return 1;
   }
 
-  width = 800.0; /* initial window width and height, */
-  height = 800.0; /* within which we draw. */
+  width = kInitWidth;
+  height = kInitHeight;
 
   last_frame_game_time = 0.;
   pause = false;
@@ -338,16 +352,12 @@ int main() {
     glGenBuffers(1, &vbo_point);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
     GLint attr_point = wrap::glGetAttribLocation(program, "point");
-    glVertexAttribPointer(
-        attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
     glEnableVertexAttribArray(attr_point);
 
     GLuint vbo_color;
     glGenBuffers(1, &vbo_color);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
     GLint attr_color = wrap::glGetAttribLocation(program, "color");
-    glVertexAttribPointer(
-        attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
     glEnableVertexAttribArray(attr_color);
 
     GLuint tex_circle = 0;
@@ -376,6 +386,7 @@ int main() {
                    attr_point, attr_color]() {
       glUseProgram(program);
 
+
       auto& particles = ps->GetParticles();
       std::vector<GLfloat> buf(particles.size() * 2);
       std::vector<GLfloat> buf_color(particles.size());
@@ -391,37 +402,27 @@ int main() {
         }
       }
 
-      glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-      GLint size = 0;
-      glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-      if (size < int(buf.size())) { // reallocate
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-        glBufferData(
-            GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
-            GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-        glBufferData(
-            GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat),
-            buf_color.data(), GL_DYNAMIC_DRAW);
-      } else { // use existing
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-        glBufferSubData(
-            GL_ARRAY_BUFFER, 0, buf.size() * sizeof(GLfloat), buf.data());
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-        glBufferSubData(
-            GL_ARRAY_BUFFER, 0, buf_color.size() * sizeof(GLfloat),
-            buf_color.data());
-      }
+      wrap::glBufferDataReuse(
+          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
+          GL_DYNAMIC_DRAW, vbo_point);
+      glVertexAttribPointer(
+          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+
+      wrap::glBufferDataReuse(
+          GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
+          GL_DYNAMIC_DRAW, vbo_color);
+      glVertexAttribPointer(
+          attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
       SetDomainSize(program);
       glUniform1ui(
-          glGetUniformLocation(program, "pointSize"), kRadius * 800 / 2);
+          glGetUniformLocation(program, "pointSize"), kRadius * kInitHeight / 2);
 
       glDrawArrays(GL_POINTS, 0, particles.size());
+      glUseProgram(0);
     };
 
-    RenderTask rt{program, render};
-    tasks.emplace_back(rt);
+    tasks.push_back({program, render});
   }
 
   { // lines (frame, bonds, portals)
@@ -430,26 +431,20 @@ int main() {
 
     GLuint vbo_point;
     glGenBuffers(1, &vbo_point);
-    GLint attr_point = wrap::glGetAttribLocation(program, "point");
     glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-    glVertexAttribPointer(
-        attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+    GLint attr_point = wrap::glGetAttribLocation(program, "point");
     glEnableVertexAttribArray(attr_point);
 
     GLuint vbo_color;
     glGenBuffers(1, &vbo_color);
-    GLint attr_color = glGetAttribLocation(program, "color");
     glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-    glVertexAttribPointer(
-        attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+    GLint attr_color = glGetAttribLocation(program, "color");
     glEnableVertexAttribArray(attr_color);
 
     GLuint vbo_width;
     glGenBuffers(1, &vbo_width);
-    GLint attr_width = glGetAttribLocation(program, "width");
     glBindBuffer(GL_ARRAY_BUFFER, vbo_width);
-    glVertexAttribPointer(
-        attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+    GLint attr_width = glGetAttribLocation(program, "width");
     glEnableVertexAttribArray(attr_width);
 
     auto render = [program, vbo_point, vbo_color, vbo_width, &ps = G->PS,
@@ -473,34 +468,30 @@ int main() {
       buf_color[1] = 0.3;
       buf_width[1] = 0.3;
 
-      glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-      GLint cursize = 0;
-      glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &cursize);
-      if (cursize < int(size)) { // reallocate
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-        glBufferData(
+      wrap::glBufferDataReuse(
             GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
-            GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-        glBufferData(
+            GL_DYNAMIC_DRAW, vbo_point);
+      glVertexAttribPointer(
+          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+
+      wrap::glBufferDataReuse(
             GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat),
-            buf_color.data(), GL_DYNAMIC_DRAW);
-      } else { // use existing
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-        glBufferSubData(
-            GL_ARRAY_BUFFER, 0, buf.size() * sizeof(GLfloat), buf.data());
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-        glBufferSubData(
-            GL_ARRAY_BUFFER, 0, buf_color.size() * sizeof(GLfloat),
-            buf_color.data());
-      }
+            buf_color.data(), GL_DYNAMIC_DRAW, vbo_color);
+      glVertexAttribPointer(
+          attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+
+      wrap::glBufferDataReuse(
+          GL_ARRAY_BUFFER, buf_width.size() * sizeof(GLfloat), buf_color.data(),
+          GL_DYNAMIC_DRAW, vbo_width);
+      glVertexAttribPointer(
+          attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
 
       SetDomainSize(program);
       glDrawArrays(GL_LINES, 0, size * 2);
+      glUseProgram(0);
     };
 
-    RenderTask rt{program, render};
-    tasks.emplace_back(rt);
+    tasks.push_back({program, render});
   }
 
   std::thread computation_thread(cycle);
@@ -645,8 +636,6 @@ int main() {
             height = e.window.data2;
             glViewport(0, 0, width, height);
             G->SetWindowSize(width, height);
-            // Vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height /
-            // 800); glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
             break;
         }
       }

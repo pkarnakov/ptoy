@@ -8,6 +8,9 @@
 #include "particles_system.hpp"
 #include "renderer.hpp"
 
+constexpr int kInitWidth = 800;
+constexpr int kInitHeight = 800;
+
 class game {
  public:
   std::unique_ptr<particles_system> PS;
@@ -22,7 +25,8 @@ class game {
   void SetWindowSize(int width, int height) {
     width_ = width;
     height_ = height;
-    vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height / 800);
+    vect A(-1., -1.),
+        B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
     PS->PushResize(rect_vect(A, B));
     R->SetWindowSize(width, height);
   }
