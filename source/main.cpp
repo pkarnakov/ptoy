@@ -8,9 +8,9 @@
 
 #include <atomic>
 #include <chrono>
-#include <thread>
 #include <fstream>
 #include <sstream>
+#include <thread>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -22,24 +22,135 @@
 using namespace std::chrono;
 
 namespace wrap {
-  auto glGetAttribLocation = [](GLuint prog, std::string varname) {
-    GLint loc = ::glGetAttribLocation(prog, varname.c_str());
-    fassert(loc != -1, "attribute '" + varname + "' not found");
-    return loc;
-  };
-  auto glGetUniformLocation = [](GLuint prog, std::string varname) {
-    GLint loc = ::glGetUniformLocation(prog, varname.c_str());
-    fassert(loc != -1, "uniform '" + varname + "' not found");
-    return loc;
-  };
-  void glCheckError() {
-    GLenum e = glGetError();
-    if (e != GL_NO_ERROR) {
-      const std::string s(reinterpret_cast<const char*>(gluErrorString(e)));
-      throw std::runtime_error(s);
+auto glGetAttribLocation = [](GLuint prog, std::string varname) {
+  GLint loc = ::glGetAttribLocation(prog, varname.c_str());
+  fassert(loc != -1, "attribute '" + varname + "' not found");
+  return loc;
+};
+auto glGetUniformLocation = [](GLuint prog, std::string varname) {
+  GLint loc = ::glGetUniformLocation(prog, varname.c_str());
+  fassert(loc != -1, "uniform '" + varname + "' not found");
+  return loc;
+};
+void glCheckError() {
+  GLenum e = glGetError();
+  if (e != GL_NO_ERROR) {
+    const std::string s(reinterpret_cast<const char*>(gluErrorString(e)));
+    throw std::runtime_error(s);
+  }
+}
+} // namespace wrap
+
+std::string ReadFile(std::string path) {
+  std::ifstream fs(path);
+  fassert(fs.good(), "can't open file + '" + path + "'");
+  std::stringstream ss;
+  ss << fs.rdbuf();
+  return ss.str();
+}
+
+void printShaderLog(GLuint shader) {
+  // Make sure name is shader
+  if (glIsShader(shader)) {
+    // Shader log length
+    int infoLogLength = 0;
+    int maxLength = infoLogLength;
+
+    // Get info string length
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+    // Allocate string
+    char* infoLog = new char[maxLength];
+
+    // Get info log
+    glGetShaderInfoLog(shader, maxLength, &infoLogLength, infoLog);
+    if (infoLogLength > 0) {
+      // Print Log
+      printf("%s\n", infoLog);
+    }
+
+    // Deallocate string
+    delete[] infoLog;
+  } else {
+    printf("Name %d is not a shader\n", shader);
+  }
+}
+
+void printProgramLog(GLuint program) {
+  // Make sure name is shader
+  if (glIsProgram(program)) {
+    // Program log length
+    int infoLogLength = 0;
+    int maxLength = infoLogLength;
+
+    // Get info string length
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+
+    // Allocate string
+    char* infoLog = new char[maxLength];
+
+    // Get info log
+    glGetProgramInfoLog(program, maxLength, &infoLogLength, infoLog);
+    if (infoLogLength > 0) {
+      // Print Log
+      printf("%s\n", infoLog);
+    }
+
+    // Deallocate string
+    delete[] infoLog;
+  } else {
+    printf("Name %d is not a program\n", program);
+  }
+}
+
+
+GLuint CreateProgram(std::string vert_path, std::string frag_path) {
+  GLuint program = glCreateProgram();
+
+  GLuint vertshader = glCreateShader(GL_VERTEX_SHADER);
+  const std::string vert_src = ReadFile(vert_path);
+  const GLchar* vert_srcc[] = {vert_src.c_str()};
+  glShaderSource(vertshader, 1, vert_srcc, NULL);
+  glCompileShader(vertshader);
+  { // error check
+    GLint compiled = GL_FALSE;
+    glGetShaderiv(vertshader, GL_COMPILE_STATUS, &compiled);
+    if (compiled != GL_TRUE) {
+      printf("Unable to compile vertex shader %d!\n", vertshader);
+      printShaderLog(vertshader);
+      fassert(false);
     }
   }
-} // namespace wrap
+  glAttachShader(program, vertshader);
+
+  GLuint fragshader = glCreateShader(GL_FRAGMENT_SHADER);
+  const std::string frag_src = ReadFile(frag_path);
+  const GLchar* frag_srcc[] = {frag_src.c_str()};
+  glShaderSource(fragshader, 1, frag_srcc, NULL);
+  glCompileShader(fragshader);
+  { // error check
+    GLint compiled = GL_FALSE;
+    glGetShaderiv(fragshader, GL_COMPILE_STATUS, &compiled);
+    if (compiled != GL_TRUE) {
+      printf("Unable to compile fragment shader %d!\n", fragshader);
+      printShaderLog(fragshader);
+      fassert(false);
+    }
+  }
+  glAttachShader(program, fragshader);
+
+  glLinkProgram(program);
+  { // error check
+    GLint success = GL_TRUE;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (success != GL_TRUE) {
+      printProgramLog(program);
+      printf("Error linking program %d!\n", program);
+      fassert(false);
+    }
+  }
+  return program;
+}
 
 milliseconds last_frame_time;
 Scal last_frame_game_time;
@@ -203,7 +314,7 @@ void cycle() {
   // omp_set_nested(0);
   // omp_set_num_threads(std::thread::hardware_concurrency());
 #ifdef _OPENMP
-  //omp_set_num_threads(1);
+  // omp_set_num_threads(1);
 #endif
 
 #pragma omp parallel
@@ -244,59 +355,6 @@ vect GetDomainMousePosition() {
   return GetDomainMousePosition(x, y);
 }
 
-void printShaderLog(GLuint shader) {
-  // Make sure name is shader
-  if (glIsShader(shader)) {
-    // Shader log length
-    int infoLogLength = 0;
-    int maxLength = infoLogLength;
-
-    // Get info string length
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
-
-    // Allocate string
-    char* infoLog = new char[maxLength];
-
-    // Get info log
-    glGetShaderInfoLog(shader, maxLength, &infoLogLength, infoLog);
-    if (infoLogLength > 0) {
-      // Print Log
-      printf("%s\n", infoLog);
-    }
-
-    // Deallocate string
-    delete[] infoLog;
-  } else {
-    printf("Name %d is not a shader\n", shader);
-  }
-}
-void printProgramLog(GLuint program) {
-  // Make sure name is shader
-  if (glIsProgram(program)) {
-    // Program log length
-    int infoLogLength = 0;
-    int maxLength = infoLogLength;
-
-    // Get info string length
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
-
-    // Allocate string
-    char* infoLog = new char[maxLength];
-
-    // Get info log
-    glGetProgramInfoLog(program, maxLength, &infoLogLength, infoLog);
-    if (infoLogLength > 0) {
-      // Print Log
-      printf("%s\n", infoLog);
-    }
-
-    // Deallocate string
-    delete[] infoLog;
-  } else {
-    printf("Name %d is not a program\n", program);
-  }
-}
-
 int main() {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     SDL_Log("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -319,7 +377,7 @@ int main() {
   }
   SDL_GLContext glcontext = SDL_GL_CreateContext(window);
   SDL_GL_SetSwapInterval(1);
-  //SDL_GL_SwapWindow(window);
+  // SDL_GL_SwapWindow(window);
 
   glewInit();
 
@@ -327,77 +385,13 @@ int main() {
   glEnable(GL_BLEND);
   glEnable(GL_PROGRAM_POINT_SIZE);
 
-  auto readfile = [](std::string path) -> std::string {
-    std::ifstream fs(path);
-    fassert(fs.good(), "can't open file + '" + path + "'");
-    std::stringstream ss;
-    ss << fs.rdbuf();
-    return ss.str();
-  };
-
   auto shd = [&] {
-    gProgramID = glCreateProgram();
-    // Create vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    gProgramID = CreateProgram("../shaders/vert.glsl", "../shaders/frag.glsl");
 
-    const std::string src_vert = readfile("../shaders/vert.glsl");
-    const GLchar* vertexShaderSource[] = {src_vert.c_str()};
-
-    // Set vertex source
-    glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
-
-    // Compile vertex source
-    glCompileShader(vertexShader);
-
-    // Check vertex shader for errors
-    GLint vShaderCompiled = GL_FALSE;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &vShaderCompiled);
-    if (vShaderCompiled != GL_TRUE) {
-      printf("Unable to compile vertex shader %d!\n", vertexShader);
-      printShaderLog(vertexShader);
-      fassert(false);
-    }
-
-    // Attach vertex shader to program
-    glAttachShader(gProgramID, vertexShader);
-
-    // Create fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-    // Get fragment source
-    const std::string src_frag = readfile("../shaders/frag.glsl");
-    const GLchar* fragmentShaderSource[] = {src_frag.c_str()};
-
-    // Set fragment source
-    glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
-
-    // Compile fragment source
-    glCompileShader(fragmentShader);
-
-    // Check fragment shader for errors
-    GLint fShaderCompiled = GL_FALSE;
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &fShaderCompiled);
-    if (fShaderCompiled != GL_TRUE) {
-      printf("Unable to compile fragment shader %d!\n", fragmentShader);
-      printShaderLog(fragmentShader);
-      fassert(false);
-    }
-    glAttachShader(gProgramID, fragmentShader);
-    glLinkProgram(gProgramID);
-    GLint programSuccess = GL_TRUE;
-    glGetProgramiv(gProgramID, GL_LINK_STATUS, &programSuccess);
-    if (programSuccess != GL_TRUE) {
-      printProgramLog(gProgramID);
-      printf("Error linking program %d!\n", gProgramID);
-      fassert(false);
-    }
     gPointArray = wrap::glGetAttribLocation(gProgramID, "point");
     gColorArray = glGetAttribLocation(gProgramID, "color");
     glGenBuffers(1, &gVBO_point);
     glGenBuffers(1, &gVBO_color);
-
-    //glGenFramebuffers(1, &gFBO);
-    //glBindFramebuffer(GL_READ_FRAMEBUFFER, gFBO);
 
     glGenTextures(1, &gTextureFrame);
 
@@ -571,6 +565,8 @@ int main() {
             height = e.window.data2;
             glViewport(0, 0, width, height);
             G->SetWindowSize(width, height);
+            // vect A(-1., -1.), B(-1 + 2. * width / 800, -1. + 2. * height /
+            // 800); glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
             break;
         }
       }

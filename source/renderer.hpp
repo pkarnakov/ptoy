@@ -55,7 +55,9 @@ class renderer {
     glBegin(GL_POLYGON);
 
     const vect n = vect(A.y - B.y, B.x - A.x).GetNormalized();
-    auto v = [](vect p) { glVertex2f(p.x, p.y); };
+    auto v = [](vect p) { //
+      glVertex2f(p.x, p.y);
+    };
     v(A + n * (width * 0.5));
     v(A - n * (width * 0.5));
     v(B - n * (width * 0.5));
@@ -67,8 +69,6 @@ class renderer {
     draw_line(A, B, rgb(1., 1., 1.), width);
   }
   void draw_particles() {
-    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
-    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     auto particles = PS->GetParticles();
     for (std::size_t k = 0; k < particles.size(); ++k) {
       auto& part = particles[k];
@@ -83,8 +83,6 @@ class renderer {
     }
   }
   void draw_frame() {
-    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
-    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     rect_vect R = PS->GetDomain();
     vect dA = R.A;
     vect dB = R.B;
@@ -95,8 +93,6 @@ class renderer {
     draw_line(vect(dB.x, dA.y), vect(dB.x, dB.y), width);
   }
   void DrawBonds() {
-    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
-    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& nr = PS->GetNoRendering();
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
@@ -114,8 +110,6 @@ class renderer {
     }
   }
   void DrawFrozen() {
-    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
-    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& data = PS->GetBlockData();
     const auto& bbi = PS->GetBlockById();
     for (auto id : PS->GetFrozen()) {
@@ -126,8 +120,6 @@ class renderer {
     }
   }
   void DrawPortals() {
-    vect A(-1., -1.), B(-1 + 2. * width_ / 800, -1. + 2. * height_ / 800);
-    glOrtho(A.x, B.x, A.y, B.y, -1.f, 1.f);
     const auto& portals = PS->GetPortals();
     const Scal width = 0.0075;
     for (auto& pair : portals) {
