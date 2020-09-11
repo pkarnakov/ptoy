@@ -416,6 +416,8 @@ int main() {
         }
       }
 
+      glBindTexture(GL_TEXTURE_2D, tex_circle);
+
       wrap::glBufferDataReuse(
           GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
           GL_DYNAMIC_DRAW, vbo_point);
@@ -604,28 +606,23 @@ int main() {
 
     GLuint tex = 0;
     glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    const int w = 64;
-    const int h = 64;
-    std::vector<float> v(w * h);
-    for (int j = 0; j < h; ++j) {
-      for (int i = 0; i < w; ++i) {
-        using std::sin;
-        float fi = i;
-        float fj = j;
-        v[j * w + i] =
-            (sin(0.2 + (fj / h) * 10 - sqr(fi / w - 0.5) * 10) + 1) * 0.5;
-      }
-    }
-    glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_R32F, w, h, 0, GL_RED, GL_FLOAT, v.data());
+    //const auto target = GL_TEXTURE_RECTANGLE_ARB;
+    const auto target = GL_TEXTURE_2D;
+    glBindTexture(target, tex);
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    const int w = 800;
+    const int h = 800;
+    glCopyTexImage2D(target, 0, GL_RGB32F, 0, 0, w, h, 0);
 
     auto render = [program, vbo_point, attr_point, tex]() {
       glUseProgram(program);
+
+      glBindTexture(target, tex);
+      glReadBuffer(GL_FRONT);
+      glCopyTexImage2D(target, 0, GL_RGB32F, 0, 0, w, h, 0);
 
       const size_t nprim = 4;
       std::vector<GLfloat> buf{-1, -1, 1, -1, 1, 1, -1, 1};
