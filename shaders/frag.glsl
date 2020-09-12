@@ -11,7 +11,8 @@ out vec4 fragColor;
 void main() {
   vec2 p = gl_FragCoord.xy - geom_upos;
   float d = dot(p, p) / (pointSize * pointSize);
-  vec4 c = vec4(geom_colorf, 0, 0, 1 - pow(d, 4));
-  c.y = texture(myTex, (p / pointSize + 1) * 0.5).x * geom_colorf;
+  float q = geom_colorf;
+  vec4 c = vec4(q, q * 0.5, q * 0.0, 1 - pow(d, 2));
+  //c *= 0.5 + texture(myTex, (p / pointSize + 1) * 0.5);
   fragColor = c;
 }

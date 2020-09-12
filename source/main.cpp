@@ -210,6 +210,7 @@ struct RenderTask {
 };
 
 std::vector<RenderTask> tasks;
+std::vector<size_t> tasks_indices;
 
 GLuint gTextureFrame = 0;
 
@@ -254,8 +255,8 @@ void display() {
   last_frame_game_time = new_frame_game_time;
   // cout<<"Frame "<<frame_number++<<endl;
 
-  for (auto& task : tasks) {
-    task.render();
+  for (size_t i : tasks_indices) {
+    tasks[i].render();
     CHECK_ERROR();
   }
 
@@ -354,6 +355,11 @@ int main() {
   // SDL_GL_SwapWindow(window);
 
   glewInit();
+
+  glClearColor(0.5, 0.5, 0.5, 1.0);
+  glDrawBuffer(GL_FRONT);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glDrawBuffer(GL_BACK);
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
@@ -613,16 +619,16 @@ int main() {
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    const int w = 800;
-    const int h = 800;
-    glCopyTexImage2D(target, 0, GL_RGB32F, 0, 0, w, h, 0);
 
     auto render = [program, vbo_point, attr_point, tex]() {
+      const int w = 800;
+      const int h = 800;
+
       glUseProgram(program);
 
       glBindTexture(target, tex);
       glReadBuffer(GL_FRONT);
-      glCopyTexImage2D(target, 0, GL_RGB32F, 0, 0, w, h, 0);
+      glCopyTexImage2D(target, 0, GL_RGB5, 0, 0, w, h, 0);
 
       const size_t nprim = 4;
       std::vector<GLfloat> buf{-1, -1, 1, -1, 1, 1, -1, 1};
@@ -641,6 +647,8 @@ int main() {
 
     tasks.push_back({program, render});
   }
+
+  tasks_indices = {2, 0, 1};
 
   std::thread computation_thread(cycle);
 
@@ -789,8 +797,6 @@ int main() {
       }
     }
 
-    auto gray = 0.5;
-    glClearColor(gray, gray, gray, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     display();
     SDL_GL_SwapWindow(window);
