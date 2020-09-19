@@ -168,7 +168,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
       {
         // Resize the frame if needed (with a limited speed)
         auto limit = [](Scal& current, const Scal target) {
-          const Scal limit = 0.02;
+          const Scal limit = 0.01;
           current =
               std::min(current + limit, std::max(current - limit, target));
         };

@@ -181,7 +181,7 @@ std::atomic<Scal> next_game_time_target;
 
 std::unique_ptr<game> G;
 
-GLfloat width, height;
+unsigned int width, height;
 
 std::array<Vect, 2> GetDomain() {
   Vect A(-1, -1);
@@ -313,8 +313,8 @@ Vect GetDomainMousePosition(int x, int y) {
   Vect c;
   Vect A(-1., -1.),
       B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
-  c.x = A.x + (B.x - A.x) * (x / width);
-  c.y = B.y + (A.y - B.y) * (y / height);
+  c.x = A.x + (B.x - A.x) * (float(x) / width);
+  c.y = B.y + (A.y - B.y) * (float(y) / height);
   return c;
 }
 
@@ -621,14 +621,11 @@ int main() {
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
     auto render = [program, vbo_point, attr_point, tex]() {
-      const int w = 800;
-      const int h = 800;
-
       glUseProgram(program);
 
       glBindTexture(target, tex);
       glReadBuffer(GL_FRONT);
-      glCopyTexImage2D(target, 0, GL_RGB5, 0, 0, w, h, 0);
+      glCopyTexImage2D(target, 0, GL_RGB5, 0, 0, width, height, 0);
 
       const size_t nprim = 4;
       std::vector<GLfloat> buf{-1, -1, 1, -1, 1, 1, -1, 1};
@@ -638,6 +635,8 @@ int main() {
           GL_DYNAMIC_DRAW, vbo_point);
       glVertexAttribPointer(
           attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+
+      glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
 
       CHECK_ERROR();
       glDrawArrays(GL_TRIANGLE_FAN, 0, nprim);
@@ -792,6 +791,9 @@ int main() {
             height = e.window.data2;
             glViewport(0, 0, width, height);
             G->SetWindowSize(width, height);
+            glDrawBuffer(GL_FRONT);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDrawBuffer(GL_BACK);
             break;
         }
       }
