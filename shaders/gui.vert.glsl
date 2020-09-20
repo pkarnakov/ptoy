@@ -1,20 +1,20 @@
 #version 330
 
-uniform vec2 domain0;
-uniform vec2 domain1;
+uniform uvec2 screenSize;
 
-in vec2 point;
+in vec2 lowcorner;
+in vec2 size;
 in vec4 color;
-in float width;
 
 out VERT {
+  flat vec2 lowcorner;
+  flat vec2 size;
   flat vec4 color;
-  flat float width;
 } vert;
 
 void main() {
-  vec2 rel = (point - domain0) / (domain1 - domain0);
-  gl_Position = vec4(rel * 2 - 1, 0, 1);
+  gl_Position = vec4(lowcorner / screenSize * 2 - 1, 0, 1);
+  vert.lowcorner = lowcorner;
+  vert.size = size;
   vert.color = color;
-  vert.width = width;
 }

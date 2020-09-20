@@ -9,9 +9,9 @@
 #include <atomic>
 #include <chrono>
 #include <fstream>
+#include <map>
 #include <sstream>
 #include <thread>
-#include <map>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -63,8 +63,9 @@ template <class T>
 GLenum GetGlTypeEnum();
 
 template <>
-GLenum GetGlTypeEnum<GLfloat>() { return GL_FLOAT; }
-
+GLenum GetGlTypeEnum<GLfloat>() {
+  return GL_FLOAT;
+}
 
 template <class T, int ncomp>
 struct VertexAttribute {
@@ -92,7 +93,6 @@ struct VertexAttribute {
   GLuint buffer;
   GLint location;
 };
-
 
 std::string ReadFile(std::string path) {
   std::ifstream fs(path);
@@ -212,23 +212,54 @@ GLuint CreateProgram(
 
 class Gui {
  public:
+  using Color = std::array<float, 3>;
+
+  static constexpr unsigned kButtonHeight = 50;
+  static constexpr unsigned kButtonWidth = 100;
+
+  struct Window {
+    Vect size;
+  };
+
+
   struct Button {
     std::string label;
     std::function<void()> handler;
-    Button(std::string label, std::function<void()> handler)
-        : label(label), handler(handler) {}
-    Button(std::function<void()> handler) : label(""), handler(handler) {}
+    Color color;
+    Vect lowcorner;
+    Vect size;
+
+    Button(std::string label, std::function<void()> handler, Color color)
+        : label(label), handler(handler), color(color) {
+      size = Vect(kButtonWidth, kButtonHeight);
+    }
   };
 
-  void AddElement(const Button& e) {
+  void AddButton(const Button& e) {
     buttons_.push_back(e);
   }
   const std::vector<Button>& GetButtons() const {
     return buttons_;
   }
+  void SetWindowSize(const size_t width, const size_t height) {
+    window_.size = Vect(width, height);
+    UpdateButtonPositions();
+  }
+  void Update() {
+    UpdateButtonPositions();
+  }
 
  private:
+  void UpdateButtonPositions() {
+    Scal x = 0;
+    for (auto& b : buttons_) {
+      b.lowcorner = Vect(x, window_.size.y - kButtonHeight);
+      x += kButtonWidth;
+    }
+  }
+
   std::vector<Button> buttons_;
+  Window window_;
 };
 
 milliseconds last_frame_time;
@@ -240,7 +271,7 @@ std::unique_ptr<game> G;
 
 Gui gui;
 
-unsigned int width, height;
+unsigned width, height;
 
 std::array<Vect, 2> GetDomain() {
   Vect A(-1, -1);
@@ -424,6 +455,8 @@ int main() {
   glEnable(GL_BLEND);
   glEnable(GL_PROGRAM_POINT_SIZE);
 
+  glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
+
   std::map<std::string, size_t> task2index;
 
   { // particles
@@ -505,7 +538,7 @@ int main() {
       glUseProgram(program);
 
       std::vector<std::array<GLfloat, 2>> buf;
-      std::vector<std::array<GLfloat ,4>> buf_color;
+      std::vector<std::array<GLfloat, 4>> buf_color;
       std::vector<GLfloat> buf_width;
       size_t nprim = 0;
 
@@ -589,7 +622,6 @@ int main() {
             kFrameWidth);
       }
 
-
       fassert_equal(buf.size(), nprim * 2);
       fassert_equal(buf_width.size(), nprim * 2);
       fassert_equal(buf_color.size(), nprim * 2);
@@ -617,7 +649,7 @@ int main() {
 
     GLuint tex = 0;
     glGenTextures(1, &tex);
-    //const auto target = GL_TEXTURE_RECTANGLE_ARB;
+    // const auto target = GL_TEXTURE_RECTANGLE_ARB;
     const auto target = GL_TEXTURE_2D;
     glBindTexture(target, tex);
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -650,66 +682,70 @@ int main() {
   }
 
   { // gui
-    Gui gui;
-    gui.AddElement(Gui::Button("asdf", [](){}));
+    std::vector<std::uint32_t> colors_geo = {
+        0xFF1F5B, 0x00CD6C, 0x009ADE, 0xAF58BA, 0xFFC61E, 0xF28522,
+        0xA0B1BA, 0xA6761D, 0xE9002D, 0xFFAA00, 0x00B000};
+    auto split = [](std::uint32_t c) -> std::array<float, 3> {
+      std::array<float, 3> d;
+      d[0] = ((c >> 16) & 0xFF) / 255.;
+      d[1] = ((c >> 8) & 0xFF) / 255.;
+      d[2] = ((c >> 0) & 0xFF) / 255.;
+      return d; //
+    };
+
+    gui.AddButton(Gui::Button("w", []() {}, {1, 1, 1}));
+    gui.AddButton(Gui::Button("0", []() {}, split(colors_geo[0])));
+    gui.AddButton(Gui::Button("1", []() {}, split(colors_geo[1])));
+    gui.AddButton(Gui::Button("2", []() {}, split(colors_geo[2])));
+
+
+    gui.SetWindowSize(width, height);
 
     GLuint program = CreateProgram(
         "../shaders/gui.vert.glsl", "../shaders/gui.frag.glsl",
         "../shaders/gui.geom.glsl");
 
-    VertexAttribute<GLfloat, 2> attr_point("point", program);
+    VertexAttribute<GLfloat, 2> attr_lowcorner("lowcorner", program);
+    VertexAttribute<GLfloat, 2> attr_size("size", program);
     VertexAttribute<GLfloat, 4> attr_color("color", program);
-    VertexAttribute<GLfloat, 1> attr_width("width", program);
 
-    auto render = [program, &ps = G->PS, attr_point, attr_color, attr_width]() {
+    auto render = [program, &ps = G->PS, attr_lowcorner, attr_color,
+                   attr_size]() {
       glUseProgram(program);
 
-      std::vector<std::array<GLfloat, 2>> buf;
-      std::vector<std::array<GLfloat ,4>> buf_color;
-      std::vector<GLfloat> buf_width;
+      std::vector<std::array<GLfloat, 2>> buf_lowcorner;
+      std::vector<std::array<GLfloat, 2>> buf_size;
+      std::vector<std::array<GLfloat, 4>> buf_color;
       size_t nprim = 0;
 
       using Color = std::array<Scal, 4>;
-      auto add = [&](Vect a, Vect b, Color color, Scal width) {
-        buf.push_back({a.x, a.y});
+      auto add = [&](Vect lowcorner, Vect size, Color color) {
+        buf_lowcorner.push_back(lowcorner);
+        buf_size.push_back(size);
         buf_color.push_back(color);
-        buf_width.push_back(width);
-
-        buf.push_back({b.x, b.y});
-        buf_color.push_back(color);
-        buf_width.push_back(width);
         ++nprim;
       };
-      auto rgb = [](float r, float g, float b) -> std::array<Scal, 4> {
-        return {r, g, b, 1};
+      auto rgba = [](std::array<float, 3> c) -> std::array<Scal, 4> {
+        return {c[0], c[1], c[2], 1};
       };
 
-      { // draw frame
-        const Scal kFrameWidth = 0.01;
-        auto dom = ps->GetDomain();
-        Vect dom0 = dom.A;
-        Vect dom1 = dom.B;
-        add(Vect(dom0.x, dom0.y) * 0.5, Vect(dom1.x, dom0.y) * 0.5, rgb(1, 1, 1),
-            kFrameWidth);
-        add(Vect(dom1.x, dom0.y) * 0.5, Vect(dom1.x, dom1.y) * 0.5, rgb(1, 1, 1),
-            kFrameWidth);
-        add(Vect(dom1.x, dom1.y) * 0.5, Vect(dom0.x, dom1.y) * 0.5, rgb(1, 1, 1),
-            kFrameWidth);
-        add(Vect(dom0.x, dom1.y) * 0.5, Vect(dom0.x, dom0.y) * 0.5, rgb(1, 1, 1),
-            kFrameWidth);
+      auto& buttons = gui.GetButtons();
+
+      for (auto& b : buttons) {
+        add(b.lowcorner, b.size, rgba(b.color));
       }
 
-      fassert_equal(buf.size(), nprim * 2);
-      fassert_equal(buf_width.size(), nprim * 2);
-      fassert_equal(buf_color.size(), nprim * 2);
+      fassert_equal(buf_lowcorner.size(), nprim);
+      fassert_equal(buf_size.size(), nprim);
+      fassert_equal(buf_color.size(), nprim);
 
-      attr_point.SetData(buf);
-      attr_width.SetData(buf_width);
+      attr_lowcorner.SetData(buf_lowcorner);
+      attr_size.SetData(buf_size);
       attr_color.SetData(buf_color);
 
       SetUniformDomainSize(program);
       CHECK_ERROR();
-      glDrawArrays(GL_LINES, 0, nprim * 2);
+      glDrawArrays(GL_POINTS, 0, nprim);
       CHECK_ERROR();
       glUseProgram(0);
     };
@@ -865,6 +901,7 @@ int main() {
           case SDL_WINDOWEVENT_RESIZED:
             width = e.window.data1;
             height = e.window.data2;
+            gui.SetWindowSize(width, height);
             glViewport(0, 0, width, height);
             G->SetWindowSize(width, height);
             glDrawBuffer(GL_FRONT);

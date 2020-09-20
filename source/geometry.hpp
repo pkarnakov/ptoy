@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <array>
 
 using Scal = float;
 // using Scal = double;
@@ -15,9 +16,7 @@ class vect {
  public:
   static const vect kNan;
   Scal x, y;
-  vect() {
-    ;
-  }
+  vect() {}
   vect(Scal _x, Scal _y) {
     x = _x;
     y = _y;
@@ -77,6 +76,10 @@ class vect {
   vect GetNormalized() const {
     const Scal len = length();
     return vect(x / len, y / len);
+  }
+  template <class T>
+  operator std::array<T, 2>() {
+    return {x, y};
   }
 };
 
