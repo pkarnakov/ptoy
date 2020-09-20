@@ -70,14 +70,17 @@ GLenum GetGlTypeEnum<GLfloat>() {
 template <class T, int ncomp>
 struct VertexAttribute {
   VertexAttribute(std::string name, GLuint program) {
-    glGenBuffers(1, &buffer);
+    glGenBuffers(1, &id);
     location = wrap::glGetAttribLocation(program, name);
     glEnableVertexAttribArray(location);
+  }
+  ~VertexAttribute() {
+    glDeleteBuffers(1, &id);
   }
   void SetData(const std::vector<T>& data) const {
     wrap::glBufferDataReuse(
         GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(),
-        GL_DYNAMIC_DRAW, buffer);
+        GL_DYNAMIC_DRAW, id);
     glVertexAttribPointer(
         location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(GLfloat),
         NULL);
@@ -85,14 +88,68 @@ struct VertexAttribute {
   void SetData(const std::vector<std::array<T, ncomp>>& data) const {
     wrap::glBufferDataReuse(
         GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat) * ncomp, data.data(),
-        GL_DYNAMIC_DRAW, buffer);
+        GL_DYNAMIC_DRAW, id);
     glVertexAttribPointer(
         location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(GLfloat),
         NULL);
   }
-  GLuint buffer;
+  GLuint id;
   GLint location;
 };
+
+struct Texture {
+  Texture(GLenum target = GL_TEXTURE_2D) : target(target) {
+    glGenTextures(1, &id);
+    Bind();
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  }
+  ~Texture() {
+    glDeleteTextures(1, &id);
+  }
+  void SetData(
+      const std::vector<float>& data, unsigned width, unsigned height) const {
+    fassert_equal(data.size(), width * height);
+    Bind();
+    glTexImage2D(
+        target, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data.data());
+  }
+  void Bind() const {
+    glBindTexture(target, id);
+  }
+  GLuint id;
+  GLenum target;
+};
+
+struct Font {
+  std::vector<float> data;
+  size_t width;
+  size_t height;
+  float offset;
+};
+
+Font LoadFont(std::string path) {
+  Font font;
+
+  {
+    const std::string p = path + ".size";
+    std::ifstream f(p);
+    fassert(f.good(), "can't open '" + p + "'");
+    f >> font.width >> font.height >> font.offset;
+  }
+
+  {
+    // file written by `font.py`
+    const std::string p = path + ".data";
+    std::ifstream f(p, std::ios::binary);
+    fassert(f.good(), "can't open '" + p + "'");
+    std::vector<char> buf(std::istreambuf_iterator<char>(f), {});
+    fassert_equal(buf.size(), font.width * font.height * 4);
+  }
+  return font;
+}
 
 std::string ReadFile(std::string path) {
   std::ifstream fs(path);
@@ -466,13 +523,7 @@ int main() {
     VertexAttribute<GLfloat, 2> attr_point("point", program);
     VertexAttribute<GLfloat, 1> attr_color("color", program);
 
-    GLuint tex_circle = 0;
-    glGenTextures(1, &tex_circle);
-    glBindTexture(GL_TEXTURE_2D, tex_circle);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    Texture tex_circle;
     const int w = 64;
     const int h = 64;
     std::vector<float> v(w * h);
@@ -485,8 +536,7 @@ int main() {
             (sin(0.2 + (fj / h) * 10 - sqr(fi / w - 0.5) * 10) + 1) * 0.5;
       }
     }
-    glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_R32F, w, h, 0, GL_RED, GL_FLOAT, v.data());
+    tex_circle.SetData(v, w, h);
 
     auto render = [program, tex_circle, &ps = G->PS, attr_point, attr_color]() {
       glUseProgram(program);
@@ -505,7 +555,7 @@ int main() {
         }
       }
 
-      glBindTexture(GL_TEXTURE_2D, tex_circle);
+      tex_circle.Bind();
 
       attr_point.SetData(buf);
       attr_color.SetData(buf_color);
