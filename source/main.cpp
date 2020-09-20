@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <thread>
+#include <map>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -174,12 +175,35 @@ GLuint CreateProgram(
   return program;
 }
 
+class Gui {
+ public:
+  struct Button {
+    std::string label;
+    std::function<void()> handler;
+    Button(std::string label, std::function<void()> handler)
+        : label(label), handler(handler) {}
+    Button(std::function<void()> handler) : label(""), handler(handler) {}
+  };
+
+  void AddElement(const Button& e) {
+    buttons_.push_back(e);
+  }
+  const std::vector<Button>& GetButtons() const {
+    return buttons_;
+  }
+
+ private:
+  std::vector<Button> buttons_;
+};
+
 milliseconds last_frame_time;
 Scal last_frame_game_time;
 milliseconds last_report_time;
 std::atomic<Scal> next_game_time_target;
 
 std::unique_ptr<game> G;
+
+Gui gui;
 
 unsigned int width, height;
 
@@ -365,6 +389,8 @@ int main() {
   glEnable(GL_BLEND);
   glEnable(GL_PROGRAM_POINT_SIZE);
 
+  std::map<std::string, size_t> task2index;
+
   { // particles
     GLuint program = CreateProgram(
         "../shaders/vert.glsl", "../shaders/frag.glsl", "../shaders/geom.glsl");
@@ -447,6 +473,7 @@ int main() {
       glUseProgram(0);
     };
 
+    task2index["particles"] = tasks.size();
     tasks.push_back({program, render});
   }
 
@@ -597,6 +624,7 @@ int main() {
       glUseProgram(0);
     };
 
+    task2index["lines"] = tasks.size();
     tasks.push_back({program, render});
   }
 
@@ -644,10 +672,119 @@ int main() {
       glUseProgram(0);
     };
 
+    task2index["blur"] = tasks.size();
     tasks.push_back({program, render});
   }
 
-  tasks_indices = {2, 0, 1};
+  { // gui
+    Gui gui;
+    gui.AddElement(Gui::Button("asdf", [](){}));
+
+    GLuint program = CreateProgram(
+        "../shaders/gui.vert.glsl", "../shaders/gui.frag.glsl",
+        "../shaders/gui.geom.glsl");
+
+    GLuint vbo_point;
+    glGenBuffers(1, &vbo_point);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
+    GLint attr_point = wrap::glGetAttribLocation(program, "point");
+    glEnableVertexAttribArray(attr_point);
+
+    GLuint vbo_color;
+    glGenBuffers(1, &vbo_color);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
+    GLint attr_color = glGetAttribLocation(program, "color");
+    glEnableVertexAttribArray(attr_color);
+
+    GLuint vbo_width;
+    glGenBuffers(1, &vbo_width);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_width);
+    GLint attr_width = glGetAttribLocation(program, "width");
+    glEnableVertexAttribArray(attr_width);
+
+    auto render = [program, vbo_point, vbo_color, vbo_width, &ps = G->PS,
+                   attr_point, attr_color, attr_width]() {
+      glUseProgram(program);
+
+      std::vector<GLfloat> buf;
+      std::vector<GLfloat> buf_color;
+      std::vector<GLfloat> buf_width;
+      size_t nprim = 0;
+
+      using Color = std::array<Scal, 4>;
+      auto add = [&](Vect a, Vect b, Color color, Scal width) {
+        buf.push_back(a.x);
+        buf.push_back(a.y);
+        buf.push_back(b.x);
+        buf.push_back(b.y);
+        for (auto i : {0, 1}) {
+          (void)i;
+          buf_color.push_back(color[0]);
+          buf_color.push_back(color[1]);
+          buf_color.push_back(color[2]);
+          buf_color.push_back(color[3]);
+          buf_width.push_back(width);
+        }
+        ++nprim;
+      };
+      auto rgb = [](float r, float g, float b) -> std::array<Scal, 4> {
+        return {r, g, b, 1};
+      };
+
+      { // draw frame
+        const Scal kFrameWidth = 0.01;
+        auto dom = ps->GetDomain();
+        Vect dom0 = dom.A;
+        Vect dom1 = dom.B;
+        add(Vect(dom0.x, dom0.y) * 0.5, Vect(dom1.x, dom0.y) * 0.5, rgb(1, 1, 1),
+            kFrameWidth);
+        add(Vect(dom1.x, dom0.y) * 0.5, Vect(dom1.x, dom1.y) * 0.5, rgb(1, 1, 1),
+            kFrameWidth);
+        add(Vect(dom1.x, dom1.y) * 0.5, Vect(dom0.x, dom1.y) * 0.5, rgb(1, 1, 1),
+            kFrameWidth);
+        add(Vect(dom0.x, dom1.y) * 0.5, Vect(dom0.x, dom0.y) * 0.5, rgb(1, 1, 1),
+            kFrameWidth);
+      }
+
+      fassert_equal(buf.size(), nprim * 4);
+      fassert_equal(buf_width.size(), nprim * 2);
+      fassert_equal(buf_color.size(), nprim * 8);
+
+      wrap::glBufferDataReuse(
+          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
+          GL_DYNAMIC_DRAW, vbo_point);
+      glVertexAttribPointer(
+          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+
+      wrap::glBufferDataReuse(
+          GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
+          GL_DYNAMIC_DRAW, vbo_color);
+      glVertexAttribPointer(
+          attr_color, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), NULL);
+
+      wrap::glBufferDataReuse(
+          GL_ARRAY_BUFFER, buf_width.size() * sizeof(GLfloat), buf_width.data(),
+          GL_DYNAMIC_DRAW, vbo_width);
+      glVertexAttribPointer(
+          attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+
+      SetUniformDomainSize(program);
+      CHECK_ERROR();
+      glDrawArrays(GL_LINES, 0, nprim * 2);
+      CHECK_ERROR();
+      glUseProgram(0);
+    };
+
+    task2index["gui"] = tasks.size();
+    tasks.push_back({program, render});
+  }
+
+  tasks_indices = {
+      task2index["blur"],
+      task2index["particles"],
+      task2index["lines"],
+      task2index["gui"],
+  };
 
   std::thread computation_thread(cycle);
 
