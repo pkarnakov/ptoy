@@ -59,6 +59,41 @@ void glBufferDataReuse(
 
 } // namespace wrap
 
+template <class T>
+GLenum GetGlTypeEnum();
+
+template <>
+GLenum GetGlTypeEnum<GLfloat>() { return GL_FLOAT; }
+
+
+template <class T, int ncomp>
+struct VertexAttribute {
+  VertexAttribute(std::string name, GLuint program) {
+    glGenBuffers(1, &buffer);
+    location = wrap::glGetAttribLocation(program, name);
+    glEnableVertexAttribArray(location);
+  }
+  void SetData(const std::vector<T>& data) const {
+    wrap::glBufferDataReuse(
+        GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(),
+        GL_DYNAMIC_DRAW, buffer);
+    glVertexAttribPointer(
+        location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(GLfloat),
+        NULL);
+  }
+  void SetData(const std::vector<std::array<T, ncomp>>& data) const {
+    wrap::glBufferDataReuse(
+        GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat) * ncomp, data.data(),
+        GL_DYNAMIC_DRAW, buffer);
+    glVertexAttribPointer(
+        location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(GLfloat),
+        NULL);
+  }
+  GLuint buffer;
+  GLint location;
+};
+
+
 std::string ReadFile(std::string path) {
   std::ifstream fs(path);
   fassert(fs.good(), "can't open file + '" + path + "'");
@@ -395,17 +430,8 @@ int main() {
     GLuint program = CreateProgram(
         "../shaders/vert.glsl", "../shaders/frag.glsl", "../shaders/geom.glsl");
 
-    GLuint vbo_point;
-    glGenBuffers(1, &vbo_point);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-    GLint attr_point = wrap::glGetAttribLocation(program, "point");
-    glEnableVertexAttribArray(attr_point);
-
-    GLuint vbo_color;
-    glGenBuffers(1, &vbo_color);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-    GLint attr_color = wrap::glGetAttribLocation(program, "color");
-    glEnableVertexAttribArray(attr_color);
+    VertexAttribute<GLfloat, 2> attr_point("point", program);
+    VertexAttribute<GLfloat, 1> attr_color("color", program);
 
     GLuint tex_circle = 0;
     glGenTextures(1, &tex_circle);
@@ -429,19 +455,17 @@ int main() {
     glTexImage2D(
         GL_TEXTURE_2D, 0, GL_R32F, w, h, 0, GL_RED, GL_FLOAT, v.data());
 
-    auto render = [program, vbo_point, vbo_color, tex_circle, &ps = G->PS,
-                   attr_point, attr_color]() {
+    auto render = [program, tex_circle, &ps = G->PS, attr_point, attr_color]() {
       glUseProgram(program);
 
       auto& particles = ps->GetParticles();
-      std::vector<GLfloat> buf(particles.size() * 2);
+      std::vector<std::array<GLfloat, 2>> buf(particles.size());
       std::vector<GLfloat> buf_color(particles.size());
       {
         std::lock_guard<std::mutex> lg(ps->m_buffer_);
         for (size_t i = 0; i < particles.size(); ++i) {
           auto& p = particles[i];
-          buf[i * 2] = p.p.x;
-          buf[i * 2 + 1] = p.p.y;
+          buf[i] = {p.p.x, p.p.y};
           Scal f = 0.5 + p.v.length() / 3.; // color intensity
           f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
           buf_color[i] = f;
@@ -450,17 +474,8 @@ int main() {
 
       glBindTexture(GL_TEXTURE_2D, tex_circle);
 
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
-          GL_DYNAMIC_DRAW, vbo_point);
-      glVertexAttribPointer(
-          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
-
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
-          GL_DYNAMIC_DRAW, vbo_color);
-      glVertexAttribPointer(
-          attr_color, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+      attr_point.SetData(buf);
+      attr_color.SetData(buf_color);
 
       SetUniformDomainSize(program);
       glUniform1ui(
@@ -482,47 +497,27 @@ int main() {
         "../shaders/lines.vert.glsl", "../shaders/lines.frag.glsl",
         "../shaders/lines.geom.glsl");
 
-    GLuint vbo_point;
-    glGenBuffers(1, &vbo_point);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-    GLint attr_point = wrap::glGetAttribLocation(program, "point");
-    glEnableVertexAttribArray(attr_point);
+    VertexAttribute<GLfloat, 2> attr_point("point", program);
+    VertexAttribute<GLfloat, 4> attr_color("color", program);
+    VertexAttribute<GLfloat, 1> attr_width("width", program);
 
-    GLuint vbo_color;
-    glGenBuffers(1, &vbo_color);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-    GLint attr_color = glGetAttribLocation(program, "color");
-    glEnableVertexAttribArray(attr_color);
-
-    GLuint vbo_width;
-    glGenBuffers(1, &vbo_width);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_width);
-    GLint attr_width = glGetAttribLocation(program, "width");
-    glEnableVertexAttribArray(attr_width);
-
-    auto render = [program, vbo_point, vbo_color, vbo_width, &ps = G->PS,
-                   attr_point, attr_color, attr_width]() {
+    auto render = [program, &ps = G->PS, attr_point, attr_color, attr_width]() {
       glUseProgram(program);
 
-      std::vector<GLfloat> buf;
-      std::vector<GLfloat> buf_color;
+      std::vector<std::array<GLfloat, 2>> buf;
+      std::vector<std::array<GLfloat ,4>> buf_color;
       std::vector<GLfloat> buf_width;
       size_t nprim = 0;
 
       using Color = std::array<Scal, 4>;
       auto add = [&](Vect a, Vect b, Color color, Scal width) {
-        buf.push_back(a.x);
-        buf.push_back(a.y);
-        buf.push_back(b.x);
-        buf.push_back(b.y);
-        for (auto i : {0, 1}) {
-          (void)i;
-          buf_color.push_back(color[0]);
-          buf_color.push_back(color[1]);
-          buf_color.push_back(color[2]);
-          buf_color.push_back(color[3]);
-          buf_width.push_back(width);
-        }
+        buf.push_back({a.x, a.y});
+        buf_color.push_back(color);
+        buf_width.push_back(width);
+
+        buf.push_back({b.x, b.y});
+        buf_color.push_back(color);
+        buf_width.push_back(width);
         ++nprim;
       };
       auto rgb = [](float r, float g, float b) -> std::array<Scal, 4> {
@@ -595,27 +590,13 @@ int main() {
       }
 
 
-      fassert_equal(buf.size(), nprim * 4);
+      fassert_equal(buf.size(), nprim * 2);
       fassert_equal(buf_width.size(), nprim * 2);
-      fassert_equal(buf_color.size(), nprim * 8);
+      fassert_equal(buf_color.size(), nprim * 2);
 
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
-          GL_DYNAMIC_DRAW, vbo_point);
-      glVertexAttribPointer(
-          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
-
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
-          GL_DYNAMIC_DRAW, vbo_color);
-      glVertexAttribPointer(
-          attr_color, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), NULL);
-
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf_width.size() * sizeof(GLfloat), buf_width.data(),
-          GL_DYNAMIC_DRAW, vbo_width);
-      glVertexAttribPointer(
-          attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+      attr_point.SetData(buf);
+      attr_width.SetData(buf_width);
+      attr_color.SetData(buf_color);
 
       SetUniformDomainSize(program);
       CHECK_ERROR();
@@ -632,11 +613,7 @@ int main() {
     GLuint program = CreateProgram(
         "../shaders/blur.vert.glsl", "../shaders/blur.frag.glsl", "");
 
-    GLuint vbo_point;
-    glGenBuffers(1, &vbo_point);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-    GLint attr_point = wrap::glGetAttribLocation(program, "point");
-    glEnableVertexAttribArray(attr_point);
+    VertexAttribute<GLfloat, 2> attr_point("point", program);
 
     GLuint tex = 0;
     glGenTextures(1, &tex);
@@ -648,7 +625,7 @@ int main() {
     glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-    auto render = [program, vbo_point, attr_point, tex]() {
+    auto render = [program, attr_point, tex]() {
       glUseProgram(program);
 
       glBindTexture(target, tex);
@@ -656,13 +633,9 @@ int main() {
       glCopyTexImage2D(target, 0, GL_RGB5, 0, 0, width, height, 0);
 
       const size_t nprim = 4;
-      std::vector<GLfloat> buf{-1, -1, 1, -1, 1, 1, -1, 1};
-
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
-          GL_DYNAMIC_DRAW, vbo_point);
-      glVertexAttribPointer(
-          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
+      std::vector<std::array<GLfloat, 2>> buf{
+          {-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+      attr_point.SetData(buf);
 
       glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
 
@@ -684,47 +657,27 @@ int main() {
         "../shaders/gui.vert.glsl", "../shaders/gui.frag.glsl",
         "../shaders/gui.geom.glsl");
 
-    GLuint vbo_point;
-    glGenBuffers(1, &vbo_point);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_point);
-    GLint attr_point = wrap::glGetAttribLocation(program, "point");
-    glEnableVertexAttribArray(attr_point);
+    VertexAttribute<GLfloat, 2> attr_point("point", program);
+    VertexAttribute<GLfloat, 4> attr_color("color", program);
+    VertexAttribute<GLfloat, 1> attr_width("width", program);
 
-    GLuint vbo_color;
-    glGenBuffers(1, &vbo_color);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-    GLint attr_color = glGetAttribLocation(program, "color");
-    glEnableVertexAttribArray(attr_color);
-
-    GLuint vbo_width;
-    glGenBuffers(1, &vbo_width);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_width);
-    GLint attr_width = glGetAttribLocation(program, "width");
-    glEnableVertexAttribArray(attr_width);
-
-    auto render = [program, vbo_point, vbo_color, vbo_width, &ps = G->PS,
-                   attr_point, attr_color, attr_width]() {
+    auto render = [program, &ps = G->PS, attr_point, attr_color, attr_width]() {
       glUseProgram(program);
 
-      std::vector<GLfloat> buf;
-      std::vector<GLfloat> buf_color;
+      std::vector<std::array<GLfloat, 2>> buf;
+      std::vector<std::array<GLfloat ,4>> buf_color;
       std::vector<GLfloat> buf_width;
       size_t nprim = 0;
 
       using Color = std::array<Scal, 4>;
       auto add = [&](Vect a, Vect b, Color color, Scal width) {
-        buf.push_back(a.x);
-        buf.push_back(a.y);
-        buf.push_back(b.x);
-        buf.push_back(b.y);
-        for (auto i : {0, 1}) {
-          (void)i;
-          buf_color.push_back(color[0]);
-          buf_color.push_back(color[1]);
-          buf_color.push_back(color[2]);
-          buf_color.push_back(color[3]);
-          buf_width.push_back(width);
-        }
+        buf.push_back({a.x, a.y});
+        buf_color.push_back(color);
+        buf_width.push_back(width);
+
+        buf.push_back({b.x, b.y});
+        buf_color.push_back(color);
+        buf_width.push_back(width);
         ++nprim;
       };
       auto rgb = [](float r, float g, float b) -> std::array<Scal, 4> {
@@ -746,27 +699,13 @@ int main() {
             kFrameWidth);
       }
 
-      fassert_equal(buf.size(), nprim * 4);
+      fassert_equal(buf.size(), nprim * 2);
       fassert_equal(buf_width.size(), nprim * 2);
-      fassert_equal(buf_color.size(), nprim * 8);
+      fassert_equal(buf_color.size(), nprim * 2);
 
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf.size() * sizeof(GLfloat), buf.data(),
-          GL_DYNAMIC_DRAW, vbo_point);
-      glVertexAttribPointer(
-          attr_point, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), NULL);
-
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf_color.size() * sizeof(GLfloat), buf_color.data(),
-          GL_DYNAMIC_DRAW, vbo_color);
-      glVertexAttribPointer(
-          attr_color, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), NULL);
-
-      wrap::glBufferDataReuse(
-          GL_ARRAY_BUFFER, buf_width.size() * sizeof(GLfloat), buf_width.data(),
-          GL_DYNAMIC_DRAW, vbo_width);
-      glVertexAttribPointer(
-          attr_width, 1, GL_FLOAT, GL_FALSE, 1 * sizeof(GLfloat), NULL);
+      attr_point.SetData(buf);
+      attr_width.SetData(buf_width);
+      attr_color.SetData(buf_color);
 
       SetUniformDomainSize(program);
       CHECK_ERROR();
