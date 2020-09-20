@@ -25,9 +25,12 @@ using namespace std::chrono;
 using Vect = vect; // TODO rename to Vect everywhere
 
 namespace wrap {
-auto glGetAttribLocation = [](GLuint prog, std::string varname) {
+auto glGetAttribLocation = [](GLuint prog, std::string varname,
+                              bool nofail = false) {
   GLint loc = ::glGetAttribLocation(prog, varname.c_str());
-  fassert(loc != -1, "attribute '" + varname + "' not found");
+  if (!nofail) {
+    fassert(loc != -1, "attribute '" + varname + "' not found");
+  }
   return loc;
 };
 auto glGetUniformLocation = [](GLuint prog, std::string varname) {
@@ -66,12 +69,20 @@ template <>
 GLenum GetGlTypeEnum<GLfloat>() {
   return GL_FLOAT;
 }
+template <>
+GLenum GetGlTypeEnum<GLint>() {
+  return GL_INT;
+}
+template <>
+GLenum GetGlTypeEnum<GLchar>() {
+  return GL_BYTE;
+}
 
 template <class T, int ncomp>
 struct VertexAttribute {
-  VertexAttribute(std::string name, GLuint program) {
+  VertexAttribute(std::string name, GLuint program, bool nofail=false) {
     glGenBuffers(1, &id);
-    location = wrap::glGetAttribLocation(program, name);
+    location = wrap::glGetAttribLocation(program, name, nofail);
     glEnableVertexAttribArray(location);
   }
   ~VertexAttribute() {
@@ -79,19 +90,26 @@ struct VertexAttribute {
   }
   void SetData(const std::vector<T>& data) const {
     wrap::glBufferDataReuse(
-        GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(),
+        GL_ARRAY_BUFFER, data.size() * sizeof(T), data.data(),
         GL_DYNAMIC_DRAW, id);
     glVertexAttribPointer(
-        location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(GLfloat),
+        location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(T),
         NULL);
   }
   void SetData(const std::vector<std::array<T, ncomp>>& data) const {
     wrap::glBufferDataReuse(
-        GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat) * ncomp, data.data(),
+        GL_ARRAY_BUFFER, data.size() * sizeof(T) * ncomp, data.data(),
         GL_DYNAMIC_DRAW, id);
     glVertexAttribPointer(
-        location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(GLfloat),
+        location, ncomp, GetGlTypeEnum<T>(), GL_FALSE, ncomp * sizeof(T),
         NULL);
+  }
+  void SetDataInt(const std::vector<std::array<T, ncomp>>& data) const {
+    wrap::glBufferDataReuse(
+        GL_ARRAY_BUFFER, data.size() * sizeof(T) * ncomp, data.data(),
+        GL_DYNAMIC_DRAW, id);
+    glVertexAttribIPointer(
+        location, ncomp, GetGlTypeEnum<T>(), ncomp * sizeof(T), NULL);
   }
   GLuint id;
   GLint location;
@@ -145,8 +163,13 @@ Font LoadFont(std::string path) {
     const std::string p = path + ".data";
     std::ifstream f(p, std::ios::binary);
     fassert(f.good(), "can't open '" + p + "'");
-    std::vector<char> buf(std::istreambuf_iterator<char>(f), {});
-    fassert_equal(buf.size(), font.width * font.height * 4);
+    std::vector<unsigned char> buf(
+        std::istreambuf_iterator<char>(f), {});
+    fassert_equal(buf.size(), font.width * font.height);
+    font.data.resize(font.width * font.height);
+    for (size_t i = 0; i < font.data.size(); ++i) {
+      font.data[i] = buf[i] / 255.;
+    }
   }
   return font;
 }
@@ -520,10 +543,12 @@ int main() {
     GLuint program = CreateProgram(
         "../shaders/vert.glsl", "../shaders/frag.glsl", "../shaders/geom.glsl");
 
-    VertexAttribute<GLfloat, 2> attr_point("point", program);
-    VertexAttribute<GLfloat, 1> attr_color("color", program);
+    auto attr_point =
+        std::make_shared<VertexAttribute<GLfloat, 2>>("point", program);
+    auto attr_color =
+        std::make_shared<VertexAttribute<GLfloat, 1>>("color", program);
 
-    Texture tex_circle;
+    auto tex_circle = std::make_shared<Texture>();
     const int w = 64;
     const int h = 64;
     std::vector<float> v(w * h);
@@ -536,7 +561,7 @@ int main() {
             (sin(0.2 + (fj / h) * 10 - sqr(fi / w - 0.5) * 10) + 1) * 0.5;
       }
     }
-    tex_circle.SetData(v, w, h);
+    tex_circle->SetData(v, w, h);
 
     auto render = [program, tex_circle, &ps = G->PS, attr_point, attr_color]() {
       glUseProgram(program);
@@ -555,10 +580,10 @@ int main() {
         }
       }
 
-      tex_circle.Bind();
+      tex_circle->Bind();
 
-      attr_point.SetData(buf);
-      attr_color.SetData(buf_color);
+      attr_point->SetData(buf);
+      attr_color->SetData(buf_color);
 
       SetUniformDomainSize(program);
       glUniform1ui(
@@ -580,9 +605,12 @@ int main() {
         "../shaders/lines.vert.glsl", "../shaders/lines.frag.glsl",
         "../shaders/lines.geom.glsl");
 
-    VertexAttribute<GLfloat, 2> attr_point("point", program);
-    VertexAttribute<GLfloat, 4> attr_color("color", program);
-    VertexAttribute<GLfloat, 1> attr_width("width", program);
+    auto attr_point =
+        std::make_shared<VertexAttribute<GLfloat, 2>>("point", program);
+    auto attr_color =
+        std::make_shared<VertexAttribute<GLfloat, 4>>("color", program);
+    auto attr_width =
+        std::make_shared<VertexAttribute<GLfloat, 1>>("width", program);
 
     auto render = [program, &ps = G->PS, attr_point, attr_color, attr_width]() {
       glUseProgram(program);
@@ -676,9 +704,9 @@ int main() {
       fassert_equal(buf_width.size(), nprim * 2);
       fassert_equal(buf_color.size(), nprim * 2);
 
-      attr_point.SetData(buf);
-      attr_width.SetData(buf_width);
-      attr_color.SetData(buf_color);
+      attr_point->SetData(buf);
+      attr_width->SetData(buf_width);
+      attr_color->SetData(buf_color);
 
       SetUniformDomainSize(program);
       CHECK_ERROR();
@@ -695,7 +723,8 @@ int main() {
     GLuint program = CreateProgram(
         "../shaders/blur.vert.glsl", "../shaders/blur.frag.glsl", "");
 
-    VertexAttribute<GLfloat, 2> attr_point("point", program);
+    auto attr_point =
+        std::make_shared<VertexAttribute<GLfloat, 2>>("point", program);
 
     GLuint tex = 0;
     glGenTextures(1, &tex);
@@ -717,7 +746,7 @@ int main() {
       const size_t nprim = 4;
       std::vector<std::array<GLfloat, 2>> buf{
           {-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
-      attr_point.SetData(buf);
+      attr_point->SetData(buf);
 
       glUniform2ui(glGetUniformLocation(program, "screenSize"), width, height);
 
@@ -743,36 +772,53 @@ int main() {
       return d; //
     };
 
-    gui.AddButton(Gui::Button("w", []() {}, {1, 1, 1}));
-    gui.AddButton(Gui::Button("0", []() {}, split(colors_geo[0])));
-    gui.AddButton(Gui::Button("1", []() {}, split(colors_geo[1])));
-    gui.AddButton(Gui::Button("2", []() {}, split(colors_geo[2])));
-
-
+    gui.AddButton(Gui::Button("abc", []() {}, {1, 1, 1}));
+    gui.AddButton(Gui::Button("0abc", []() {}, split(colors_geo[0])));
+    gui.AddButton(Gui::Button("1abc", []() {}, split(colors_geo[1])));
+    gui.AddButton(Gui::Button("2abc", []() {}, split(colors_geo[2])));
     gui.SetWindowSize(width, height);
+
+    auto font = LoadFont("../assets/font/font");
+    auto tex_font = std::make_shared<Texture>();
+    tex_font->SetData(font.data, font.width, font.height);
 
     GLuint program = CreateProgram(
         "../shaders/gui.vert.glsl", "../shaders/gui.frag.glsl",
         "../shaders/gui.geom.glsl");
 
-    VertexAttribute<GLfloat, 2> attr_lowcorner("lowcorner", program);
-    VertexAttribute<GLfloat, 2> attr_size("size", program);
-    VertexAttribute<GLfloat, 4> attr_color("color", program);
+    auto attr_lowcorner =
+        std::make_shared<VertexAttribute<GLfloat, 2>>("lowcorner", program);
+    auto attr_size =
+        std::make_shared<VertexAttribute<GLfloat, 2>>("size", program);
+    auto attr_color =
+        std::make_shared<VertexAttribute<GLfloat, 4>>("color", program);
+    auto attr_text =
+        std::make_shared<VertexAttribute<GLchar, 4>>("text", program);
 
-    auto render = [program, &ps = G->PS, attr_lowcorner, attr_color,
-                   attr_size]() {
+    auto render = [program, &ps = G->PS, attr_lowcorner, attr_color, attr_size,
+                   attr_text, tex_font, font]() {
       glUseProgram(program);
 
       std::vector<std::array<GLfloat, 2>> buf_lowcorner;
       std::vector<std::array<GLfloat, 2>> buf_size;
       std::vector<std::array<GLfloat, 4>> buf_color;
+      std::vector<std::array<GLchar, 4>> buf_text;
       size_t nprim = 0;
 
       using Color = std::array<Scal, 4>;
-      auto add = [&](Vect lowcorner, Vect size, Color color) {
+      auto add = [&](Vect lowcorner, Vect size, Color color, std::string text) {
         buf_lowcorner.push_back(lowcorner);
         buf_size.push_back(size);
         buf_color.push_back(color);
+        typename decltype(buf_text)::value_type q;
+        for (size_t i = 0; i < q.size(); ++i) {
+          if (i < text.size()) {
+            q[i] = text[i] - 0x20;
+          } else {
+            q[i] = ' ' - 0x20;
+          }
+        }
+        buf_text.push_back(q);
         ++nprim;
       };
       auto rgba = [](std::array<float, 3> c) -> std::array<Scal, 4> {
@@ -782,16 +828,24 @@ int main() {
       auto& buttons = gui.GetButtons();
 
       for (auto& b : buttons) {
-        add(b.lowcorner, b.size, rgba(b.color));
+        add(b.lowcorner, b.size, rgba(b.color), b.label);
       }
 
       fassert_equal(buf_lowcorner.size(), nprim);
       fassert_equal(buf_size.size(), nprim);
       fassert_equal(buf_color.size(), nprim);
+      fassert_equal(buf_text.size(), nprim);
 
-      attr_lowcorner.SetData(buf_lowcorner);
-      attr_size.SetData(buf_size);
-      attr_color.SetData(buf_color);
+      tex_font->Bind();
+
+      attr_lowcorner->SetData(buf_lowcorner);
+      attr_size->SetData(buf_size);
+      attr_color->SetData(buf_color);
+      attr_text->SetDataInt(buf_text);
+
+      glUniform2ui(
+          glGetUniformLocation(program, "font_size"), font.width, font.height);
+      glUniform1f(glGetUniformLocation(program, "font_offset"), font.offset);
 
       SetUniformDomainSize(program);
       CHECK_ERROR();

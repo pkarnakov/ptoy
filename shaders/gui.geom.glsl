@@ -7,6 +7,7 @@ in VERT {
   flat vec2 lowcorner;
   flat vec2 size;
   flat vec4 color;
+  flat int text[4];
 } vert[];
 
 layout  (triangle_strip, max_vertices = 4) out;
@@ -15,6 +16,7 @@ out GEOM {
   flat vec2 lowcorner;
   flat vec2 size;
   flat vec4 color;
+  flat int text[4];
 } geom;
 
 void main() {
@@ -24,6 +26,7 @@ void main() {
   geom.lowcorner = vert[0].lowcorner;
   geom.size = vert[0].size;
   geom.color = vert[0].color;
+  geom.text = vert[0].text;
 
   gl_Position = p + vec4(0, 0, 0, 0);
   EmitVertex();

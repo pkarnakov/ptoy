@@ -52,7 +52,7 @@ print("character size: ", bbox.width / len(chars), bbox.height)
 
 fig.bbox = bbox
 fig.savefig("font.png", bbox_inches=bboxi)
-img = DrawToArray(fig, bbox_inches=bboxi)
+img = DrawToArray(fig, bbox_inches=bboxi)[:,:,0]
 print(img.shape)
 
 img.tofile("font.data")
