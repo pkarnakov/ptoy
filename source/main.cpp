@@ -333,6 +333,16 @@ class Gui {
     }
   };
 
+  Button* FindButton(int x, int y) {
+    for (auto& b : buttons_) {
+      if (b.lowcorner.x < x && x <= b.lowcorner.x + b.size.x &&
+          b.lowcorner.y < y && y <= b.lowcorner.y + b.size.y) {
+        return &b;
+      }
+    }
+    return nullptr;
+  }
+
   void AddButton(const Button& e) {
     buttons_.push_back(e);
   }
@@ -1030,24 +1040,34 @@ int main() {
             break;
         }
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        switch (mouse_state) {
-          case MouseState::Force:
-            G->PS->SetForce(GetDomainMousePosition(), true);
-            break;
-          case MouseState::Bonds:
-            G->PS->BondsStart(GetDomainMousePosition());
-            break;
-          case MouseState::Pick:
-            G->PS->PickStart(GetDomainMousePosition());
-            break;
-          case MouseState::Freeze:
-            G->PS->FreezeStart(GetDomainMousePosition());
-            break;
-          case MouseState::Portal:
-            G->PS->PortalStart(GetDomainMousePosition());
-            break;
-          case MouseState::None:
-            break;
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        if (auto b = gui.FindButton(x, height - y)) {
+          std::cout << "found button at " << NAMEVALUE(x) << " " << NAMEVALUE(y)
+                    << " with " << NAMEVALUE(b->label) << std::endl;
+          b->color[0] = 1.5 - b->color[0];
+          b->color[1] = 1.5 - b->color[1];
+          b->color[2] = 1.5 - b->color[2];
+        } else {
+          switch (mouse_state) {
+            case MouseState::Force:
+              G->PS->SetForce(GetDomainMousePosition(), true);
+              break;
+            case MouseState::Bonds:
+              G->PS->BondsStart(GetDomainMousePosition());
+              break;
+            case MouseState::Pick:
+              G->PS->PickStart(GetDomainMousePosition());
+              break;
+            case MouseState::Freeze:
+              G->PS->FreezeStart(GetDomainMousePosition());
+              break;
+            case MouseState::Portal:
+              G->PS->PortalStart(GetDomainMousePosition());
+              break;
+            case MouseState::None:
+              break;
+          }
         }
       } else if (e.type == SDL_MOUSEBUTTONUP) {
         switch (mouse_state) {
