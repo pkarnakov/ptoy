@@ -3,13 +3,15 @@
 uniform uvec2 screenSize;
 
 in vec2 lowcorner;
-in vec2 size;
+in float size;
 in vec4 color;
+in int char;
 
 out VERT {
   flat vec2 lowcorner;
-  flat vec2 size;
+  flat float size;
   flat vec4 color;
+  flat int char;
 } vert;
 
 void main() {
@@ -17,4 +19,5 @@ void main() {
   vert.lowcorner = lowcorner;
   vert.size = size;
   vert.color = color;
+  vert.char = char;
 }
