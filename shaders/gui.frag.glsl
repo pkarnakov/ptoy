@@ -2,7 +2,6 @@
 
 uniform uvec2 screenSize;
 uniform uvec2 font_size;
-uniform float font_offset;
 uniform sampler2D tex;
 
 in GEOM {

@@ -56,7 +56,7 @@ class vect {
     y *= v.y;
     return *this;
   }
-  vect operator*(vect v) {
+  vect operator*(vect v) const {
     vect res = *this;
     res *= v;
     return res;
