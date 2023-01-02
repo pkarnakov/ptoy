@@ -45,37 +45,37 @@ T sqr(T a) {
 void TestUni();
 
 struct particle {
-  vect p;
-  vect v;
-  vect f;
-  vect p0;
-  vect v0;
+  Vect p;
+  Vect v;
+  Vect f;
+  Vect p0;
+  Vect v0;
   // unsigned int layers_mask;
   // rgb color;
   particle() {}
   particle(
-      vect _p, vect _v, Scal /*_m*/, Scal /*_r*/, Scal /*_sigma*/,
+      Vect _p, Vect _v, Scal /*_m*/, Scal /*_r*/, Scal /*_sigma*/,
       unsigned int /*_layers_mask*/, rgb /*_color*/)
       : p(_p)
       , v(_v) //, layers_mask(_layers_mask), color(_color)
   {}
 };
 
-vect F12(vect p1, vect p2, Scal sigma, Scal R);
-vect F12wall(vect p1, vect p2);
-vect F12(vect p1, vect p2);
+Vect F12(Vect p1, Vect p2, Scal sigma, Scal R);
+Vect F12wall(Vect p1, Vect p2);
+Vect F12(Vect p1, Vect p2);
 
 class env_object {
  public:
-  virtual vect F(vect p, vect v) = 0;
-  virtual bool IsClose(vect p, Scal R) = 0;
+  virtual Vect F(Vect p, Vect v) = 0;
+  virtual bool IsClose(Vect p, Scal R) = 0;
 };
 
 class line : public env_object {
-  vect A, B;
+  Vect A, B;
   // Scal eps;
-  vect GetNearest(vect p) {
-    vect Q;
+  Vect GetNearest(Vect p) {
+    Vect Q;
     Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
     if (lambda > 0. && lambda < 1.) {
       Q = A + (B - A) * lambda;
@@ -86,13 +86,13 @@ class line : public env_object {
   }
 
  public:
-  line(vect _A, vect _B) : A(_A), B(_B) {
+  line(Vect _A, Vect _B) : A(_A), B(_B) {
     ;
   }
-  vect F(vect p, vect /*v*/) override {
+  Vect F(Vect p, Vect /*v*/) override {
     return F12wall(p, GetNearest(p));
   }
-  bool IsClose(vect p, Scal R) override {
+  bool IsClose(Vect p, Scal R) override {
     return GetNearest(p).dist(p) < R + kRadius;
   }
 };
@@ -102,11 +102,11 @@ class particles_system {
   particles_system();
   ~particles_system();
   struct Portal {
-    vect begin, end;
+    Vect begin, end;
     std::vector<size_t> blocks;
-    vect GetNearest(vect p) {
-      const vect A = begin, B = end;
-      vect Q;
+    Vect GetNearest(Vect p) {
+      const Vect A = begin, B = end;
+      Vect Q;
       Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
       if (lambda > 0. && lambda < 1.) {
         Q = A + (B - A) * lambda;
@@ -115,7 +115,7 @@ class particles_system {
       }
       return Q;
     }
-    bool IsClose(vect p, Scal R) {
+    bool IsClose(Vect p, Scal R) {
       return GetNearest(p).dist(p) < R + 2 * kPortalThickness;
     }
   };
@@ -126,7 +126,7 @@ class particles_system {
   void ApplyPortalsForces();
   void DetectPortals();
   void MoveToPortal(
-      vect& position, vect& velocity, const Portal& src, const Portal& dest);
+      Vect& position, Vect& velocity, const Portal& src, const Portal& dest);
   void SetParticleBuffer();
   void RemoveLastPortal() {
     remove_last_portal_ = true;
@@ -137,12 +137,12 @@ class particles_system {
   }
   void UpdateEnvObj();
   void ResetEnvObjFrame(rect_vect new_domain) {
-    const vect A = new_domain.A, B = new_domain.B;
+    const Vect A = new_domain.A, B = new_domain.B;
     ClearEnvObj();
-    AddEnvObj(new line(vect(A.x, A.y), vect(B.x, A.y)));
-    AddEnvObj(new line(vect(A.x, B.y), vect(B.x, B.y)));
-    AddEnvObj(new line(vect(A.x, A.y), vect(A.x, B.y)));
-    AddEnvObj(new line(vect(B.x, A.y), vect(B.x, B.y)));
+    AddEnvObj(new line(Vect(A.x, A.y), Vect(B.x, A.y)));
+    AddEnvObj(new line(Vect(A.x, B.y), Vect(B.x, B.y)));
+    AddEnvObj(new line(Vect(A.x, A.y), Vect(A.x, B.y)));
+    AddEnvObj(new line(Vect(B.x, A.y), Vect(B.x, B.y)));
     UpdateEnvObj();
   }
   void SetDomain(rect_vect new_domain) {
@@ -160,25 +160,25 @@ class particles_system {
   }
   void status(std::ostream& out);
   void step(Scal time_target, const std::atomic<bool>& quit);
-  void SetForce(vect center, bool enabled);
-  void SetForce(vect center);
+  void SetForce(Vect center, bool enabled);
+  void SetForce(Vect center);
   void SetForce(bool enabled);
   void SetForceAttractive(bool value) {
     force_attractive_ = value;
   }
-  void BondsStart(vect point);
-  void BondsMove(vect point);
-  void BondsStop(vect point);
+  void BondsStart(Vect point);
+  void BondsMove(Vect point);
+  void BondsStop(Vect point);
   void CheckBonds();
-  void FreezeStart(vect point);
-  void FreezeMove(vect point);
-  void FreezeStop(vect point);
-  void PickStart(vect point);
-  void PickMove(vect point);
-  void PickStop(vect point);
-  void PortalStart(vect point);
-  void PortalMove(vect point);
-  void PortalStop(vect point);
+  void FreezeStart(Vect point);
+  void FreezeMove(Vect point);
+  void FreezeStop(Vect point);
+  void PickStart(Vect point);
+  void PickMove(Vect point);
+  void PickStop(Vect point);
+  void PortalStart(Vect point);
+  void PortalMove(Vect point);
+  void PortalStop(Vect point);
   Scal GetTime() const {
     return t;
   }
@@ -223,13 +223,13 @@ class particles_system {
   blocks Blocks;
   Scal t;
   Scal dt;
-  vect g;
+  Vect g;
   void RHS(size_t i);
   void RHS_bonds();
   void ApplyFrozen();
   vector<std::unique_ptr<env_object>> ENVOBJ;
   std::vector<std::vector<size_t>> block_envobj_;
-  vect force_center;
+  Vect force_center;
   bool force_enabled;
   bool force_attractive_ = false;
   bool gravity_enable_ = true;
@@ -239,7 +239,7 @@ class particles_system {
   bool bonds_enabled_ = false;
   int pick_particle_id_;
   bool pick_enabled_ = false;
-  vect pick_pointer_;
+  Vect pick_pointer_;
   std::set<std::pair<int, int>> bonds_;
   std::set<int> frozen_; // particle id
   bool freeze_enabled_ = false;
@@ -251,9 +251,9 @@ class particles_system {
  public:
   int portal_stage_ = 0;
   bool portal_mouse_moving_ = false;
-  vect portal_begin_;
-  vect portal_current_;
-  std::pair<vect, vect> portal_prev_;
+  Vect portal_begin_;
+  Vect portal_current_;
+  std::pair<Vect, Vect> portal_prev_;
   std::vector<std::array<Portal, 2>> portals_;
   std::vector<int> particle_to_move_; // 1: to move, 0: otherwise
   void UpdatePortalBlocks(Portal& portal);

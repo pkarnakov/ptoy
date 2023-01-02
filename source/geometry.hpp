@@ -3,79 +3,79 @@
 */
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <iostream>
-#include <array>
 
 using Scal = float;
 // using Scal = double;
 
 const Scal PI = atan(1.0) * 4.0;
 
-class vect {
+class Vect {
  public:
-  static const vect kNan;
+  static const Vect kNan;
   Scal x, y;
-  vect() {}
-  vect(Scal _x, Scal _y) {
+  Vect() {}
+  Vect(Scal _x, Scal _y) {
     x = _x;
     y = _y;
   }
-  vect& operator*=(Scal a) {
+  Vect& operator*=(Scal a) {
     x *= a;
     y *= a;
     return *this;
   }
-  vect operator*(Scal a) const {
-    vect res = *this;
+  Vect operator*(Scal a) const {
+    Vect res = *this;
     res *= a;
     return res;
   }
-  vect& operator+=(vect v) {
+  Vect& operator+=(Vect v) {
     x += v.x;
     y += v.y;
     return *this;
   }
-  vect operator+(vect v) const {
-    vect res = *this;
+  Vect operator+(Vect v) const {
+    Vect res = *this;
     res += v;
     return res;
   }
-  vect& operator-=(vect v) {
+  Vect& operator-=(Vect v) {
     x -= v.x;
     y -= v.y;
     return *this;
   }
-  vect operator-(vect v) const {
-    vect res = *this;
+  Vect operator-(Vect v) const {
+    Vect res = *this;
     res -= v;
     return res;
   }
-  vect& operator*=(vect v) {
+  Vect& operator*=(Vect v) {
     x *= v.x;
     y *= v.y;
     return *this;
   }
-  vect operator*(vect v) const {
-    vect res = *this;
+  Vect operator*(Vect v) const {
+    Vect res = *this;
     res *= v;
     return res;
   }
-  Scal dot(vect v) const {
+  Scal dot(Vect v) const {
     return v.x * x + v.y * y;
   }
   Scal length() const {
     return sqrt(x * x + y * y);
   }
-  Scal dist(vect v) const {
+  Scal dist(Vect v) const {
     return (v - *this).length();
   }
-  bool operator==(vect other) const {
+  bool operator==(Vect other) const {
     return x == other.x && y == other.y;
   }
-  vect GetNormalized() const {
+  Vect GetNormalized() const {
     const Scal len = length();
-    return vect(x / len, y / len);
+    return Vect(x / len, y / len);
   }
   template <class T>
   operator std::array<T, 2>() {
@@ -107,12 +107,12 @@ class mindex {
 // A<=B
 class rect_vect {
  public:
-  vect A, B;
-  rect_vect(vect _A, vect _B) : A(_A), B(_B) {
+  Vect A, B;
+  rect_vect(Vect _A, Vect _B) : A(_A), B(_B) {
     ;
   }
   rect_vect() = default;
-  vect size() const {
+  Vect size() const {
     return B - A;
   }
   bool operator==(const rect_vect& other) const {
@@ -132,7 +132,7 @@ class rect_mindex {
   }
 };
 
-std::ostream& operator<<(std::ostream& out, vect v);
+std::ostream& operator<<(std::ostream& out, Vect v);
 
 struct rgb {
   float r, g, b;

@@ -26,7 +26,7 @@ using namespace std::chrono;
 
 using std::uint16_t;
 
-using Vect = vect; // TODO rename to Vect everywhere
+using Vect = Vect; // TODO rename to Vect everywhere
 
 enum class MouseState {
   None,

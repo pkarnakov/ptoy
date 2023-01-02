@@ -50,18 +50,18 @@ class renderer {
 
     glEnd();
   }
-  void draw_circle(vect c, Scal r, rgb color) {
+  void draw_circle(Vect c, Scal r, rgb color) {
     draw_circle(c.x, c.y, r, color);
   }
   void draw_circle(mindex c, int r, rgb color) {
     draw_circle(c.i, c.j, r, color);
   }
-  void draw_line(vect A, vect B, rgb color, Scal width) {
+  void draw_line(Vect A, Vect B, rgb color, Scal width) {
     glColor3f(color.r, color.g, color.b);
     glBegin(GL_POLYGON);
 
-    const vect n = vect(A.y - B.y, B.x - A.x).GetNormalized();
-    auto v = [](vect p) { //
+    const Vect n = Vect(A.y - B.y, B.x - A.x).GetNormalized();
+    auto v = [](Vect p) { //
       glVertex2f(p.x, p.y);
     };
     v(A + n * (width * 0.5));
@@ -71,14 +71,14 @@ class renderer {
 
     glEnd();
   }
-  void draw_line(vect A, vect B, Scal width) {
+  void draw_line(Vect A, Vect B, Scal width) {
     draw_line(A, B, rgb(1., 1., 1.), width);
   }
   void draw_particles() {
     auto particles = partsys->GetParticles();
     for (std::size_t k = 0; k < particles.size(); ++k) {
       auto& part = particles[k];
-      // vect p=part.p;
+      // Vect p=part.p;
       Scal f = 0.5 + part.v.length() / 7.; // color intensity
       f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
       // auto c = part.color;
@@ -90,13 +90,13 @@ class renderer {
   }
   void draw_frame() {
     rect_vect R = partsys->GetDomain();
-    vect dA = R.A;
-    vect dB = R.B;
+    Vect dA = R.A;
+    Vect dB = R.B;
     const Scal width = 0.005;
-    draw_line(vect(dA.x, dA.y), vect(dB.x, dA.y), width);
-    draw_line(vect(dA.x, dB.y), vect(dB.x, dB.y), width);
-    draw_line(vect(dA.x, dA.y), vect(dA.x, dB.y), width);
-    draw_line(vect(dB.x, dA.y), vect(dB.x, dB.y), width);
+    draw_line(Vect(dA.x, dA.y), Vect(dB.x, dA.y), width);
+    draw_line(Vect(dA.x, dB.y), Vect(dB.x, dB.y), width);
+    draw_line(Vect(dA.x, dA.y), Vect(dA.x, dB.y), width);
+    draw_line(Vect(dB.x, dA.y), Vect(dB.x, dB.y), width);
   }
   void DrawBonds() {
     const auto& nr = partsys->GetNoRendering();

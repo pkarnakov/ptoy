@@ -21,7 +21,7 @@ class Game {
   void SetWindowSize(int width, int height) {
     width_ = width;
     height_ = height;
-    vect A(-1., -1.),
+    Vect A(-1., -1.),
         B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
     partsys->PushResize(rect_vect(A, B));
     rendinst->SetWindowSize(width, height);
