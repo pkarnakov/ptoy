@@ -3,8 +3,8 @@
 #include <iostream>
 
 #include "geometry.hpp"
-#include "particles_system.hpp"
 #include "logger.h"
+#include "particles_system.hpp"
 
 #define CHECK_ERROR()                                                \
   do {                                                               \
@@ -22,7 +22,7 @@
 
 class renderer {
   int width_, height_;
-  particles_system* PS;
+  particles_system* partsys;
 
  public:
   void SetWindowSize(int width, int height) {
@@ -75,7 +75,7 @@ class renderer {
     draw_line(A, B, rgb(1., 1., 1.), width);
   }
   void draw_particles() {
-    auto particles = PS->GetParticles();
+    auto particles = partsys->GetParticles();
     for (std::size_t k = 0; k < particles.size(); ++k) {
       auto& part = particles[k];
       // vect p=part.p;
@@ -89,7 +89,7 @@ class renderer {
     }
   }
   void draw_frame() {
-    rect_vect R = PS->GetDomain();
+    rect_vect R = partsys->GetDomain();
     vect dA = R.A;
     vect dB = R.B;
     const Scal width = 0.005;
@@ -99,10 +99,10 @@ class renderer {
     draw_line(vect(dB.x, dA.y), vect(dB.x, dB.y), width);
   }
   void DrawBonds() {
-    const auto& nr = PS->GetNoRendering();
-    const auto& data = PS->GetBlockData();
-    const auto& bbi = PS->GetBlockById();
-    for (auto bond : PS->GetBonds()) {
+    const auto& nr = partsys->GetNoRendering();
+    const auto& data = partsys->GetBlockData();
+    const auto& bbi = partsys->GetBlockById();
+    for (auto bond : partsys->GetBonds()) {
       const auto& a = bbi[bond.first];
       const auto& b = bbi[bond.second];
       assert(a.first != blocks::kBlockNone);
@@ -116,9 +116,9 @@ class renderer {
     }
   }
   void DrawFrozen() {
-    const auto& data = PS->GetBlockData();
-    const auto& bbi = PS->GetBlockById();
-    for (auto id : PS->GetFrozen()) {
+    const auto& data = partsys->GetBlockData();
+    const auto& bbi = partsys->GetBlockById();
+    for (auto id : partsys->GetFrozen()) {
       const auto& a = bbi[id];
       assert(a.first != blocks::kBlockNone);
       draw_circle(
@@ -126,33 +126,35 @@ class renderer {
     }
   }
   void DrawPortals() {
-    const auto& portals = PS->GetPortals();
+    const auto& portals = partsys->GetPortals();
     const Scal width = 0.0075;
     for (auto& pair : portals) {
       draw_line(pair[0].begin, pair[0].end, rgb(0., .5, 1.), width);
       draw_line(pair[1].begin, pair[1].end, rgb(1., .5, 0.), width);
     }
-    if (PS->portal_stage_ == 0) {
-      if (PS->portal_mouse_moving_) {
+    if (partsys->portal_stage_ == 0) {
+      if (partsys->portal_mouse_moving_) {
         draw_line(
-            PS->portal_begin_, PS->portal_current_, rgb(0., .5, 1.), width);
+            partsys->portal_begin_, partsys->portal_current_, rgb(0., .5, 1.),
+            width);
       }
     } else {
       draw_line(
-          PS->portal_prev_.first, PS->portal_prev_.second, rgb(0., .5, 1.),
-          width);
-      if (PS->portal_mouse_moving_) {
+          partsys->portal_prev_.first, partsys->portal_prev_.second,
+          rgb(0., .5, 1.), width);
+      if (partsys->portal_mouse_moving_) {
         draw_line(
-            PS->portal_begin_, PS->portal_current_, rgb(1., .5, 0.), width);
+            partsys->portal_begin_, partsys->portal_current_, rgb(1., .5, 0.),
+            width);
       }
     }
   }
   void DrawAll() {
-    //draw_particles(); // done by shaders in main.cpp
+    // draw_particles(); // done by shaders in main.cpp
     draw_frame();
     DrawBonds();
     DrawFrozen();
     DrawPortals();
   }
-  renderer(particles_system* _PS) : PS(_PS) {}
+  renderer(particles_system* _partsys) : partsys(_partsys) {}
 };

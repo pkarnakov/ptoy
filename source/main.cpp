@@ -434,7 +434,7 @@ Scal last_frame_game_time;
 milliseconds last_report_time;
 std::atomic<Scal> next_game_time_target;
 
-std::unique_ptr<game> G;
+std::unique_ptr<Game> gameinst;
 
 Gui gui;
 
@@ -486,7 +486,7 @@ void display() {
 
   auto new_frame_time = duration_cast<milliseconds>(
       high_resolution_clock::now().time_since_epoch());
-  auto new_frame_game_time = G->PS->GetTime();
+  auto new_frame_game_time = gameinst->partsys->GetTime();
 
   const Scal frame_real_duration_s =
       (new_frame_time - last_frame_time).count() / 1000.;
@@ -496,13 +496,13 @@ void display() {
               << (new_frame_game_time - last_frame_game_time) /
                      frame_real_duration_s
               << ", particles="
-              << G->PS->GetNumParticles()
+              << gameinst->partsys->GetNumParticles()
               //<< ", max_per_cell="
-              //<< G->PS->GetNumPerCell()
-              << ", t=" << G->PS->GetTime()
-              << ", steps=" << G->PS->GetNumSteps() << std::endl;
+              //<< gameinst->partsys->GetNumPerCell()
+              << ", t=" << gameinst->partsys->GetTime()
+              << ", steps=" << gameinst->partsys->GetNumSteps() << std::endl;
     last_report_time = new_frame_time;
-    // G->PS->Blocks.print_status();
+    // gameinst->partsys->Blocks.print_status();
   }
 
   const Scal game_rate_target = 1.;
@@ -520,9 +520,9 @@ void display() {
   }
 
   {
-    std::lock_guard<std::mutex> lg(G->PS->m_buffer_);
-    // G->R->DrawAll();
-    G->PS->SetRendererReadyForNext(true);
+    std::lock_guard<std::mutex> lg(gameinst->partsys->m_buffer_);
+    // gameinst->rendinst->DrawAll();
+    gameinst->partsys->SetRendererReadyForNext(true);
   }
 
   // glFlush();
@@ -557,7 +557,7 @@ void cycle() {
   }
 
   while (!quit) {
-    G->PS->step(next_game_time_target, pause);
+    gameinst->partsys->step(next_game_time_target, pause);
     // std::this_thread::sleep_for(milliseconds(50));
     if (pause) {
       std::this_thread::sleep_for(milliseconds(100));
@@ -595,7 +595,7 @@ int main() {
   last_frame_game_time = 0.;
   pause = false;
 
-  G = std::unique_ptr<game>(new game(width, height));
+  gameinst = std::unique_ptr<Game>(new Game(width, height));
 
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -650,10 +650,10 @@ int main() {
               << std::endl;
     switch (s) {
       case MouseState::Repulsion:
-        G->PS->SetForceAttractive(false);
+        gameinst->partsys->SetForceAttractive(false);
         break;
       case MouseState::Attraction:
-        G->PS->SetForceAttractive(true);
+        gameinst->partsys->SetForceAttractive(true);
         break;
       default:
         break;
@@ -684,7 +684,7 @@ int main() {
     }
     tex_circle->SetData(v, w, h);
 
-    auto render = [&, program, tex_circle, &ps = G->PS, attr_point,
+    auto render = [&, program, tex_circle, &ps = gameinst->partsys, attr_point,
                    attr_color]() {
       glUseProgram(program);
 
@@ -737,7 +737,7 @@ int main() {
     auto attr_width =
         std::make_shared<VertexAttribute<GLfloat, 1>>("width", program);
 
-    auto render = [&, program, &ps = G->PS, attr_point, attr_color,
+    auto render = [&, program, &ps = gameinst->partsys, attr_point, attr_color,
                    attr_width]() {
       glUseProgram(program);
 
@@ -919,8 +919,8 @@ int main() {
     auto attr_color =
         std::make_shared<VertexAttribute<GLfloat, 4>>("color", program);
 
-    auto render = [&, program, &ps = G->PS, attr_lowcorner, attr_color,
-                   attr_size]() {
+    auto render = [&, program, &ps = gameinst->partsys, attr_lowcorner,
+                   attr_color, attr_size]() {
       glUseProgram(program);
 
       std::vector<std::array<GLfloat, 2>> buf_lowcorner;
@@ -987,9 +987,9 @@ int main() {
     auto attr_width =
         std::make_shared<VertexAttribute<GLfloat, 1>>("width", program);
 
-    auto render = [program, &ps = G->PS, attr_lowcorner, attr_color, attr_size,
-                   attr_char, attr_width, tex_font, font, &mouse_state,
-                   &help_state]() {
+    auto render = [program, &ps = gameinst->partsys, attr_lowcorner, attr_color,
+                   attr_size, attr_char, attr_width, tex_font, font,
+                   &mouse_state, &help_state]() {
       glUseProgram(program);
 
       std::vector<std::array<GLfloat, 2>> buf_lowcorner;
@@ -1080,7 +1080,7 @@ Q: quit after three presses
 
   std::thread computation_thread(cycle);
 
-  G->PS->SetForce(Vect(0., 0.), false);
+  gameinst->partsys->SetForce(Vect(0., 0.), false);
 
   // Main loop flag.
   quit = false;
@@ -1134,11 +1134,12 @@ Q: quit after three presses
             break;
           case 'i':
             std::cout << "Remove last portal" << std::endl;
-            G->PS->RemoveLastPortal();
+            gameinst->partsys->RemoveLastPortal();
             break;
           case 'g':
-            G->PS->InvertGravity();
-            std::cout << (G->PS->GetGravity() ? "Gravity on" : "Gravity off")
+            gameinst->partsys->InvertGravity();
+            std::cout << (gameinst->partsys->GetGravity() ? "Gravity on"
+                                                          : "Gravity off")
                       << std::endl;
             break;
           case ' ':
@@ -1149,19 +1150,19 @@ Q: quit after three presses
         switch (mouse_state) {
           case MouseState::Attraction:
           case MouseState::Repulsion:
-            G->PS->SetForce(GetDomainMousePosition());
+            gameinst->partsys->SetForce(GetDomainMousePosition());
             break;
           case MouseState::Bond:
-            G->PS->BondsMove(GetDomainMousePosition());
+            gameinst->partsys->BondsMove(GetDomainMousePosition());
             break;
           case MouseState::Pick:
-            G->PS->PickMove(GetDomainMousePosition());
+            gameinst->partsys->PickMove(GetDomainMousePosition());
             break;
           case MouseState::Freeze:
-            G->PS->FreezeMove(GetDomainMousePosition());
+            gameinst->partsys->FreezeMove(GetDomainMousePosition());
             break;
           case MouseState::Portal:
-            G->PS->PortalMove(GetDomainMousePosition());
+            gameinst->partsys->PortalMove(GetDomainMousePosition());
             break;
           case MouseState::None:
             break;
@@ -1179,19 +1180,19 @@ Q: quit after three presses
           switch (mouse_state) {
             case MouseState::Attraction:
             case MouseState::Repulsion:
-              G->PS->SetForce(GetDomainMousePosition(), true);
+              gameinst->partsys->SetForce(GetDomainMousePosition(), true);
               break;
             case MouseState::Bond:
-              G->PS->BondsStart(GetDomainMousePosition());
+              gameinst->partsys->BondsStart(GetDomainMousePosition());
               break;
             case MouseState::Pick:
-              G->PS->PickStart(GetDomainMousePosition());
+              gameinst->partsys->PickStart(GetDomainMousePosition());
               break;
             case MouseState::Freeze:
-              G->PS->FreezeStart(GetDomainMousePosition());
+              gameinst->partsys->FreezeStart(GetDomainMousePosition());
               break;
             case MouseState::Portal:
-              G->PS->PortalStart(GetDomainMousePosition());
+              gameinst->partsys->PortalStart(GetDomainMousePosition());
               break;
             case MouseState::None:
               break;
@@ -1201,19 +1202,19 @@ Q: quit after three presses
         switch (mouse_state) {
           case MouseState::Attraction:
           case MouseState::Repulsion:
-            G->PS->SetForce(false);
+            gameinst->partsys->SetForce(false);
             break;
           case MouseState::Bond:
-            G->PS->BondsStop(GetDomainMousePosition());
+            gameinst->partsys->BondsStop(GetDomainMousePosition());
             break;
           case MouseState::Pick:
-            G->PS->PickStop(GetDomainMousePosition());
+            gameinst->partsys->PickStop(GetDomainMousePosition());
             break;
           case MouseState::Freeze:
-            G->PS->FreezeStop(GetDomainMousePosition());
+            gameinst->partsys->FreezeStop(GetDomainMousePosition());
             break;
           case MouseState::Portal:
-            G->PS->PortalStop(GetDomainMousePosition());
+            gameinst->partsys->PortalStop(GetDomainMousePosition());
             break;
           case MouseState::None:
             break;
@@ -1225,7 +1226,7 @@ Q: quit after three presses
             height = e.window.data2;
             gui.SetWindowSize(width, height);
             glViewport(0, 0, width, height);
-            G->SetWindowSize(width, height);
+            gameinst->SetWindowSize(width, height);
             glDrawBuffer(GL_FRONT);
             glClear(GL_COLOR_BUFFER_BIT);
             glDrawBuffer(GL_BACK);
