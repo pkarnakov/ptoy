@@ -1,105 +1,56 @@
-// Example codes for HPC course
-// (c) 2012/15 Andreas Hehn, ETH Zurich
+#pragma once
 
-#ifndef HPC12_ALIGNED_ALLOCATOR_HPP
-#define HPC12_ALIGNED_ALLOCATOR_HPP
-
-#ifdef _WIN32
-#include <malloc.h>
-#else
 #include <cstdlib>
-#endif
 
-#if __cplusplus >= 201103L
-#define NOEXCEPT_SPEC noexcept
-#else
-#define NOEXCEPT_SPEC
-#endif
-
-namespace hpc15 {
-
-// Alignment must be a power of 2 !
-template <typename T, unsigned int Alignment>
-class aligned_allocator {
+template <typename T, unsigned alignment>
+class AlignedAllocator {
  public:
-  typedef T* pointer;
-  typedef T const* const_pointer;
-  typedef T& reference;
-  typedef T const& const_reference;
-  typedef T value_type;
-  typedef std::size_t size_type;
-  typedef std::ptrdiff_t difference_type;
+  using value_type = T;
+  using pointer = T*;
+  using const_pointer = const T*;
+  using reference = T&;
+  using const_reference = const T&;
+  using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
 
-  template <typename U>
+  template <class U>
   struct rebind {
-    typedef aligned_allocator<U, Alignment> other;
+    using other = AlignedAllocator<U, alignment>;
   };
-
-  aligned_allocator() NOEXCEPT_SPEC {}
-
-  aligned_allocator(aligned_allocator const&) NOEXCEPT_SPEC {}
-
-  template <typename U>
-  aligned_allocator(aligned_allocator<U, Alignment> const&) NOEXCEPT_SPEC {}
-
   pointer allocate(size_type n) {
     pointer p;
-#ifdef _WIN32
-    p = _aligned_malloc(n * sizeof(T), Alignment);
-    if (p == 0) throw std::bad_alloc();
-#else
-    if (posix_memalign(reinterpret_cast<void**>(&p), Alignment, n * sizeof(T)))
+    if (posix_memalign(
+            reinterpret_cast<void**>(&p), alignment, n * sizeof(T))) {
       throw std::bad_alloc();
-#endif
+    }
     return p;
   }
-
-  void deallocate(pointer p, size_type) NOEXCEPT_SPEC {
+  void deallocate(pointer p, size_type) {
     std::free(p);
   }
-
-  size_type max_size() const NOEXCEPT_SPEC {
+  void construct(pointer p, const_reference val) {
+    new (static_cast<void*>(p)) T(val);
+  }
+  void destroy(pointer p) {
+    p->~T();
+  }
+  size_type max_size() const {
     std::allocator<T> a;
     return a.max_size();
   }
+  pointer address(reference x) const;
+  const_pointer address(const_reference x) const;
 
-#if __cplusplus >= 201103L
-  template <typename C, class... Args>
-  void construct(C* c, Args&&... args) {
-    new ((void*)c) C(std::forward<Args>(args)...);
-  }
-#else
-  void construct(pointer p, const_reference t) {
-    new ((void*)p) T(t);
-  }
-#endif
-
-  template <typename C>
-  void destroy(C* c) {
-    c->~C();
-  }
-
-  bool operator==(aligned_allocator const&) const NOEXCEPT_SPEC {
+  bool operator==(const AlignedAllocator&) const {
     return true;
   }
-
-  bool operator!=(aligned_allocator const&) const NOEXCEPT_SPEC {
+  bool operator!=(const AlignedAllocator&) const {
     return false;
   }
 
-  template <typename U, unsigned int UAlignment>
-  bool operator==(aligned_allocator<U, UAlignment> const&) const NOEXCEPT_SPEC {
-    return false;
-  }
+  AlignedAllocator() {}
+  AlignedAllocator(AlignedAllocator const&) {}
 
-  template <typename U, unsigned int UAlignment>
-  bool operator!=(aligned_allocator<U, UAlignment> const&) const NOEXCEPT_SPEC {
-    return true;
-  }
+  template <typename U>
+  AlignedAllocator(AlignedAllocator<U, alignment> const&) noexcept {}
 };
-
-} // namespace hpc15
-
-#undef NOEXPECT_SPEC
-
-#endif // HPC12_ALIGNED_ALLOCATOR_HPP

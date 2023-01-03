@@ -1,6 +1,3 @@
-/*
-  PARTICLES SYSTEM
-*/
 #pragma once
 
 #include <atomic>

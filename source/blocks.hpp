@@ -1,6 +1,4 @@
-/*
-  BLOCKS
-*/
+#pragma once
 
 #include <array>
 #include <cassert>
@@ -9,8 +7,8 @@
 #include "aligned_allocator.hpp"
 #include "geometry.hpp"
 
-using ArrayVect = std::vector<Vect, hpc15::aligned_allocator<Vect, 64>>;
-using ArrayInt = std::vector<int, hpc15::aligned_allocator<int, 64>>;
+using ArrayVect = std::vector<Vect, AlignedAllocator<Vect, 64>>;
+using ArrayInt = std::vector<int, AlignedAllocator<int, 64>>;
 
 class blocks {
  public:
