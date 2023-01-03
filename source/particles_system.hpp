@@ -224,7 +224,7 @@ class particles_system {
   Scal t;
   Scal dt;
   Vect g;
-  void RHS(size_t i);
+  void calc_forces(size_t i);
   void RHS_bonds();
   void ApplyFrozen();
   vector<std::unique_ptr<env_object>> ENVOBJ;

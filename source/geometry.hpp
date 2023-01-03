@@ -1,6 +1,3 @@
-/*
-  GEOMETRY
-*/
 #pragma once
 
 #include <array>
@@ -8,7 +5,6 @@
 #include <iostream>
 
 using Scal = float;
-// using Scal = double;
 
 const Scal PI = atan(1.0) * 4.0;
 
@@ -17,17 +13,15 @@ class Vect {
   static const Vect kNan;
   Scal x, y;
   Vect() {}
-  Vect(Scal _x, Scal _y) {
-    x = _x;
-    y = _y;
-  }
+  Vect(Scal x_) : x(x_), y(x_) {}
+  Vect(Scal x_, Scal y_) : x(x_), y(y_) {}
   Vect& operator*=(Scal a) {
     x *= a;
     y *= a;
     return *this;
   }
   Vect operator*(Scal a) const {
-    Vect res = *this;
+    Vect res(*this);
     res *= a;
     return res;
   }
@@ -37,7 +31,7 @@ class Vect {
     return *this;
   }
   Vect operator+(Vect v) const {
-    Vect res = *this;
+    Vect res(*this);
     res += v;
     return res;
   }
@@ -47,7 +41,7 @@ class Vect {
     return *this;
   }
   Vect operator-(Vect v) const {
-    Vect res = *this;
+    Vect res(*this);
     res -= v;
     return res;
   }
@@ -57,7 +51,7 @@ class Vect {
     return *this;
   }
   Vect operator*(Vect v) const {
-    Vect res = *this;
+    Vect res(*this);
     res *= v;
     return res;
   }

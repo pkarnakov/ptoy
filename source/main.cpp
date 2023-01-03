@@ -537,11 +537,10 @@ void display() {
 }
 
 void cycle() {
-  // omp_set_dynamic(0);
-  // omp_set_nested(0);
-  // omp_set_num_threads(std::thread::hardware_concurrency());
 #ifdef _OPENMP
-  // omp_set_num_threads(1);
+  omp_set_dynamic(0);
+  omp_set_nested(0);
+  //omp_set_num_threads(std::thread::hardware_concurrency());
 #endif
 
 #pragma omp parallel
