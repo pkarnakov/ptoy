@@ -24,7 +24,7 @@ class blocks {
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
     BlockData() = delete;
-    BlockData(blocks* parent) : parent(parent) {}
+    BlockData(blocks* parent_) : parent(parent_) {}
     void clear() {
       position.clear();
       position_tmp.clear();

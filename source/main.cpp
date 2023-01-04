@@ -178,7 +178,7 @@ struct VertexAttribute {
 };
 
 struct Texture {
-  Texture(GLenum target = GL_TEXTURE_2D) : target(target) {
+  Texture(GLenum target_ = GL_TEXTURE_2D) : target(target_) {
     glGenTextures(1, &id);
     Bind();
     glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -390,8 +390,8 @@ class Gui {
     Vect lowcorner;
     Vect size;
 
-    Button(std::string label, std::function<void()> handler, Color color)
-        : label(label), handler(handler), color(color) {
+    Button(std::string label_, std::function<void()> handler_, Color color_)
+        : label(label_), handler(handler_), color(color_) {
       size = Vect(kButtonWidth, kButtonHeight);
     }
   };
@@ -514,7 +514,7 @@ void display() {
     // gameinst->partsys->Blocks.print_status();
   }
 
-  const Scal game_rate_target = 2;
+  const Scal game_rate_target = 1.5;
   if (!pause) {
     next_game_time_target = new_frame_game_time + game_rate_target / fps;
   }
@@ -752,14 +752,14 @@ int main() {
       size_t nprim = 0;
 
       using Color = std::array<Scal, 4>;
-      auto add = [&](Vect a, Vect b, Color color, Scal width) {
+      auto add = [&](Vect a, Vect b, Color c, Scal w) {
         buf.push_back({a.x, a.y});
-        buf_color.push_back(color);
-        buf_width.push_back(width);
+        buf_color.push_back(c);
+        buf_width.push_back(w);
 
         buf.push_back({b.x, b.y});
-        buf_color.push_back(color);
-        buf_width.push_back(width);
+        buf_color.push_back(c);
+        buf_width.push_back(w);
         ++nprim;
       };
       auto rgb = [](float r, float g, float b) -> Color {
