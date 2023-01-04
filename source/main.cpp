@@ -19,14 +19,21 @@
 #include <omp.h>
 #endif
 
-// TODO: reorder header includes (std first)
-// TODO: fix formatting
-
-using namespace std::chrono;
+#define CHECK_ERROR()                                                \
+  do {                                                               \
+    GLenum error = glGetError();                                     \
+    if (error != GL_NO_ERROR) {                                      \
+      std::string msg;                                               \
+      do {                                                           \
+        msg += reinterpret_cast<const char*>(gluErrorString(error)); \
+        msg += "\n";                                                 \
+        error = glGetError();                                        \
+      } while (error != GL_NO_ERROR);                                \
+      fassert(false, msg);                                           \
+    }                                                                \
+  } while (0);
 
 using std::uint16_t;
-
-using Vect = Vect; // TODO rename to Vect everywhere
 
 enum class MouseState {
   None,
@@ -35,7 +42,7 @@ enum class MouseState {
   Bond,
   Pick,
   Freeze,
-  Portal
+  Portal,
 };
 
 const char* MouseStateName(MouseState s) {
@@ -429,9 +436,9 @@ class Gui {
   Window window_;
 };
 
-milliseconds last_frame_time;
+std::chrono::milliseconds last_frame_time;
 Scal last_frame_game_time;
-milliseconds last_report_time;
+std::chrono::milliseconds last_report_time;
 std::atomic<Scal> next_game_time_target;
 
 std::unique_ptr<Game> gameinst;
@@ -480,12 +487,14 @@ void display() {
   flag_display = true;
 
   const Scal fps = 30.0;
-  milliseconds current_time = duration_cast<milliseconds>(
-      high_resolution_clock::now().time_since_epoch());
-  milliseconds time_past_from_last_frame = current_time - last_frame_time;
+  std::chrono::milliseconds current_time =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now().time_since_epoch());
+  std::chrono::milliseconds time_past_from_last_frame =
+      current_time - last_frame_time;
 
-  auto new_frame_time = duration_cast<milliseconds>(
-      high_resolution_clock::now().time_since_epoch());
+  auto new_frame_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::high_resolution_clock::now().time_since_epoch());
   auto new_frame_game_time = gameinst->partsys->GetTime();
 
   const Scal frame_real_duration_s =
@@ -505,7 +514,7 @@ void display() {
     // gameinst->partsys->Blocks.print_status();
   }
 
-  const Scal game_rate_target = 1.;
+  const Scal game_rate_target = 2;
   if (!pause) {
     next_game_time_target = new_frame_game_time + game_rate_target / fps;
   }
@@ -521,7 +530,6 @@ void display() {
 
   {
     std::lock_guard<std::mutex> lg(gameinst->partsys->m_buffer_);
-    // gameinst->rendinst->DrawAll();
     gameinst->partsys->SetRendererReadyForNext(true);
   }
 
@@ -540,7 +548,7 @@ void cycle() {
 #ifdef _OPENMP
   omp_set_dynamic(0);
   omp_set_nested(0);
-  //omp_set_num_threads(std::thread::hardware_concurrency());
+  // omp_set_num_threads(std::thread::hardware_concurrency());
 #endif
 
 #pragma omp parallel
@@ -557,9 +565,8 @@ void cycle() {
 
   while (!quit) {
     gameinst->partsys->step(next_game_time_target, pause);
-    // std::this_thread::sleep_for(milliseconds(50));
     if (pause) {
-      std::this_thread::sleep_for(milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
   std::cout << "Computation finished" << std::endl;
@@ -610,7 +617,6 @@ int main() {
   }
   SDL_GLContext glcontext = SDL_GL_CreateContext(window);
   SDL_GL_SetSwapInterval(1);
-  // SDL_GL_SwapWindow(window);
 
   glewInit();
 
@@ -659,7 +665,7 @@ int main() {
     }
   };
 
-  { // Particles.
+  { // Draw particles.
     GLuint program = CreateProgram(
         "../shaders/vert.glsl", "../shaders/frag.glsl", "../shaders/geom.glsl");
 
@@ -724,7 +730,7 @@ int main() {
     tasks.push_back({program, render});
   }
 
-  { // Lines (frame, bonds, portals).
+  { // Draw lines (frame, bonds, portals).
     GLuint program = CreateProgram(
         "../shaders/lines.vert.glsl", "../shaders/lines.frag.glsl",
         "../shaders/lines.geom.glsl");
@@ -763,7 +769,7 @@ int main() {
         return {c[0], c[1], c[2], 1};
       };
 
-      { // Portals.
+      { // Draw portals.
         const auto& portals = ps->GetPortals();
         const Scal kPortalWidth = 0.015;
         const auto blue = rgba(split_rgb(colors_geo[2]));
@@ -785,7 +791,7 @@ int main() {
         }
       }
 
-      { // Bonds.
+      { // Draw bonds.
         const Scal kBondWidth = 0.015;
         const auto& nr = ps->GetNoRendering();
         const auto& pos = ps->GetBlockData().position;
@@ -800,7 +806,7 @@ int main() {
         }
       }
 
-      { // Frozen particles.
+      { // Draw frozen particles.
         // TODO: draw with texture or color of particles instead
         const Scal kFrozenWidth = kRadius * 2;
         const auto& pos = ps->GetBlockData().position;
@@ -813,7 +819,7 @@ int main() {
         }
       }
 
-      { // draw frame
+      { // Draw frame.
         const Scal kFrameWidth = 0.01;
         auto dom = ps->GetDomain();
         Vect dom0 = dom.A;
@@ -1236,6 +1242,7 @@ Q: quit after three presses
 
     glClear(GL_COLOR_BUFFER_BIT);
     display();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     SDL_GL_SwapWindow(window);
   }
 

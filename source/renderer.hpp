@@ -6,19 +6,6 @@
 #include "logger.h"
 #include "particles_system.hpp"
 
-#define CHECK_ERROR()                                                \
-  do {                                                               \
-    GLenum error = glGetError();                                     \
-    if (error != GL_NO_ERROR) {                                      \
-      std::string msg;                                               \
-      do {                                                           \
-        msg += reinterpret_cast<const char*>(gluErrorString(error)); \
-        msg += "\n";                                                 \
-        error = glGetError();                                        \
-      } while (error != GL_NO_ERROR);                                \
-      fassert(false, msg);                                           \
-    }                                                                \
-  } while (0);
 
 class renderer {
   int width_, height_;
