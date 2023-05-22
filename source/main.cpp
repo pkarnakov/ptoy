@@ -853,7 +853,6 @@ int main() {
     tasks.push_back({program, render});
   }
 
-  /*
   { // Blur rectangle.
     GLuint program = CreateProgram(
         "../shaders/blur.vert.glsl", "../shaders/blur.frag.glsl", "");
@@ -894,7 +893,6 @@ int main() {
     task2index["blur"] = tasks.size();
     tasks.push_back({program, render});
   }
-  */
 
   { // Initialize GUI.
     auto add_button = [&](std::string lbl, MouseState s) {
@@ -1076,7 +1074,7 @@ Q: quit after three presses
   }
 
   tasks_indices = {
-      // task2index["blur"],
+      //task2index["blur"],
       task2index["particles"],
       task2index["lines"],
       task2index["gui"],
@@ -1242,7 +1240,7 @@ Q: quit after three presses
 
     glClear(GL_COLOR_BUFFER_BIT);
     display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     SDL_GL_SwapWindow(window);
   }
 
