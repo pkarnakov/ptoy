@@ -20,6 +20,6 @@ class Game {
     height_ = height;
     Vect A(-1., -1.),
         B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
-    partsys->PushResize(rect_vect(A, B));
+    partsys->PushResize(RectVect(A, B));
   }
 };

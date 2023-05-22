@@ -102,10 +102,10 @@ class blocks {
         size_t dest, // destination block
         Vect particle_position, Vect particle_velocity, int particle_id) {
       position[dest].push_back(particle_position);
-      position_tmp[dest].push_back(Vect::kNan);
+      position_tmp[dest].push_back(GetNan<Vect>());
       velocity[dest].push_back(particle_velocity);
-      velocity_tmp[dest].push_back(Vect::kNan);
-      force[dest].push_back(Vect::kNan);
+      velocity_tmp[dest].push_back(GetNan<Vect>());
+      force[dest].push_back(GetNan<Vect>());
       id[dest].push_back(particle_id);
 
       assert(id[dest].back() >= 0);
@@ -116,8 +116,8 @@ class blocks {
       parent->block_by_id_[pid] = {dest, position[dest].size() - 1};
     }
   };
-  void SetDomain(rect_vect proposal) {
-    rect_vect domain = domain_;
+  void SetDomain(RectVect proposal) {
+    RectVect domain = domain_;
     while (proposal.A.x < domain.A.x) {
       domain.A.x -= block_size_.x;
     }
@@ -144,16 +144,16 @@ class blocks {
   }
   // TODO: draw blocks
   Vect GetCenter(size_t block) const {
-    const mindex m(block / dims_.j, block % dims_.j);
+    const MIdx m(block / dims_.j, block % dims_.j);
     return domain_.A +
            Vect((0.5 + m.i) * block_size_.x, (0.5 + m.j) * block_size_.y);
   }
-  blocks(rect_vect domain, Vect block_size)
+  blocks(RectVect domain, Vect block_size)
       : data_(this), num_particles_(0), num_per_cell_(0) {
     InitEmptyBlocks(domain, block_size);
   }
   size_t FindBlock(Vect position) const {
-    mindex m(
+    MIdx m(
         static_cast<int>((position.x - domain_.A.x) / block_size_.x),
         static_cast<int>((position.y - domain_.A.y) / block_size_.y));
     if (m.i >= 0 && m.i < dims_.i && m.j >= 0 && m.j < dims_.j) {
@@ -244,16 +244,16 @@ class blocks {
   }
 
  private:
-  rect_vect domain_;
+  RectVect domain_;
   Vect block_size_;
   BlockData data_;
-  mindex dims_;
+  MIdx dims_;
   size_t num_blocks_;
   std::array<int, kNumNeighbors> neighbor_offsets_;
   std::vector<std::pair<size_t, size_t>> block_by_id_;
   size_t num_particles_;
   size_t num_per_cell_;
-  void InitEmptyBlocks(rect_vect domain, Vect block_size) {
+  void InitEmptyBlocks(RectVect domain, Vect block_size) {
     domain_ = domain;
     block_size_ = block_size;
     dims_.i = int(domain.size().x / block_size.x) + 1;

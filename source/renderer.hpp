@@ -40,7 +40,7 @@ class renderer {
   void draw_circle(Vect c, Scal r, rgb color) {
     draw_circle(c.x, c.y, r, color);
   }
-  void draw_circle(mindex c, int r, rgb color) {
+  void draw_circle(MIdx c, int r, rgb color) {
     draw_circle(c.i, c.j, r, color);
   }
   void draw_line(Vect A, Vect B, rgb color, Scal width) {
@@ -76,7 +76,7 @@ class renderer {
     }
   }
   void draw_frame() {
-    rect_vect R = partsys->GetDomain();
+    RectVect R = partsys->GetDomain();
     Vect dA = R.A;
     Vect dB = R.B;
     const Scal width = 0.005;

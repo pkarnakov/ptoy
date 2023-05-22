@@ -133,7 +133,7 @@ class particles_system {
     ENVOBJ.clear();
   }
   void UpdateEnvObj();
-  void ResetEnvObjFrame(rect_vect new_domain) {
+  void ResetEnvObjFrame(RectVect new_domain) {
     const Vect A = new_domain.A, B = new_domain.B;
     ClearEnvObj();
     AddEnvObj(new line(Vect(A.x, A.y), Vect(B.x, A.y)));
@@ -142,11 +142,11 @@ class particles_system {
     AddEnvObj(new line(Vect(B.x, A.y), Vect(B.x, B.y)));
     UpdateEnvObj();
   }
-  void SetDomain(rect_vect new_domain) {
+  void SetDomain(RectVect new_domain) {
     domain = new_domain;
     Blocks.SetDomain(domain);
   }
-  void PushResize(rect_vect new_domain) {
+  void PushResize(RectVect new_domain) {
     resize_queue_ = new_domain;
   }
   const std::set<std::pair<int, int>>& GetBonds() const {
@@ -182,7 +182,7 @@ class particles_system {
   size_t GetNumSteps() const {
     return static_cast<size_t>(t / dt);
   }
-  rect_vect GetDomain() const {
+  RectVect GetDomain() const {
     return domain;
   }
 
@@ -215,8 +215,8 @@ class particles_system {
   mutable std::mutex m_buffer_;
 
  private:
-  rect_vect domain;
-  rect_vect resize_queue_;
+  RectVect domain;
+  RectVect resize_queue_;
   blocks Blocks;
   Scal t;
   Scal dt;

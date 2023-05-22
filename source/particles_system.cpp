@@ -3,7 +3,7 @@
 #include <thread>
 
 particles_system::particles_system()
-    : domain(rect_vect(Vect(-1., -1.), Vect(1., 1.)))
+    : domain(RectVect(Vect(-1., -1.), Vect(1., 1.)))
     , Blocks(domain, Vect(kBlockSize, kBlockSize))
     , blocks_buffer_(Blocks) {
   force_enabled = false;
@@ -37,12 +37,12 @@ particles_system::particles_system()
   }
   */
 
-  const size_t rows = 40;
-  const size_t columns = 40;
+  const size_t rows = 20;
+  const size_t columns = 20;
   const Scal width = columns * 2. * kRadius;
   const Scal height = rows * std::sqrt(3.) * kRadius;
   std::vector<particle> P;
-  rect_vect box(Vect(-0.5 * width, -1.), Vect(0.5 * width, -1. + height));
+  RectVect box(Vect(-0.5 * width, -1.), Vect(0.5 * width, -1. + height));
   for (size_t j = 0; j < rows; ++j) {
     for (size_t i = 0; i < columns; ++i) {
       const Scal x = box.A.x + kRadius * (2. * i + 1. + (j % 2));
@@ -174,7 +174,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
               std::min(current + limit, std::max(current - limit, target));
         };
 
-        rect_vect new_domain = domain;
+        RectVect new_domain = domain;
         limit(new_domain.A.x, resize_queue_.A.x);
         limit(new_domain.A.y, resize_queue_.A.y);
         limit(new_domain.B.x, resize_queue_.B.x);
