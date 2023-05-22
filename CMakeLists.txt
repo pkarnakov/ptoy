@@ -2,14 +2,32 @@ cmake_minimum_required(VERSION 3.3.0)
 
 project("ptoy" CXX)
 
-# Add target for the executable.
-set(T "ptoy")
-add_executable(${T} source/main.cpp source/geometry.cpp source/particles_system.cpp)
+option(USE_STATIC "Enable static build" OFF)
+option(USE_AVX "Enable AVX vectorization" ON)
+option(USE_WARNINGS "Enable compiler warnings" ON)
 
 # C++14.
-set_property(TARGET ${T} PROPERTY CXX_STANDARD 14)
-set_property(TARGET ${T} PROPERTY CXX_STANDARD_REQUIRED ON)
-set_property(TARGET ${T} PROPERTY CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if (USE_AVX)
+  add_compile_definitions(-DUSE_AVX)
+  add_compile_options(-march=native)
+endif()
+
+set(T "geometry")
+add_library(${T} source/geometry.cpp)
+
+set(T "particles")
+add_library(${T} source/particles_system.cpp)
+target_link_libraries(${T} geometry)
+
+# Add target for the executable.
+set(T "ptoy")
+add_executable(${T} source/main.cpp)
+target_link_libraries(${T} geometry particles)
 
 # Default build type.
 set(BuildTypeValues None Debug Release RelWithDebInfo MinSizeRel)
@@ -34,12 +52,10 @@ if (OPENMP)
 endif()
 
 # GCC warnings and optimizations.
-if (UNIX)
-  target_compile_options(${T} PRIVATE -Wall -Wextra -pedantic -Wshadow)
-  target_compile_options(${T} PRIVATE -march=native)
+if (USE_WARNINGS)
+  add_compile_options(-Wall -Wextra -pedantic -Wshadow)
 endif()
 
-option(USE_STATIC "Enable static build" OFF)
 if (USE_STATIC)
   SET(BUILD_SHARED_LIBRARIES OFF)
   set_property(TARGET ${T} PROPERTY LINK_SEARCH_START_STATIC 1)
@@ -64,8 +80,3 @@ target_link_libraries(${T} SDL2::SDL2)
 
 find_package(GLEW REQUIRED)
 target_link_libraries(${T} GLEW::GLEW)
-
-option(USE_AVX "Enable AVX vectorization" ON)
-if (USE_AVX)
-  add_definitions(-DUSE_AVX)
-endif()
