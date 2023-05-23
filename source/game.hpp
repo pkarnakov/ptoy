@@ -1,18 +1,18 @@
 #include <mutex>
 #include <vector>
 #include "geometry.hpp"
-#include "particles_system.hpp"
+#include "particles.hpp"
 
 constexpr int kInitWidth = 800;
 constexpr int kInitHeight = 800;
 
 class Game {
  public:
-  std::unique_ptr<particles_system> partsys;
+  std::unique_ptr<Particles> partsys;
   int width_;
   int height_;
   Game(int width, int height) {
-    partsys = std::unique_ptr<particles_system>(new particles_system);
+    partsys = std::unique_ptr<Particles>(new Particles);
     SetWindowSize(width, height);
   }
   void SetWindowSize(int width, int height) {

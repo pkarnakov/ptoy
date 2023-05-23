@@ -21,7 +21,7 @@ set(T "geometry")
 add_library(${T} source/geometry.cpp)
 
 set(T "particles")
-add_library(${T} source/particles_system.cpp)
+add_library(${T} source/particles.cpp)
 target_link_libraries(${T} geometry)
 
 # Add target for the executable.

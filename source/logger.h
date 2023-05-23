@@ -1,11 +1,10 @@
 // Created by Petr Karnakov on 25.02.2020
 
-#include <string>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 
-#define FILELINE \
-  (std::string() + __FILE__ + ":" + std::to_string(__LINE__))
+#define FILELINE (std::string() + __FILE__ + ":" + std::to_string(__LINE__))
 
 // force assert
 #define fassert_1(x)                                                      \
@@ -15,12 +14,12 @@
     }                                                                     \
   } while (0);
 
-#define fassert_2(x, msg)                                    \
-  do {                                                       \
-    if (!(x)) {                                              \
-      throw std::runtime_error(                              \
+#define fassert_2(x, msg)                                      \
+  do {                                                         \
+    if (!(x)) {                                                \
+      throw std::runtime_error(                                \
           FILELINE + ": assertion failed '" #x "'\n" + (msg)); \
-    }                                                        \
+    }                                                          \
   } while (0);
 
 #define GET_COUNT(_1, _2, _3, COUNT, ...) COUNT
@@ -28,8 +27,7 @@
 #define PTOY_CAT(x, y) x##y
 #define PTOY_XCAT(x, y) PTOY_CAT(x, y)
 
-#define fassert(...) \
-  PTOY_XCAT(fassert##_, VA_SIZE(__VA_ARGS__))(__VA_ARGS__)
+#define fassert(...) PTOY_XCAT(fassert##_, VA_SIZE(__VA_ARGS__))(__VA_ARGS__)
 
 #define NAMEVALUE(x)                 \
   ([&]() -> std::string {            \
@@ -42,7 +40,7 @@
   do {                                                                        \
     if (!((x) == (y))) {                                                      \
       std::stringstream fasrteq_s;                                            \
-      fasrteq_s << FILELINE << ": assertion failed, expected equal ";      \
+      fasrteq_s << FILELINE << ": assertion failed, expected equal ";         \
       fasrteq_s << #x << "='" << (x) << "' and " << #y << "='" << (y) << "'"; \
       throw std::runtime_error(fasrteq_s.str());                              \
     }                                                                         \

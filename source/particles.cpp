@@ -1,8 +1,8 @@
-#include "particles_system.hpp"
+#include "particles.hpp"
 #include <chrono>
 #include <thread>
 
-particles_system::particles_system()
+Particles::Particles()
     : domain(RectVect(Vect(-1., -1.), Vect(1., 1.)))
     , Blocks(domain, Vect(kBlockSize, kBlockSize))
     , blocks_buffer_(Blocks) {
@@ -81,8 +81,8 @@ particles_system::particles_system()
     PortalStop(Vect(box.B.x + dx, box.B.y + 0.2));
   }
 }
-particles_system::~particles_system() {}
-void particles_system::SetParticleBuffer() {
+Particles::~Particles() {}
+void Particles::SetParticleBuffer() {
   blocks_buffer_ = Blocks;
   std::vector<particle> res;
   for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
@@ -95,15 +95,15 @@ void particles_system::SetParticleBuffer() {
   }
   particle_buffer_ = res;
 }
-void particles_system::AddEnvObj(env_object* env) {
+void Particles::AddEnvObj(env_object* env) {
   ENVOBJ.push_back(std::unique_ptr<env_object>(env));
 }
-void particles_system::status(std::ostream& out) {
+void Particles::status(std::ostream& out) {
   out << "status N/A";
   // out<<"Particles system"<<std::endl<<"Particles number =
   // "<<P.size()<<std::endl;
 }
-void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
+void Particles::step(Scal time_target, const std::atomic<bool>& quit) {
 #pragma omp parallel
   {
     while (t < time_target && !quit.load()) {
@@ -216,7 +216,7 @@ void particles_system::step(Scal time_target, const std::atomic<bool>& quit) {
   }
 }
 
-void particles_system::CheckBonds() {
+void Particles::CheckBonds() {
   const auto bbi = Blocks.GetBlockById();
   for (auto it = bonds_.begin(); it != bonds_.end();) {
     if (bbi[it->first].first == blocks::kBlockNone ||
@@ -228,18 +228,18 @@ void particles_system::CheckBonds() {
   }
 }
 
-void particles_system::SetForce(Vect center, bool enabled) {
+void Particles::SetForce(Vect center, bool enabled) {
   force_center = center;
   force_enabled = enabled;
 }
-void particles_system::SetForce(Vect center) {
+void Particles::SetForce(Vect center) {
   force_center = center;
 }
-void particles_system::SetForce(bool enabled) {
+void Particles::SetForce(bool enabled) {
   force_enabled = enabled;
 }
 
-void particles_system::PickStart(Vect point) {
+void Particles::PickStart(Vect point) {
   size_t min_block = blocks::kBlockNone;
   size_t min_particle = 0;
   Scal min_dist;
@@ -261,21 +261,21 @@ void particles_system::PickStart(Vect point) {
   pick_enabled_ = true;
 }
 
-void particles_system::PickMove(Vect point) {
+void Particles::PickMove(Vect point) {
   if (!pick_enabled_) {
     return;
   }
   pick_pointer_ = point;
 }
 
-void particles_system::PickStop(Vect) {
+void Particles::PickStop(Vect) {
   if (!pick_enabled_) {
     return;
   }
   pick_enabled_ = false;
 }
 
-void particles_system::MoveToPortal(
+void Particles::MoveToPortal(
     Vect& position, Vect& velocity, const Portal& src, const Portal& dest) {
   const Vect src_a = src.begin;
   const Vect src_b = src.end;
@@ -299,7 +299,7 @@ void particles_system::MoveToPortal(
   velocity = dest_r * lambda_vel + dest_n * offset_vel;
 }
 
-void particles_system::DetectPortals() {
+void Particles::DetectPortals() {
   for (auto& pair : portals_) {
     for (int d = 0; d <= 1; ++d) {
       const auto& portal = pair[d];
@@ -329,7 +329,7 @@ void particles_system::DetectPortals() {
   }
 }
 
-void particles_system::ApplyPortalsForces() {
+void Particles::ApplyPortalsForces() {
   // Assume that the particles have just been moved
   // with their velocity
   // so that (position - dt * velocity) is the previous position
@@ -393,7 +393,7 @@ void particles_system::ApplyPortalsForces() {
     }
   }
 }
-void particles_system::ApplyPortals() {
+void Particles::ApplyPortals() {
   // Assume that the particles have just been moved
   // with their velocity
   // so that (position - dt * velocity) is the previous position
@@ -422,21 +422,21 @@ void particles_system::ApplyPortals() {
   }
 }
 
-void particles_system::PortalStart(Vect point) {
+void Particles::PortalStart(Vect point) {
   portal_enabled_ = true;
   portal_begin_ = point;
   portal_current_ = point;
   portal_mouse_moving_ = true;
 }
 
-void particles_system::PortalMove(Vect point) {
+void Particles::PortalMove(Vect point) {
   if (!portal_enabled_) {
     return;
   }
   portal_current_ = point;
 }
 
-void particles_system::PortalStop(Vect point) {
+void Particles::PortalStop(Vect point) {
   if (!portal_enabled_) {
     return;
   }
@@ -463,7 +463,7 @@ void particles_system::PortalStop(Vect point) {
   }
 }
 
-void particles_system::BondsStart(Vect point) {
+void Particles::BondsStart(Vect point) {
   bonds_enabled_ = true;
   int id = kParticleIdNone;
 
@@ -479,7 +479,7 @@ void particles_system::BondsStart(Vect point) {
   bonds_prev_particle_id_ = id;
 }
 
-void particles_system::BondsMove(Vect point) {
+void Particles::BondsMove(Vect point) {
   if (!bonds_enabled_) {
     return;
   }
@@ -514,20 +514,20 @@ void particles_system::BondsMove(Vect point) {
   }
 }
 
-void particles_system::BondsStop(Vect) {
+void Particles::BondsStop(Vect) {
   if (!bonds_enabled_) {
     return;
   }
   bonds_enabled_ = false;
 }
 
-void particles_system::FreezeStart(Vect point) {
+void Particles::FreezeStart(Vect point) {
   freeze_last_id_ = -1;
   freeze_enabled_ = true;
   FreezeMove(point);
 }
 
-void particles_system::FreezeMove(Vect point) {
+void Particles::FreezeMove(Vect point) {
   if (!freeze_enabled_) {
     return;
   }
@@ -552,7 +552,7 @@ void particles_system::FreezeMove(Vect point) {
   }
 }
 
-void particles_system::FreezeStop(Vect) {
+void Particles::FreezeStop(Vect) {
   if (!freeze_enabled_) {
     return;
   }
@@ -742,7 +742,7 @@ void TestUni() {
 }
 #endif
 
-void particles_system::UpdatePortalBlocks(Portal& portal) {
+void Particles::UpdatePortalBlocks(Portal& portal) {
   portal.blocks.clear();
   for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
     if (portal.IsClose(Blocks.GetCenter(iblock), Blocks.GetCircumRadius())) {
@@ -751,7 +751,7 @@ void particles_system::UpdatePortalBlocks(Portal& portal) {
   }
 }
 
-void particles_system::UpdateEnvObj() {
+void Particles::UpdateEnvObj() {
   block_envobj_.clear();
   block_envobj_.resize(Blocks.GetNumBlocks());
   for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
@@ -804,7 +804,7 @@ Vect F12_pick(Vect p1, Vect p2) {
   return dp * (sigma * k);
 }
 
-void particles_system::RHS_bonds() {
+void Particles::RHS_bonds() {
   const auto& bbi = Blocks.GetBlockById();
   auto& data = Blocks.GetData();
   no_rendering_.clear();
@@ -871,7 +871,7 @@ void particles_system::RHS_bonds() {
   }
 }
 
-void particles_system::ApplyFrozen() {
+void Particles::ApplyFrozen() {
   const auto& bbi = Blocks.GetBlockById();
   auto& data = Blocks.GetData();
   for (int id : frozen_) {
@@ -882,7 +882,7 @@ void particles_system::ApplyFrozen() {
   }
 }
 
-void particles_system::calc_forces(size_t iblock) {
+void Particles::calc_forces(size_t iblock) {
   auto& data = Blocks.GetData();
   for (size_t p = 0; p < data.position[iblock].size(); ++p) {
     auto& f = data.force[iblock][p];

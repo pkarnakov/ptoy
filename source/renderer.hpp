@@ -4,12 +4,11 @@
 
 #include "geometry.hpp"
 #include "logger.h"
-#include "particles_system.hpp"
-
+#include "particles.hpp"
 
 class renderer {
   int width_, height_;
-  particles_system* partsys;
+  Particles* partsys;
 
  public:
   void SetWindowSize(int width, int height) {
@@ -143,5 +142,5 @@ class renderer {
     DrawFrozen();
     DrawPortals();
   }
-  renderer(particles_system* _partsys) : partsys(_partsys) {}
+  renderer(Particles* _partsys) : partsys(_partsys) {}
 };

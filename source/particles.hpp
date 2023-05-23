@@ -94,10 +94,10 @@ class line : public env_object {
   }
 };
 
-class particles_system {
+class Particles {
  public:
-  particles_system();
-  ~particles_system();
+  Particles();
+  ~Particles();
   struct Portal {
     Vect begin, end;
     std::vector<size_t> blocks;

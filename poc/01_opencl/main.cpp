@@ -54,7 +54,7 @@ int main() // (int argc, const char* argv[])
   clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
 
   // create the compute kernel
-  //cl_kernel kernel = clCreateKernel(program, "fft1D_1024", NULL);
+  // cl_kernel kernel = clCreateKernel(program, "fft1D_1024", NULL);
   cl_kernel kernel = clCreateKernel(program, "fft", NULL);
 
   std::cout << "kernel=" << kernel << std::endl;

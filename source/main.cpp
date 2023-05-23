@@ -1074,7 +1074,7 @@ Q: quit after three presses
   }
 
   tasks_indices = {
-      //task2index["blur"],
+      // task2index["blur"],
       task2index["particles"],
       task2index["lines"],
       task2index["gui"],
