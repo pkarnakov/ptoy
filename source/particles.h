@@ -7,8 +7,8 @@
 #include <mutex>
 #include <set>
 #include <vector>
-#include "blocks.hpp"
-#include "geometry.hpp"
+#include "blocks.h"
+#include "geometry.h"
 
 using std::endl;
 using std::min;

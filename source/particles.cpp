@@ -1,4 +1,4 @@
-#include "particles.hpp"
+#include "particles.h"
 #include <chrono>
 #include <thread>
 

@@ -4,8 +4,8 @@
 #include <cassert>
 #include <cmath>
 #include <vector>
-#include "aligned_allocator.hpp"
-#include "geometry.hpp"
+#include "aligned_allocator.h"
+#include "geometry.h"
 
 using ArrayVect = std::vector<Vect, AlignedAllocator<Vect, 64>>;
 using ArrayInt = std::vector<int, AlignedAllocator<int, 64>>;

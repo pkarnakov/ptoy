@@ -24,10 +24,15 @@ set(T "particles")
 add_library(${T} source/particles.cpp)
 target_link_libraries(${T} geometry)
 
-# Add target for the executable.
+# Executable.
 set(T "ptoy")
 add_executable(${T} source/main.cpp)
 target_link_libraries(${T} geometry particles)
+
+# Minimal executable for development.
+set(TM "ptoymin")
+add_executable(${TM} source/mainmin.cpp)
+target_link_libraries(${TM} geometry particles)
 
 # Default build type.
 set(BuildTypeValues None Debug Release RelWithDebInfo MinSizeRel)
@@ -73,10 +78,13 @@ set(OpenGL_GL_PREFERENCE "GLVND")
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIRS})
 target_link_libraries(${T} ${OPENGL_LIBRARIES})
+target_link_libraries(${TM} ${OPENGL_LIBRARIES})
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 target_link_libraries(${T} SDL2::SDL2)
+target_link_libraries(${TM} SDL2::SDL2)
 
 find_package(GLEW REQUIRED)
 target_link_libraries(${T} GLEW::GLEW)
+target_link_libraries(${TM} GLEW::GLEW)

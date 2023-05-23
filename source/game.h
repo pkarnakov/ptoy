@@ -1,7 +1,7 @@
 #include <mutex>
 #include <vector>
-#include "geometry.hpp"
-#include "particles.hpp"
+#include "geometry.h"
+#include "particles.h"
 
 constexpr int kInitWidth = 800;
 constexpr int kInitHeight = 800;

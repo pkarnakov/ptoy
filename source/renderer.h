@@ -2,9 +2,9 @@
 #include <functional>
 #include <iostream>
 
-#include "geometry.hpp"
+#include "geometry.h"
 #include "logger.h"
-#include "particles.hpp"
+#include "particles.h"
 
 class renderer {
   int width_, height_;

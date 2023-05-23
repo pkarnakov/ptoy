@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "geometry.hpp"
+#include "geometry.h"
 
 std::ostream& operator<<(std::ostream& out, Vect v) {
   out << "(" << v.x << "," << v.y << ")";
