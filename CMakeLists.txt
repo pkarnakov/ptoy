@@ -34,6 +34,9 @@ set(TM "ptoymin")
 add_executable(${TM} source/mainmin.cpp)
 target_link_libraries(${TM} geometry particles)
 
+# Executable.
+add_executable(sandbox source/sandbox.cpp)
+
 # Default build type.
 set(BuildTypeValues None Debug Release RelWithDebInfo MinSizeRel)
 if (NOT CMAKE_BUILD_TYPE)
