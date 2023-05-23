@@ -25,17 +25,19 @@ add_library(${T} source/particles.cpp)
 target_link_libraries(${T} geometry)
 
 # Executable.
-set(T "ptoy")
-add_executable(${T} source/main.cpp)
-target_link_libraries(${T} geometry particles)
+set(EXE "ptoy")
+add_executable(${EXE} source/main.cpp)
+target_link_libraries(${EXE} geometry particles)
 
 # Minimal executable for development.
-set(TM "ptoymin")
-add_executable(${TM} source/mainmin.cpp)
-target_link_libraries(${TM} geometry particles)
+set(EXEM "ptoymin")
+add_executable(${EXEM} source/mainmin.cpp)
+target_link_libraries(${EXEM} geometry particles)
 
 # Executable.
+set(T "sandbox")
 add_executable(sandbox source/sandbox.cpp)
+target_link_libraries(${T} geometry)
 
 # Default build type.
 set(BuildTypeValues None Debug Release RelWithDebInfo MinSizeRel)
@@ -66,8 +68,8 @@ endif()
 
 if (USE_STATIC)
   SET(BUILD_SHARED_LIBRARIES OFF)
-  set_property(TARGET ${T} PROPERTY LINK_SEARCH_START_STATIC 1)
-  set_property(TARGET ${T} PROPERTY LINK_SEARCH_END_STATIC 1)
+  set_property(TARGET ${EXE} PROPERTY LINK_SEARCH_START_STATIC 1)
+  set_property(TARGET ${EXE} PROPERTY LINK_SEARCH_END_STATIC 1)
   if (UNIX)
     SET(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
@@ -80,14 +82,14 @@ endif()
 set(OpenGL_GL_PREFERENCE "GLVND")
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIRS})
-target_link_libraries(${T} ${OPENGL_LIBRARIES})
-target_link_libraries(${TM} ${OPENGL_LIBRARIES})
+target_link_libraries(${EXE} ${OPENGL_LIBRARIES})
+target_link_libraries(${EXEM} ${OPENGL_LIBRARIES})
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
-target_link_libraries(${T} SDL2::SDL2)
-target_link_libraries(${TM} SDL2::SDL2)
+target_link_libraries(${EXE} SDL2::SDL2)
+target_link_libraries(${EXEM} SDL2::SDL2)
 
 find_package(GLEW REQUIRED)
-target_link_libraries(${T} GLEW::GLEW)
-target_link_libraries(${TM} GLEW::GLEW)
+target_link_libraries(${EXE} GLEW::GLEW)
+target_link_libraries(${EXEM} GLEW::GLEW)

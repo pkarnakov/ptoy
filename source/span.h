@@ -11,7 +11,7 @@ class span {
   using iterator = T*;
   using const_iterator = const T*;
 
-  // Constructors, copy, and assignment.
+  // Constructors and assignment.
   span() noexcept = default;
   template <class It>
   span(It first, size_t size) : data_(&(*first)), size_(size) {}
@@ -23,6 +23,10 @@ class span {
   explicit span(const span<OtherT>& other) : span(other.data_, other.size_) {}
   ~span() noexcept = default;
   span& operator=(const span&) noexcept = default;
+  template <class Container>
+  span& operator=(Container& other) noexcept {
+    return *this = span(other);
+  }
 
   // Observers.
   size_t size() const noexcept {
