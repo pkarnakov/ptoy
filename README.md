@@ -2,7 +2,7 @@
 
 |   |   |   |
 |:---:|:---:|:---:|
-|<img src="doc/screenshot0.png" width="200">|<img src="doc/screenshot1.png" width="200">|<img src="doc/screenshot2.png" width="200">|
+|<img src="https://pkarnakov.github.io/ptoy/images/screenshot0.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot1.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot2.png" width="200">|
 
 ## Clone
 
