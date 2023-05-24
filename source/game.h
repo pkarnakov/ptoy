@@ -1,5 +1,7 @@
-#include <mutex>
-#include <vector>
+#pragma once
+
+#include <memory>
+
 #include "geometry.h"
 #include "particles.h"
 

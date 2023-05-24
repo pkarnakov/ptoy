@@ -32,7 +32,7 @@ target_link_libraries(${EXE} geometry particles)
 # Minimal executable for development.
 set(EXEM "ptoymin")
 add_executable(${EXEM} source/mainmin.cpp)
-target_link_libraries(${EXEM} geometry particles)
+target_link_libraries(${EXEM} geometry particles view_gl)
 
 # Executable.
 set(T "sandbox")
@@ -78,18 +78,22 @@ if (USE_STATIC)
   endif()
 endif()
 
+set(T "view_gl")
+add_library(${T} source/view_gl.cpp)
+target_link_libraries(${T} geometry particles)
+
 # OpenGL and GLX.
 set(OpenGL_GL_PREFERENCE "GLVND")
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIRS})
 target_link_libraries(${EXE} ${OPENGL_LIBRARIES})
-target_link_libraries(${EXEM} ${OPENGL_LIBRARIES})
+target_link_libraries(${T} ${OPENGL_LIBRARIES})
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 target_link_libraries(${EXE} SDL2::SDL2)
-target_link_libraries(${EXEM} SDL2::SDL2)
+target_link_libraries(${T} SDL2::SDL2)
 
 find_package(GLEW REQUIRED)
 target_link_libraries(${EXE} GLEW::GLEW)
-target_link_libraries(${EXEM} GLEW::GLEW)
+target_link_libraries(${T} GLEW::GLEW)

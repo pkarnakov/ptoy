@@ -1,3 +1,7 @@
+#pragma once
+
+#include <iostream>
+
 #include "geometry.h"
 #include "span.h"
 
@@ -20,6 +24,7 @@ class View {
   virtual ~View() = default;
   virtual const Scene& GetScene() const = 0;
   virtual void SetScene(const Scene&) = 0;
+  virtual void Control() = 0;
   virtual void Draw() = 0;
 };
 
@@ -31,6 +36,7 @@ class TextView : public View {
   void SetScene(const Scene& scene) override {
     scene_ = scene;
   }
+  void Control() override {}
   void Draw() override {
     std::cout << "particles.p\n";
     for (auto p : scene_.particles.p) {
