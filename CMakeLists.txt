@@ -18,25 +18,25 @@ if (USE_AVX)
 endif()
 
 set(T "geometry")
-add_library(${T} source/geometry.cpp)
+add_library(${T} src/geometry.cpp)
 
 set(T "particles")
-add_library(${T} source/particles.cpp)
+add_library(${T} src/particles.cpp)
 target_link_libraries(${T} geometry)
 
 # Executable.
 set(EXE "ptoy")
-add_executable(${EXE} source/main.cpp)
+add_executable(${EXE} src/main.cpp)
 target_link_libraries(${EXE} geometry particles)
 
 # Minimal executable for development.
 set(EXEM "ptoymin")
-add_executable(${EXEM} source/mainmin.cpp)
+add_executable(${EXEM} src/mainmin.cpp)
 target_link_libraries(${EXEM} geometry particles view_gl)
 
 # Executable.
 set(T "sandbox")
-add_executable(sandbox source/sandbox.cpp)
+add_executable(sandbox src/sandbox.cpp)
 target_link_libraries(${T} geometry)
 
 # Default build type.
@@ -79,7 +79,7 @@ if (USE_STATIC)
 endif()
 
 set(T "view_gl")
-add_library(${T} source/view_gl.cpp)
+add_library(${T} src/view_gl.cpp)
 target_link_libraries(${T} geometry particles)
 
 # OpenGL and GLX.

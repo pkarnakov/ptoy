@@ -26,7 +26,7 @@ make -j4
 Without CMake:
 
 ```
-cd source
+cd src
 g++ -I/usr/include/SDL2 *.cpp -lSDL2 -lGL -pthread -fopenmp -O3 -o ptoy
 ```
 
