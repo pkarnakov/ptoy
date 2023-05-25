@@ -92,6 +92,16 @@ void display() {
     }
     g_scene.particles.p = g_data.particles.p;
     g_scene.particles.v = g_data.particles.v;
+
+    const auto& portals = gameinst->partsys->GetPortals();
+    g_data.portals.resize(portals.size());
+    for (size_t i = 0; i < portals.size(); ++i) {
+      for (size_t j : {0, 1}) {
+        g_data.portals[i][j].pa = portals[i][j].begin;
+        g_data.portals[i][j].pb = portals[i][j].end;
+      }
+    }
+    g_scene.portals = g_data.portals;
     g_view->SetScene(g_scene);
   }
   g_view->Draw();

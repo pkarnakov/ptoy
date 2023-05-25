@@ -431,9 +431,12 @@ const char* MouseStateName(MouseState s) {
 }
 
 struct ViewGl::Imp {
-  Imp(Game* gameinst_, Particles* partsys_, unsigned width_, unsigned height_,
-      std::atomic<bool>& state_quit_, std::atomic<bool>& state_pause_)
-      : gameinst(gameinst_)
+  using Owner = ViewGl;
+  Imp(Owner* owner_, Game* gameinst_, Particles* partsys_, unsigned width_,
+      unsigned height_, std::atomic<bool>& state_quit_,
+      std::atomic<bool>& state_pause_)
+      : owner(owner_)
+      , gameinst(gameinst_)
       , partsys(partsys_)
       , width(width_)
       , height(height_)
@@ -501,19 +504,17 @@ struct ViewGl::Imp {
       }
       tex_circle->SetData(v, w, h);
 
-      auto render = [&, program, tex_circle, &ps = partsys, attr_point,
-                     attr_color]() {
+      auto render = [&, program, tex_circle, attr_point, attr_color]() {
         glUseProgram(program);
 
-        auto& particles = ps->GetParticles();
-        std::vector<std::array<GLfloat, 2>> buf(particles.size());
-        std::vector<GLfloat> buf_color(particles.size());
+        auto& particles = owner->scene_.particles;
+        std::vector<std::array<GLfloat, 2>> buf(particles.p.size());
+        std::vector<GLfloat> buf_color(particles.p.size());
         {
-          std::lock_guard<std::mutex> lg(ps->m_buffer_);
-          for (size_t i = 0; i < particles.size(); ++i) {
-            auto& p = particles[i];
-            buf[i] = {p.p.x, p.p.y};
-            Scal f = 0.5 + p.v.length() / 3.; // color intensity
+          for (size_t i = 0; i < particles.p.size(); ++i) {
+            auto& p = particles.p[i];
+            buf[i] = {p.x, p.y};
+            Scal f = 0.5 + particles.v[i].length() / 3.; // Color intensity.
             f = std::min<Scal>(std::max<Scal>(f, 0.), 1.);
             buf_color[i] = f;
           }
@@ -533,7 +534,7 @@ struct ViewGl::Imp {
             glGetUniformLocation(program, "facecolor"), rgb[0], rgb[1], rgb[2]);
 
         CHECK_ERROR();
-        glDrawArrays(GL_POINTS, 0, particles.size());
+        glDrawArrays(GL_POINTS, 0, particles.p.size());
         CHECK_ERROR();
         glUseProgram(0);
       };
@@ -582,13 +583,13 @@ struct ViewGl::Imp {
         };
 
         { // Draw portals.
-          const auto& portals = ps->GetPortals();
+          const auto& portals = owner->scene_.portals;
           const Scal kPortalWidth = 0.015;
           const auto blue = rgba(SplitRgb(colors_geo[2]));
           const auto orange = rgba(SplitRgb(colors_geo[5]));
           for (auto& pair : portals) {
-            add(pair[0].begin, pair[0].end, blue, kPortalWidth);
-            add(pair[1].begin, pair[1].end, orange, kPortalWidth);
+            add(pair[0].pa, pair[0].pb, blue, kPortalWidth);
+            add(pair[1].pa, pair[1].pb, orange, kPortalWidth);
           }
           if (ps->portal_stage_ == 0) {
             if (ps->portal_mouse_moving_) {
@@ -971,6 +972,7 @@ Q: quit after three presses
   SDL_Window* window;
   MouseState mouse_state_ = MouseState::Repulsion;
 
+  Owner* owner;
   Game* gameinst;
   Particles* partsys;
   unsigned width, height;
@@ -982,7 +984,8 @@ ViewGl::ViewGl(
     Game* gameinst_, Particles* partsys_, unsigned width_, unsigned height_,
     std::atomic<bool>& state_quit_, std::atomic<bool>& state_pause_)
     : imp(new Imp(
-          gameinst_, partsys_, width_, height_, state_quit_, state_pause_)) {}
+          this, gameinst_, partsys_, width_, height_, state_quit_,
+          state_pause_)) {}
 
 ViewGl::~ViewGl() {
   SDL_GL_DeleteContext(imp->glcontext);

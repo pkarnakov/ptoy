@@ -1,12 +1,10 @@
-// Created by Petr Karnakov on 25.02.2020
-
 #include <sstream>
 #include <stdexcept>
 #include <string>
 
 #define FILELINE (std::string() + __FILE__ + ":" + std::to_string(__LINE__))
 
-// force assert
+// Force assert.
 #define fassert_1(x)                                                      \
   do {                                                                    \
     if (!(x)) {                                                           \
