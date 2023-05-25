@@ -15,8 +15,16 @@
 
 #include "game.h"
 #include "logger.h"
+#include "macros.h"
 #include "scene.h"
+
+#if USEFLAG(BACKEND_TEXT)
+#include "view_text.h"
+#endif
+
+#if USEFLAG(BACKEND_SDL)
 #include "view_gl.h"
+#endif
 
 std::chrono::milliseconds last_frame_time;
 Scal last_frame_game_time;
@@ -66,8 +74,7 @@ void display() {
     std::cout << "fps: " << 1. / frame_real_duration_s << ", game rate="
               << (new_frame_game_time - last_frame_game_time) /
                      frame_real_duration_s
-              << ", particles="
-              << gameinst->partsys->GetNumParticles()
+              << ", particles=" << gameinst->partsys->GetNumParticles()
               << ", t=" << gameinst->partsys->GetTime()
               << ", steps=" << gameinst->partsys->GetNumSteps() << std::endl;
     last_report_time = new_frame_time;
@@ -150,10 +157,16 @@ int main() {
 
   gameinst = std::unique_ptr<Game>(new Game(width, height));
 
-  // Create view.
+#if USEFLAG(BACKEND_TEXT)
+  g_view = std::make_unique<ViewText>();
+#endif
+
+#if USEFLAG(BACKEND_SDL)
   g_view = std::make_unique<ViewGl>(
       gameinst.get(), gameinst->partsys.get(), width, height, state_quit,
       state_pause);
+#endif
+
   g_view->SetScene(g_scene);
 
   std::thread computation_thread(cycle);

@@ -1,6 +1,8 @@
-#include "particles.h"
 #include <chrono>
 #include <thread>
+
+#include "macros.h"
+#include "particles.h"
 
 Particles::Particles()
     : domain(RectVect(Vect(-1., -1.), Vect(1., 1.)))
@@ -622,7 +624,7 @@ void CalcForceSerialPadded(
   }
 }
 
-#ifdef USE_AVX
+#if USEFLAG(AVX)
 #include <x86intrin.h>
 #define CALC_FORCE CalcForceAvx
 template <bool ApplyThreshold = true>

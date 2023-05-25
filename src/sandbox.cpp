@@ -4,6 +4,7 @@
 
 #include "scene.h"
 #include "span.h"
+#include "view_text.h"
 
 struct Particles {
   std::vector<Vect> p;
@@ -31,7 +32,7 @@ int main() {
   s.particles.v = particles.v;
   s.portals = portals;
 
-  TextView v;
+  ViewText v;
   v.SetScene(s);
   v.Draw();
 }
