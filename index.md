@@ -1,5 +1,7 @@
 ---
 pagetitle: ptoy
+header-includes:
+    <link rel="icon" type="image/png" href="favicon.png">
 ---
 
 # ptoy
