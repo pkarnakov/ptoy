@@ -13,7 +13,6 @@
 #include "logger.h"
 #include "macros.h"
 #include "scene.h"
-#include "view_text.h"
 
 static constexpr int kScale = 2;
 
@@ -28,7 +27,6 @@ struct SceneData {
   std::vector<std::array<Portal, 2>> portals;
 };
 
-std::unique_ptr<View> g_view;
 Scene g_scene;
 SceneData g_data;
 std::unique_ptr<Game> gameinst;
@@ -68,7 +66,6 @@ const char* GetConfig() {
     }
   }
   g_scene.portals = g_data.portals;
-  g_view->SetScene(g_scene);
   std::stringstream buf;
   buf << gameinst->partsys->GetTime() << '\n';
   for (auto p : g_scene.particles.p) {
@@ -79,14 +76,34 @@ const char* GetConfig() {
   return g_buf.c_str();
 }
 int GetParticles(uint16_t* data, int max_size) {
+  const int entrysize = 2;
   int i = 0;
   for (auto p : g_scene.particles.p) {
-    if (i + 1 >= max_size) {
+    if (i + entrysize > max_size) {
       break;
     }
-    data[i] = (1 + p.x) * gameinst->width_ * 0.5 / kScale;
+    data[i + 0] = (1 + p.x) * gameinst->width_ * 0.5 / kScale;
     data[i + 1] = (1 - p.y) * gameinst->height_ * 0.5 / kScale;
-    i += 2;
+    i += entrysize;
+  }
+  return i;
+}
+int GetPortals(uint16_t* data, int max_size) {
+  const int entrysize = 8;
+  int i = 0;
+  for (auto pair : g_scene.portals) {
+    if (i + entrysize > max_size) {
+      break;
+    }
+    auto append = [&](Vect p) {
+      data[i + 0] = (1 + p.x) * gameinst->width_ * 0.5 / kScale;
+      data[i + 1] = (1 - p.y) * gameinst->height_ * 0.5 / kScale;
+      i += 2;
+    };
+    append(pair[0].pa);
+    append(pair[0].pb);
+    append(pair[1].pa);
+    append(pair[1].pb);
   }
   return i;
 }
@@ -98,9 +115,7 @@ int main() {
   const int width = 800;
   const int height = 800;
   gameinst = std::unique_ptr<Game>(new Game(width, height));
-  gameinst->partsys->RemoveLastPortal();
-  g_view = std::make_unique<ViewText>();
-  g_view->SetScene(g_scene);
+  gameinst->partsys->InvertGravity();
   emscripten_set_canvas_element_size(
       "#canvas", width / kScale, height / kScale);
   emscripten_set_main_loop(main_loop, 30, 1);

@@ -128,7 +128,8 @@ if (USE_WASM)
   add_executable(${T} src/ptoy_wasm.cpp)
   target_link_libraries(${T} geometry particles)
   target_link_options(${T} PRIVATE "-sEXPORTED_FUNCTIONS=[\
-    '_main', '_malloc', '_SetConfig', '_GetConfig', '_GetParticles' \
+    '_main', '_malloc', '_SetConfig', '_GetConfig', \
+    '_GetParticles', '_GetPortals' \
   ]")
   target_link_options(${T} PRIVATE "-sEXPORTED_RUNTIME_METHODS=['cwrap', 'ccall']")
   target_compile_options(${T} PRIVATE -fexceptions)
