@@ -139,5 +139,7 @@ if (USE_WASM)
   configure_file(src/ptoy.css ptoy.css COPYONLY)
   configure_file(src/ptoy_inc.js ptoy_inc.js COPYONLY)
   configure_file(src/libs/lz-string.js libs/lz-string.js COPYONLY)
+  configure_file(assets/favicon.png favicon.png COPYONLY)
+  configure_file(src/libs/github_buttons.js libs/github_buttons.js COPYONLY)
 endif()
 
