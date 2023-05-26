@@ -1,25 +1,39 @@
 var SetConfig;
 var GetConfig;
-var input_conf = document.getElementById('input_conf');
 var output = document.getElementById('output');
 var outputerr = document.getElementById('outputerr');
-var textarea_updated = true;
-var text_shorturl = document.getElementById('text_shorturl');
-var g_fullurl;
-var last_set_config = 0;
+var g_tmp_canvas;
+var g_particles_max_size = 10000;
+var kScale = 2;
+
+var GetParticles;
+var g_particles;
+var g_particles_ptr;
 
 function Draw() {
-  if (textarea_updated) {
-    UpdateFullUrl();
-    res = SetConfig(input_conf.value);
-    textarea_updated = false;
-    if (output) {
-      output.value = GetConfig();
-      if (res == 0 && last_set_config) {
-        PrintError("OK");
-      }
-    }
-    last_set_config = res;
+  if (output) {
+    output.value = GetConfig();
+  }
+
+  let canvas = Module['canvas'];
+  let ctx = canvas.getContext('2d');
+  ctx.drawImage(g_tmp_canvas, 0, 0, canvas.width, canvas.height);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.lineWidth = 3;
+  ctx.strokeStyle="#000000";
+  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+  g_particles = new Uint16Array(Module.HEAPU8.buffer, g_particles_ptr, g_particles_max_size);
+  let size = GetParticles(g_particles.byteOffset, g_particles.length);
+  ctx.fillStyle = "#00CD6C";
+  ctx.lineWidth = 0;
+  radius = 3.5
+  for (let i = 0; i + 1 < size; i += 2) {
+    ctx.beginPath();
+    ctx.arc(g_particles[i], g_particles[i + 1], radius, 0, 2 * Math.PI, true);
+    ctx.fill();
   }
 }
 
@@ -34,76 +48,17 @@ function PrintError(text) {
     outputerr.scrollTop = outputerr.scrollHeight;
   }
 }
-function GetFullUrl(config) {
-  let url = new URL(location.href);
-  url.search = "?config=" + Compress(config);
-  return url.toString();
-}
-function ClearUrl() {
-  let url = new URL(location.href);
-  url.search = "";
-  history.pushState(null, null, url.toString());
-}
-function UpdateFullUrl() {
-  let fullurl = GetFullUrl(input_conf.value);
-  history.replaceState(null, null, fullurl);
-  if (g_fullurl != fullurl) {
-    ClearShortUrl();
-  }
-}
-function Request(url, action) {
-  let req = new XMLHttpRequest();
-  req.onload = function() {
-    if (req.status == 200) {
-      action(req.response)
-    } else {
-      PrintError(`Error ${req.status}: ${req.statusText}`);
-    }
-  };
-  req.open('GET', url, true);
-  req.send();
-}
-function GetShortUrl(fullurl, action) {
-  return Request("https://tinyurl.com/api-create.php?url=" + fullurl, action);
-}
-function ClearShortUrl() {
-  text_shorturl.value = "";
-}
-function UpdateShortUrl() {
-  let fullurl = GetFullUrl(input_conf.value);
-  g_fullurl = fullurl;
-  GetShortUrl(fullurl, function(response) {
-    text_shorturl.value = response;
-  });
-}
-function EncodeSafe(base) {
-  return base
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_');
-}
-
-function DecodeSafe(base) {
-  return base
-          .replace(/-/g, '+')
-          .replace(/_/g, '/');
-}
-function Compress(text) {
-  return EncodeSafe(LZString.compressToBase64(text));
-}
-
-function Decompress(compressed) {
-  return LZString.decompressFromBase64(DecodeSafe(compressed));
-}
 function PostRun() {
   SetConfig = Module.cwrap('SetConfig', 'int', ['string']);
   GetConfig = Module.cwrap('GetConfig', 'string', []);
+  GetParticles = Module.cwrap('GetParticles', 'number', ['number', 'number']);
 
-  let url = new URL(location.href);
-  let compressed = url.searchParams.get('config');
-  if (compressed) {
-    input_conf.value = Decompress(compressed);
-  }
-  UpdateFullUrl();
+  g_particles_ptr = Module._malloc(g_particles_max_size * 2);
+
+  let canvas = Module['canvas'];
+  g_tmp_canvas = document.createElement('canvas');
+  g_tmp_canvas.width = canvas.width;
+  g_tmp_canvas.height = canvas.height;
 }
 
 var Module = {
@@ -118,5 +73,6 @@ var Module = {
       PrintError(text);
     };
   })(),
+  canvas: (function() { return document.getElementById('canvas'); })(),
   setStatus: function(text) {},
 };

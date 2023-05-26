@@ -12,6 +12,9 @@
         margin: 0;
         padding: 0;
       }
+      textarea.emscripten { font-family: monospace; width: 430px; }
+      canvas.emscripten { border: 0px none; background-color: white; }
+      div.emscripten { text-align: center; }
       body {
         display: flex;
         flex-flow: column;
@@ -82,29 +85,19 @@
       </div>
     </noscript>
 
-    <div style="text-align: center; padding: 5px;">
-      <input type="button" class="button" id="button_url" title="Sends encoded configuration to tinyurl.com" value="tinyurl" onclick="UpdateShortUrl();">
-      <input type="text" id="text_shorturl" readonly style="width:250px;height:1.8em;">
-    </div>
+    <div style="text-align: center;">
+      <div style="display: inline; vertical-align: top;">
+        <div style="display: inline-block; vertical-align: top;">
+          <canvas class="emscripten" id="canvas" tabindex=-1></canvas>
+        </div>
 
-    <div class="row">
-      <div class="col">
-        <label for="ta1">Input</label>
-        <textarea id="input_conf" oninput="textarea_updated=true;">
-</textarea>
-      </div>
-      <div class="col" style="width:100%;">
-        <label for="ta2">Output</label>
-        <textarea id="output"></textarea>
+        <div style="display: inline-block; vertical-align: top; margin-top: 4px;">
+          <textarea class="emscripten" id="output" rows="20" style="height:244px;"></textarea>
+          <textarea class="emscripten" id="outputerr" rows="20" style="height:244px;"></textarea>
+        </div>
       </div>
     </div>
 
-    <div class="row2">
-      <div class="col">
-        <label for="ta2">Error</label>
-        <textarea id="outputerr"></textarea>
-      </div>
-    </div>
 
     <script src="libs/lz-string.js"></script>
     <script src="ptoy_inc.js"></script>
