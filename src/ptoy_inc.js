@@ -16,10 +16,6 @@ var g_portals_ptr;
 var g_portals_max_size = 10000;
 
 function Draw() {
-  if (output) {
-    output.value = GetConfig();
-  }
-
   let canvas = Module['canvas'];
   let ctx = canvas.getContext('2d');
   ctx.drawImage(g_tmp_canvas, 0, 0, canvas.width, canvas.height);
@@ -33,7 +29,7 @@ function Draw() {
     let size = GetParticles(g_particles.byteOffset, g_particles.length);
     ctx.fillStyle = "#00CD6C";
     ctx.lineWidth = 0;
-    radius = 3.5
+    radius = 7
     for (let i = 0; i + 1 < size; i += 2) {
       ctx.beginPath();
       ctx.arc(g_particles[i], g_particles[i + 1], radius, 0, 2 * Math.PI, true);
@@ -47,7 +43,7 @@ function Draw() {
     orange = "#f28522";
     g_portals = new Uint16Array(Module.HEAPU8.buffer, g_portals_ptr, g_portals_max_size);
     let size = GetPortals(g_portals.byteOffset, g_portals.length);
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 5;
     for (let i = 0; i + 1 < size; i += 8) {
       ctx.strokeStyle = blue;
       ctx.beginPath();
@@ -62,16 +58,15 @@ function Draw() {
       ctx.stroke();
     }
   }
-
-  // Draw domain edges.
-  ctx.lineWidth = 3;
-  ctx.strokeStyle="#000000";
-  ctx.strokeRect(0, 0, canvas.width, canvas.height);
 }
 
 function ClearOutput() {
-  output.value = '';
-  outputerr.value = '';
+  if (output) {
+    output.value = '';
+  }
+  if (outputerr) {
+    outputerr.value = '';
+  }
 }
 function PrintError(text) {
   console.error(text);

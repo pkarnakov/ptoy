@@ -5,78 +5,7 @@
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=640, initial-scale=0.55">
     <title>ptoy</title>
-    <style>
-      html, body {
-        font-family: Arial, Helvetica, sans-serif;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-      textarea.emscripten { font-family: monospace; width: 430px; }
-      canvas.emscripten { border: 0px none; background-color: white; }
-      div.emscripten { text-align: center; }
-      body {
-        display: flex;
-        flex-flow: column;
-      }
-      h1 {
-        text-align: center;
-      }
-      .row, .row2 {
-        flex: 1;
-        display: flex;
-        flex-flow: row;
-      }
-      .row2 {
-        flex: 0.25;
-      }
-      .col {
-        flex: 1;
-        display: flex;
-        flex-flow: column;
-        margin: 0px 3px;
-      }
-      label {
-        display: block;
-        padding-left: 2px;
-        padding-top: 2px;
-      }
-      textarea {
-        flex: 1;
-        display: block;
-        margin: 2px 0;
-        padding: 1px;
-        border: 1px solid;
-        font-family: monospace;
-      }
-
-      .button {
-        display: inline-block;
-        color: #000000;
-        background: #ffffff;
-        vertical-align: baseline;
-        border-radius: 0;
-        border: none;
-        border: 0.15em solid #808080;
-        margin: 0 0;
-        padding: 0;
-        text-align: center;
-        text-decoration: none;
-        font-size: 1.2em;
-        height: 1.8em;
-        width: 3.25em;
-        touch-action: manipulation;
-      }
-      .button:hover {
-        border-color: #000000;
-      }
-      .button:active {
-        background: #808080;
-      }
-      .pressed {
-        border: 0.22em solid #000000;
-      }
-    </style>
+    <link rel="stylesheet" href="ptoy.css" />
   </head>
   <body>
     <noscript>
@@ -91,15 +20,17 @@
           <canvas class="emscripten" id="canvas" tabindex=-1></canvas>
           <div>
             <a class="github-button" href="https://github.com/pkarnakov/ptoy" data-size="large" data-show-count="true" aria-label="Star on GitHub">Star</a>
-            <span style="position: relative; bottom: 0.45em;">
+            <span>
               <a href="https://github.com/pkarnakov/ptoy">github.com/pkarnakov/ptoy</a>
             </span>
           </div>
         </div>
-        <div style="display: inline-block; vertical-align: top; margin-top: 4px;">
-          <textarea class="emscripten" id="output" rows="20" style="height:244px;"></textarea>
-          <textarea class="emscripten" id="outputerr" rows="20" style="height:244px;"></textarea>
+        <!---
+        <div style="display: inline-block; vertical-align: top; margin: 0;">
+          <textarea class="emscripten" id="output" style="height:200px;"></textarea>
+          <textarea class="emscripten" id="outputerr" style="height:200px;"></textarea>
         </div>
+        -->
       </div>
     </div>
 

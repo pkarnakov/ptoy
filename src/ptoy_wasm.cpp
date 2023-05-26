@@ -14,7 +14,7 @@
 #include "macros.h"
 #include "scene.h"
 
-static constexpr int kScale = 2;
+static constexpr int kScale = 1;
 
 struct SceneData {
   struct Particles {
@@ -34,19 +34,7 @@ std::string g_buf;
 std::atomic<bool> state_pause;
 std::atomic<bool> state_quit;
 
-static void main_loop() {
-  gameinst->partsys->SetRendererReadyForNext(true);
-  const auto dt = 0.02;
-  gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
-  EM_ASM_({ Draw(); });
-}
-
-extern "C" {
-int SetConfig(const char*) {
-  return 0;
-}
-
-const char* GetConfig() {
+void UpdateScene() {
   const auto& particles = gameinst->partsys->GetParticles();
   g_data.particles.p.resize(particles.size());
   g_data.particles.v.resize(particles.size());
@@ -66,14 +54,22 @@ const char* GetConfig() {
     }
   }
   g_scene.portals = g_data.portals;
-  std::stringstream buf;
-  buf << gameinst->partsys->GetTime() << '\n';
-  for (auto p : g_scene.particles.p) {
-    buf << p;
-    break;
-  }
-  g_buf = buf.str();
-  return g_buf.c_str();
+}
+
+static void main_loop() {
+  gameinst->partsys->SetRendererReadyForNext(true);
+  const auto dt = 0.02;
+  gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
+  UpdateScene();
+  EM_ASM_({ Draw(); });
+}
+
+extern "C" {
+int SetConfig(const char*) {
+  return 0;
+}
+const char* GetConfig() {
+  return "";
 }
 int GetParticles(uint16_t* data, int max_size) {
   const int entrysize = 2;
@@ -115,6 +111,7 @@ int main() {
   const int width = 800;
   const int height = 800;
   gameinst = std::unique_ptr<Game>(new Game(width, height));
+  UpdateScene();
   gameinst->partsys->InvertGravity();
   emscripten_set_canvas_element_size(
       "#canvas", width / kScale, height / kScale);
