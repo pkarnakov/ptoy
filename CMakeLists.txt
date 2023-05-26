@@ -4,9 +4,21 @@ project("ptoy" CXX)
 
 option(USE_STATIC "Enable static build" OFF)
 option(USE_AVX "Enable AVX vectorization" ON)
+option(USE_OPENMP "Enable OpenMP" ON)
+option(USE_EXE "Enable main executable" ON)
+option(USE_EXEM "Build minimal executable " ON)
+option(USE_WASM "Build WebAssembly" OFF)
 option(USE_BACKEND_SDL "Enable SDL2 backend" ON)
 option(USE_BACKEND_TEXT "Enable text backend" ON)
 option(USE_WARNINGS "Enable compiler warnings" ON)
+
+# Default build type.
+set(BuildTypeValues None Debug Release RelWithDebInfo MinSizeRel)
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
+      "Choose the type of build, options are: ${BuildTypeValues}." FORCE)
+endif ()
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${BuildTypeValues})
 
 # C++14.
 set(CMAKE_CXX_STANDARD 14)
@@ -28,46 +40,39 @@ else()
 endif()
 
 # Executable.
-if (USE_BACKEND_SDL)
+if (USE_EXE)
   set(EXE "ptoy")
   add_executable(${EXE} src/main.cpp)
   target_link_libraries(${EXE} geometry particles)
 endif()
 
 # Minimal executable for development.
-set(EXEM "ptoymin")
-add_executable(${EXEM} src/mainmin.cpp)
-target_link_libraries(${EXEM} geometry particles)
-if (USE_BACKEND_TEXT)
-  target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_TEXT=1)
-else()
-  target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_TEXT=0)
-endif()
-if (USE_BACKEND_SDL)
-  target_link_libraries(${EXEM} view_gl)
-  target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_SDL=1)
-else()
-  target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_SDL=0)
+if (USE_EXEM)
+  set(EXEM "ptoymin")
+  add_executable(${EXEM} src/mainmin.cpp)
+  target_link_libraries(${EXEM} geometry particles)
+  if (USE_BACKEND_TEXT)
+    target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_TEXT=1)
+  else()
+    target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_TEXT=0)
+  endif()
+  if (USE_BACKEND_SDL)
+    target_link_libraries(${EXEM} view_gl)
+    target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_SDL=1)
+  else()
+    target_compile_definitions(${EXEM} PRIVATE USE_BACKEND_SDL=0)
+  endif()
 endif()
 
-# Executable.
-set(T "sandbox")
-add_executable(sandbox src/sandbox.cpp)
-target_link_libraries(${T} geometry)
-
-# Default build type.
-set(BuildTypeValues None Debug Release RelWithDebInfo MinSizeRel)
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING
-      "Choose the type of build, options are: ${BuildTypeValues}." FORCE)
-endif ()
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${BuildTypeValues})
+# Sandbox executable.
+if (USE_EXEM)
+  set(T "sandbox")
+  add_executable(sandbox src/sandbox.cpp)
+  target_link_libraries(${T} geometry)
+endif()
 
 # OpenMP.
-if (NOT DEFINED OPENMP)
-  set(OPENMP ON)
-endif()
-if (OPENMP)
+if (USE_OPENMP)
   find_package(OpenMP)
   if (OPENMP_FOUND)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -116,3 +121,20 @@ if (USE_BACKEND_SDL)
   target_link_libraries(${EXE} GLEW::GLEW)
   target_link_libraries(${T} GLEW::GLEW)
 endif()
+
+if (USE_WASM)
+  set(T ptoy)
+  add_executable(${T} src/ptoy_wasm.cpp)
+  target_link_libraries(${T} geometry particles)
+  target_link_options(${T} PRIVATE "-sEXPORTED_FUNCTIONS=[\
+    '_main', '_SetConfig', '_GetConfig' \
+  ]")
+  target_link_options(${T} PRIVATE "-sEXPORTED_RUNTIME_METHODS=['cwrap', 'ccall']")
+  target_compile_options(${T} PRIVATE -fexceptions)
+  target_link_options(${T} PRIVATE -fexceptions)
+  set_target_properties(${T} PROPERTIES OUTPUT_NAME ptoy)
+  configure_file(src/ptoy.html ptoy.html COPYONLY)
+  configure_file(src/ptoy_inc.js ptoy_inc.js COPYONLY)
+  configure_file(src/libs/lz-string.js libs/lz-string.js COPYONLY)
+endif()
+

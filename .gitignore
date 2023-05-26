@@ -15,4 +15,5 @@ install_manifest.txt
 
 /README.html
 /build
-/web
+/build_wasm
+/pages

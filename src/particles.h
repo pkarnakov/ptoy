@@ -64,6 +64,7 @@ Vect F12(Vect p1, Vect p2);
 
 class env_object {
  public:
+  virtual ~env_object() = default;
   virtual Vect F(Vect p, Vect v) = 0;
   virtual bool IsClose(Vect p, Scal R) = 0;
 };
