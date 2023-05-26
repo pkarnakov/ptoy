@@ -12,7 +12,7 @@ RSYNC = rsync -a -i --update
 
 wasm:
 	(cd "$(REPO)" && git rev-parse --short HEAD) > revision
-	$(RSYNC) $(REPO)/build_wasm/ptoy{.html,.js,.wasm,_inc.js} .
+	$(RSYNC) $(REPO)/build_wasm/ptoy{.html,.js,.wasm,_inc.js,.css} .
 
 commit:
 	git commit -m "update from devel `cat revision`"
