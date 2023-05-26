@@ -1,5 +1,9 @@
 # ptoy
 
+[Play in browser](https://pkarnakov.github.io/ptoy/ptoy.html)
+
+[Homepage](https://pkarnakov.github.io/ptoy)
+
 |   |   |   |
 |:---:|:---:|:---:|
 |<img src="https://pkarnakov.github.io/ptoy/images/screenshot0.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot1.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot2.png" width="200">|
