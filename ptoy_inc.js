@@ -15,6 +15,10 @@ var g_portals;
 var g_portals_ptr;
 var g_portals_max_size = 10000;
 
+var c_greed = "#00cd6c";
+var c_blue = "#009ade";
+var c_orange = "#f28522";
+
 function Draw() {
   let canvas = Module['canvas'];
   let ctx = canvas.getContext('2d');
@@ -27,7 +31,7 @@ function Draw() {
   {
     g_particles = new Uint16Array(Module.HEAPU8.buffer, g_particles_ptr, g_particles_max_size);
     let size = GetParticles(g_particles.byteOffset, g_particles.length);
-    ctx.fillStyle = "#00CD6C";
+    ctx.fillStyle = c_greed;
     ctx.lineWidth = 0;
     radius = 7
     for (let i = 0; i + 1 < size; i += 2) {
@@ -39,19 +43,17 @@ function Draw() {
 
   // Draw portals.
   {
-    blue = "#009ade";
-    orange = "#f28522";
     g_portals = new Uint16Array(Module.HEAPU8.buffer, g_portals_ptr, g_portals_max_size);
     let size = GetPortals(g_portals.byteOffset, g_portals.length);
     ctx.lineWidth = 5;
     for (let i = 0; i + 1 < size; i += 8) {
-      ctx.strokeStyle = blue;
+      ctx.strokeStyle = c_blue;
       ctx.beginPath();
       ctx.moveTo(g_portals[i + 0], g_portals[i + 1]);
       ctx.lineTo(g_portals[i + 2], g_portals[i + 3]);
       ctx.stroke();
 
-      ctx.strokeStyle = orange;
+      ctx.strokeStyle = c_orange;
       ctx.beginPath();
       ctx.moveTo(g_portals[i + 4], g_portals[i + 5]);
       ctx.lineTo(g_portals[i + 6], g_portals[i + 7]);
