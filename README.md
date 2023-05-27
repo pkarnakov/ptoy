@@ -14,34 +14,33 @@
 
 ## Requirements
 
-- Linux or Mac OS X
-- CMake
-- SDL2
+* Linux or Mac OS X
+* CMake (optional)
+* emscripten (optional to build WebAssembly)
+* SDL2
+* glew
 
 ## Build
 
-```
-mkdir -p build
-cd build
-cmake ..
-make -j4
-```
-
-Without CMake:
+Build with CMake
 
 ```
-cd src
-g++ -I/usr/include/SDL2 *.cpp -lSDL2 -lGL -pthread -fopenmp -O3 -o ptoy
+make
 ```
 
+Build without CMake, using `pkgconf` to find SDL2 and glew
+
+```
+make legacy
+```
 
 ## Run
 
 ```
-build/ptoy
+cd build && ./ptoy
 ```
 
-## Controls
+## Control
 
 ### Keyboard
 
