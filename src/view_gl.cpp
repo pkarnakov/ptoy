@@ -460,8 +460,14 @@ struct ViewGl::Imp {
       SDL_Log("Unable to create window: %s\n", SDL_GetError());
       throw std::runtime_error(SDL_GetError());
     }
+
     glcontext = SDL_GL_CreateContext(window);
-    SDL_GL_SetSwapInterval(1);
+    if (SDL_GL_SetSwapInterval(-1)) {
+      SDL_Log("Adaptive sync not available: %s\n", SDL_GetError());
+      SDL_GL_SetSwapInterval(1);
+    } else {
+      SDL_Log("Using adaptive sync");
+    }
 
     glewInit();
 
