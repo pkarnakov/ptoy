@@ -2,12 +2,12 @@
 #include <chrono>
 #include <cstdint>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <list>
 #include <map>
 #include <memory>
 #include <sstream>
-#include <thread>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -26,10 +26,9 @@
 #include "view_gl.h"
 #endif
 
-std::chrono::milliseconds last_frame_time;
-Scal last_frame_game_time;
-std::chrono::milliseconds last_report_time;
-std::atomic<Scal> next_game_time_target;
+std::chrono::milliseconds g_last_wtime{0};
+std::chrono::milliseconds g_report_wtime;
+Scal g_last_gtime;
 
 std::unique_ptr<Game> gameinst;
 
@@ -52,41 +51,45 @@ std::unique_ptr<View> g_view;
 Scene g_scene;
 SceneData g_data;
 
+Scal Clip(Scal a, Scal lower, Scal upper) {
+  return std::max(lower, std::min(upper, a));
+}
+
 void display() {
   if (flag_display) return;
   flag_display = true;
 
-  const Scal fps = 30.0;
-  std::chrono::milliseconds current_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::high_resolution_clock::now().time_since_epoch());
-  std::chrono::milliseconds time_past_from_last_frame =
-      current_time - last_frame_time;
-
-  auto new_frame_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  const auto curr_wtime = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::high_resolution_clock::now().time_since_epoch());
-  auto new_frame_game_time = gameinst->partsys->GetTime();
+  const Scal curr_gtime = gameinst->partsys->GetTime();
 
-  const Scal frame_real_duration_s =
-      (new_frame_time - last_frame_time).count() / 1000.;
-
-  if ((new_frame_time - last_report_time).count() > 1000.) {
-    std::cout << "fps: " << 1. / frame_real_duration_s << ", game rate="
-              << (new_frame_game_time - last_frame_game_time) /
-                     frame_real_duration_s
-              << ", particles=" << gameinst->partsys->GetNumParticles()
-              << ", t=" << gameinst->partsys->GetTime()
-              << ", steps=" << gameinst->partsys->GetNumSteps() << std::endl;
-    last_report_time = new_frame_time;
+  if (!g_last_wtime.count()) {
+    std::cout << "first frame\n";
+    g_last_wtime = curr_wtime;
+    g_report_wtime = curr_wtime;
   }
 
-  const Scal game_rate_target = 1.5;
+  const Scal frame_wtime = (curr_wtime - g_last_wtime).count() / 1000.;
+
+  if ((curr_wtime - g_report_wtime).count() > 1000) {
+    std::cout << "fps=" << 1 / frame_wtime
+              << "  particles=" << gameinst->partsys->GetNumParticles()
+              << "  speed=" << std::setprecision(3)
+              << (curr_gtime - g_last_gtime) / frame_wtime
+              << "  t=" << gameinst->partsys->GetTime() << std::endl;
+    g_report_wtime = curr_wtime;
+  }
+
+  const Scal speed_target = 1.5;
   if (!state_pause) {
-    next_game_time_target = new_frame_game_time + game_rate_target / fps;
+    const Scal next_game_time_target =
+        curr_gtime + Clip(speed_target * frame_wtime, 0.02, 0.04);
+    gameinst->partsys->SetRendererReadyForNext(true);
+    gameinst->partsys->step(next_game_time_target, state_pause);
   }
 
-  last_frame_time = new_frame_time;
-  last_frame_game_time = new_frame_game_time;
+  g_last_wtime = curr_wtime;
+  g_last_gtime = curr_gtime;
 
   // Update scene.
   {
@@ -112,43 +115,11 @@ void display() {
     g_view->SetScene(g_scene);
   }
   g_view->Draw();
-
-  {
-    std::lock_guard<std::mutex> lg(gameinst->partsys->m_buffer_);
-    gameinst->partsys->SetRendererReadyForNext(true);
-  }
   flag_display = false;
 }
 
-void cycle() {
-#ifdef _OPENMP
-  omp_set_dynamic(0);
-  omp_set_nested(0);
-#endif
-
-#pragma omp parallel
-  {
-#pragma omp master
-    std::cout << "Computation started, "
-#ifdef _OPENMP
-              << "OpenMP with " << omp_get_num_threads() << " threads"
-#else
-              << "single-threaded"
-#endif
-              << std::endl;
-  }
-
-  while (!state_quit) {
-    gameinst->partsys->step(next_game_time_target, state_pause);
-    if (state_pause) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-  }
-  std::cout << "Computation finished" << std::endl;
-}
-
 int main() {
-  last_frame_game_time = 0.;
+  g_last_gtime = 0;
   state_pause = false;
   state_quit = false;
 
@@ -169,13 +140,8 @@ int main() {
 
   g_view->SetScene(g_scene);
 
-  std::thread computation_thread(cycle);
-
   while (!state_quit) {
     g_view->Control();
     display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
-
-  computation_thread.join();
 }
