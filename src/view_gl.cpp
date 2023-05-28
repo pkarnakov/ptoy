@@ -433,8 +433,7 @@ const char* MouseStateName(MouseState s) {
 struct ViewGl::Imp {
   using Owner = ViewGl;
   Imp(Owner* owner_, Game* gameinst_, Particles* partsys_, unsigned width_,
-      unsigned height_, std::atomic<bool>& state_quit_,
-      std::atomic<bool>& state_pause_)
+      unsigned height_, bool& state_quit_, bool& state_pause_)
       : owner(owner_)
       , gameinst(gameinst_)
       , partsys(partsys_)
@@ -982,13 +981,13 @@ Q: quit after three presses
   Game* gameinst;
   Particles* partsys;
   unsigned width, height;
-  std::atomic<bool>& state_quit;
-  std::atomic<bool>& state_pause;
+  bool& state_quit;
+  bool& state_pause;
 };
 
 ViewGl::ViewGl(
     Game* gameinst_, Particles* partsys_, unsigned width_, unsigned height_,
-    std::atomic<bool>& state_quit_, std::atomic<bool>& state_pause_)
+    bool& state_quit_, bool& state_pause_)
     : imp(new Imp(
           this, gameinst_, partsys_, width_, height_, state_quit_,
           state_pause_)) {}

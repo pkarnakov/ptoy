@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -157,7 +156,7 @@ class Particles {
     return frozen_;
   }
   void status(std::ostream& out);
-  void step(Scal time_target, const std::atomic<bool>& quit);
+  void step(Scal time_target, bool quit);
   void SetForce(Vect center, bool enabled);
   void SetForce(Vect center);
   void SetForce(bool enabled);
@@ -244,7 +243,7 @@ class Particles {
   int freeze_last_id_;
   bool renderer_ready_for_next_ = true;
   bool portal_enabled_ = false;
-  std::atomic<bool> remove_last_portal_;
+  bool remove_last_portal_;
 
  public:
   int portal_stage_ = 0;

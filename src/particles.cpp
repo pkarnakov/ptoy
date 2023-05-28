@@ -105,10 +105,10 @@ void Particles::status(std::ostream& out) {
   // out<<"Particles system"<<std::endl<<"Particles number =
   // "<<P.size()<<std::endl;
 }
-void Particles::step(Scal time_target, const std::atomic<bool>& quit) {
+void Particles::step(Scal time_target, bool quit) {
 #pragma omp parallel
   {
-    while (t < time_target && !quit.load()) {
+    while (t < time_target && !quit) {
 #pragma omp for schedule(dynamic, 8)
       for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
         calc_forces(iblock);

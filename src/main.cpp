@@ -1,4 +1,3 @@
-#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
@@ -32,9 +31,9 @@ Scal g_last_gtime;
 
 std::unique_ptr<Game> gameinst;
 
-std::atomic<bool> flag_display;
-std::atomic<bool> state_pause;
-std::atomic<bool> state_quit;
+bool flag_display;
+bool state_pause;
+bool state_quit;
 
 struct SceneData {
   struct Particles {

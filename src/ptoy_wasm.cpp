@@ -31,8 +31,8 @@ Scene g_scene;
 SceneData g_data;
 std::unique_ptr<Game> gameinst;
 std::string g_buf;
-std::atomic<bool> state_pause;
-std::atomic<bool> state_quit;
+bool state_pause;
+bool state_quit;
 
 void UpdateScene() {
   const auto& particles = gameinst->partsys->GetParticles();

@@ -7,7 +7,7 @@ class ViewGl : public View {
  public:
   ViewGl(
       Game* gameinst_, Particles* partsys_, unsigned width_, unsigned height_,
-      std::atomic<bool>& state_quit_, std::atomic<bool>& state_pause_);
+      bool& state_quit_, bool& state_pause_);
   ~ViewGl();
   const Scene& GetScene() const override {
     return scene_;
