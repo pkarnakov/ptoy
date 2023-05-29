@@ -26,7 +26,9 @@
         </div>
         <div style="margin:auto;">
           <input type="button" title="space" class="button" id="button_pause" value="pause" onclick="togglePause();">
-          <input type="button" class="button" id="button_restart" value="restart" onclick="restart();">
+          <input type="button" title='q' class="button" id="button_restart" value="restart" onclick="pressButton('q')">
+          <input type="button" title='i' class="button" id="button_i" value="remove portal" onclick="pressButton('i')">
+          <input type="button" title='g' class="button" id="button_g" value="gravity" onclick="pressButton('g')">
           <br>
           <input type="button" title='r' class="button" id="button_r" value="repulse" onclick="pressButton('r')">
           <input type="button" title='a' class="button" id="button_a" value="attract" onclick="pressButton('a')">
@@ -34,20 +36,19 @@
           <input type="button" title='f' class="button" id="button_f" value="freeze" onclick="pressButton('f')">
           <input type="button" title='o' class="button" id="button_o" value="portal" onclick="pressButton('o')">
           <input type="button" title='b' class="button" id="button_b" value="bond" onclick="pressButton('b')">
-          <br>
-          <input type="button" title='i' class="button" id="button_i" value="remove portal" onclick="pressButton('i')">
-          <input type="button" title='g' class="button" id="button_g" value="gravity" onclick="pressButton('g')">
         </div>
         <div style="width:300px;margin:auto;text-align:left;">
           <kbd>space</kbd>: toggle pause<br>
-          <kbd>r</kbd>: mouse mode to Repulse<br>
-          <kbd>a</kbd>: mouse mode to Attract<br>
-          <kbd>p</kbd>: mouse mode to Pick<br>
-          <kbd>f</kbd>: mouse mode to Freeze<br>
-          <kbd>o</kbd>: mouse mode to Portal<br>
-          <kbd>b</kbd>: mouse mode to Bond<br>
+          <kbd>q</kbd>: restart<br>
           <kbd>i</kbd>: remove last pair of portals<br>
           <kbd>g</kbd>: toggle gravity<br>
+          Mouse modes:<br>
+          <kbd>r</kbd>: repulse,
+          <kbd>a</kbd>: attract,
+          <kbd>p</kbd>: pick<br>
+          <kbd>f</kbd>: freeze,
+          <kbd>o</kbd>: portal,
+          <kbd>b</kbd>: bond
         </div>
         <!---
         <div style="display: inline-block; vertical-align: top; margin: 0;">
