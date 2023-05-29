@@ -38,6 +38,9 @@ else()
   target_compile_definitions(${T} PRIVATE USE_AVX=0)
 endif()
 
+set(T "control")
+add_library(${T} src/control.cpp)
+
 # Executable.
 if (USE_EXE)
   set(EXE "ptoy")
@@ -49,7 +52,7 @@ if (USE_EXE)
     target_compile_definitions(${EXE} PRIVATE USE_BACKEND_TEXT=0)
   endif()
   if (USE_BACKEND_SDL)
-    target_link_libraries(${EXE} view_gl)
+    target_link_libraries(${EXE} view_gl control)
     target_compile_definitions(${EXE} PRIVATE USE_BACKEND_SDL=1)
   else()
     target_compile_definitions(${EXE} PRIVATE USE_BACKEND_SDL=0)

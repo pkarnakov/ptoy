@@ -12,6 +12,8 @@
 #include "logger.h"
 #include "view_gl.h"
 
+#include "control.h"
+
 #define CHECK_ERROR()                                                \
   do {                                                               \
     GLenum error = glGetError();                                     \
@@ -399,37 +401,6 @@ class Gui {
   Window window_;
 };
 
-enum class MouseState {
-  None,
-  Attraction,
-  Repulsion,
-  Bond,
-  Pick,
-  Freeze,
-  Portal,
-};
-
-const char* MouseStateName(MouseState s) {
-  switch (s) {
-    case MouseState::None:
-      return "none";
-    case MouseState::Attraction:
-      return "attraction";
-    case MouseState::Repulsion:
-      return "repulsion";
-    case MouseState::Bond:
-      return "bonds";
-    case MouseState::Pick:
-      return "pick";
-    case MouseState::Freeze:
-      return "freeze";
-    case MouseState::Portal:
-      return "portal";
-    default:
-      return nullptr;
-  }
-}
-
 struct ViewGl::Imp {
   using Owner = ViewGl;
   Imp(Owner* owner_, Game* gameinst_, Particles* partsys_, unsigned width_,
@@ -437,10 +408,13 @@ struct ViewGl::Imp {
       : owner(owner_)
       , gameinst(gameinst_)
       , partsys(partsys_)
+      , control_(partsys_)
       , width(width_)
       , height(height_)
       , state_quit(state_quit_)
       , state_pause(state_pause_) {
+    control_.debug = true; // XXX Control debug output.
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
       SDL_Log("Unable to initialize SDL: %s\n", SDL_GetError());
       throw std::runtime_error(SDL_GetError());
@@ -714,17 +688,17 @@ struct ViewGl::Imp {
     }
 
     { // Initialize GUI.
-      auto add_button = [&](std::string lbl, MouseState s) {
+      auto add_button = [&](std::string lbl, Control::MouseMode s) {
         gui.AddButton(Gui::Button( //
-            lbl, [&, s]() { SetMouseMode(s); }, {1, 1, 1}));
+            lbl, [&, s]() { control_.SetMouseMode(s); }, {1, 1, 1}));
         mouse_to_button[s] = &gui.GetButtons().back();
       };
-      add_button("R", MouseState::Repulsion);
-      add_button("A", MouseState::Attraction);
-      add_button("P", MouseState::Pick);
-      add_button("F", MouseState::Freeze);
-      add_button("O", MouseState::Portal);
-      add_button("B", MouseState::Bond);
+      add_button("R", Control::MouseMode::Repulsion);
+      add_button("A", Control::MouseMode::Attraction);
+      add_button("P", Control::MouseMode::Pick);
+      add_button("F", Control::MouseMode::Freeze);
+      add_button("O", Control::MouseMode::Portal);
+      add_button("B", Control::MouseMode::Bond);
 
       gui.SetWindowSize(width, height);
     }
@@ -766,8 +740,8 @@ struct ViewGl::Imp {
         for (auto& b : buttons) {
           b.color = {1., 1., 1.};
         }
-        if (mouse_to_button.count(mouse_state_)) {
-          mouse_to_button[mouse_state_]->color = SplitRgb(colors_geo[0]);
+        if (mouse_to_button.count(control_.mouse_mode)) {
+          mouse_to_button[control_.mouse_mode]->color = SplitRgb(colors_geo[0]);
         }
 
         for (auto& b : buttons) {
@@ -938,22 +912,6 @@ Q: quit after three presses
     return GetDomainMousePosition(x, y);
   }
 
-  void SetMouseMode(MouseState s) {
-    mouse_state_ = s;
-    std::cout << std::string("Mouse switched to mode: ") + MouseStateName(s)
-              << std::endl;
-    switch (s) {
-      case MouseState::Repulsion:
-        partsys->SetForceAttractive(false);
-        break;
-      case MouseState::Attraction:
-        partsys->SetForceAttractive(true);
-        break;
-      default:
-        break;
-    }
-  }
-
   auto SplitRgb(std::uint32_t c) -> std::array<float, 3> {
     std::array<float, 3> d;
     d[0] = ((c >> 16) & 0xFF) / 255.;
@@ -971,15 +929,15 @@ Q: quit after three presses
 
   std::vector<RenderTask> tasks_;
   std::vector<size_t> tasks_indices_;
-  std::map<MouseState, Gui::Button*> mouse_to_button;
+  std::map<Control::MouseMode, Gui::Button*> mouse_to_button;
   Gui gui;
   SDL_GLContext glcontext;
   SDL_Window* window;
-  MouseState mouse_state_ = MouseState::Repulsion;
 
   Owner* owner;
   Game* gameinst;
   Particles* partsys;
+  ::Control control_;
   unsigned width, height;
   bool& state_quit;
   bool& state_pause;
@@ -1005,6 +963,7 @@ void ViewGl::Imp::Control() {
     if (e.type == SDL_QUIT) {
       state_quit = true;
     } else if (e.type == SDL_KEYDOWN) {
+      control_.SendKeyDown(e.key.keysym.sym);
       if (e.key.keysym.sym != 'q') {
         quit_count = 0;
       }
@@ -1021,59 +980,36 @@ void ViewGl::Imp::Control() {
           std::cout << "Toggle help: " << (state_help ? "on" : "off")
                     << std::endl;
           break;
-        case 'n':
-          SetMouseMode(MouseState::None);
-          break;
-        case 'r':
-          SetMouseMode(MouseState::Repulsion);
-          break;
-        case 'f':
-          SetMouseMode(MouseState::Freeze);
-          break;
-        case 'p':
-          SetMouseMode(MouseState::Pick);
-          break;
-        case 'a':
-          SetMouseMode(MouseState::Attraction);
-          break;
-        case 'b':
-          SetMouseMode(MouseState::Bond);
-          break;
-        case 'o':
-          SetMouseMode(MouseState::Portal);
-          break;
-        case 'i':
-          std::cout << "Remove last portal" << std::endl;
-          partsys->RemoveLastPortal();
-          break;
-        case 'g':
-          partsys->InvertGravity();
-          std::cout << (partsys->GetGravity() ? "Gravity on" : "Gravity off")
-                    << std::endl;
-          break;
         case ' ':
           state_pause = !state_pause;
           break;
+        default:
+          break;
       }
     } else if (e.type == SDL_MOUSEMOTION) {
-      switch (mouse_state_) {
-        case MouseState::Attraction:
-        case MouseState::Repulsion:
-          partsys->SetForce(GetDomainMousePosition());
+      const Vect mousepos = GetDomainMousePosition();
+      control_.SendMouseMotion(mousepos);
+
+      switch (control_.mouse_mode) {
+        case Control::MouseMode::Attraction:
+        case Control::MouseMode::Repulsion:
+          partsys->SetForce(mousepos);
           break;
-        case MouseState::Bond:
-          partsys->BondsMove(GetDomainMousePosition());
+        case Control::MouseMode::Bond:
+          partsys->BondsMove(mousepos);
           break;
-        case MouseState::Pick:
-          partsys->PickMove(GetDomainMousePosition());
+        case Control::MouseMode::Pick:
+          partsys->PickMove(mousepos);
           break;
-        case MouseState::Freeze:
-          partsys->FreezeMove(GetDomainMousePosition());
+        case Control::MouseMode::Freeze:
+          partsys->FreezeMove(mousepos);
           break;
-        case MouseState::Portal:
-          partsys->PortalMove(GetDomainMousePosition());
+        case Control::MouseMode::Portal:
+          partsys->PortalMove(mousepos);
           break;
-        case MouseState::None:
+        case Control::MouseMode::None:
+          break;
+        default:
           break;
       }
     } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -1086,46 +1022,50 @@ void ViewGl::Imp::Control() {
           b->handler();
         }
       } else {
-        switch (mouse_state_) {
-          case MouseState::Attraction:
-          case MouseState::Repulsion:
-            partsys->SetForce(GetDomainMousePosition(), true);
+        const Vect mousepos = GetDomainMousePosition();
+        control_.SendMouseDown(mousepos);
+        switch (control_.mouse_mode) {
+          case Control::MouseMode::Attraction:
+          case Control::MouseMode::Repulsion:
+            partsys->SetForce(mousepos, true);
             break;
-          case MouseState::Bond:
-            partsys->BondsStart(GetDomainMousePosition());
+          case Control::MouseMode::Bond:
+            partsys->BondsStart(mousepos);
             break;
-          case MouseState::Pick:
-            partsys->PickStart(GetDomainMousePosition());
+          case Control::MouseMode::Pick:
+            partsys->PickStart(mousepos);
             break;
-          case MouseState::Freeze:
-            partsys->FreezeStart(GetDomainMousePosition());
+          case Control::MouseMode::Freeze:
+            partsys->FreezeStart(mousepos);
             break;
-          case MouseState::Portal:
-            partsys->PortalStart(GetDomainMousePosition());
+          case Control::MouseMode::Portal:
+            partsys->PortalStart(mousepos);
             break;
-          case MouseState::None:
+          case Control::MouseMode::None:
             break;
         }
       }
     } else if (e.type == SDL_MOUSEBUTTONUP) {
-      switch (mouse_state_) {
-        case MouseState::Attraction:
-        case MouseState::Repulsion:
+      const Vect mousepos = GetDomainMousePosition();
+      control_.SendMouseDown(mousepos);
+      switch (control_.mouse_mode) {
+        case Control::MouseMode::Attraction:
+        case Control::MouseMode::Repulsion:
           partsys->SetForce(false);
           break;
-        case MouseState::Bond:
-          partsys->BondsStop(GetDomainMousePosition());
+        case Control::MouseMode::Bond:
+          partsys->BondsStop(mousepos);
           break;
-        case MouseState::Pick:
-          partsys->PickStop(GetDomainMousePosition());
+        case Control::MouseMode::Pick:
+          partsys->PickStop(mousepos);
           break;
-        case MouseState::Freeze:
-          partsys->FreezeStop(GetDomainMousePosition());
+        case Control::MouseMode::Freeze:
+          partsys->FreezeStop(mousepos);
           break;
-        case MouseState::Portal:
-          partsys->PortalStop(GetDomainMousePosition());
+        case Control::MouseMode::Portal:
+          partsys->PortalStop(mousepos);
           break;
-        case MouseState::None:
+        case Control::MouseMode::None:
           break;
       }
     } else if (e.type == SDL_WINDOWEVENT) {
