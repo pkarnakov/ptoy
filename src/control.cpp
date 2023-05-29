@@ -83,9 +83,10 @@ void Control::Handle(Event e) {
   if (e.type == EventType::key_down) {
     switch (e.keysym) {
       case 'g':
-        partsys_->InvertGravity();
+        partsys_->SetGravity(!partsys_->GetGravity());
         std::cout << (partsys_->GetGravity() ? "Gravity on" : "Gravity off")
                   << std::endl;
+        break;
       case 'n':
         SetMouseMode(MouseMode::None);
         break;

@@ -190,8 +190,8 @@ class Particles {
   bool GetGravity() const {
     return gravity_enable_;
   }
-  void InvertGravity() {
-    gravity_enable_ = !gravity_enable_;
+  void SetGravity(bool flag) {
+    gravity_enable_ = flag;
   }
   const std::vector<particle>& GetParticles() const {
     return particle_buffer_;

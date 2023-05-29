@@ -16,7 +16,9 @@ var g_portals;
 var g_portals_ptr;
 var g_portals_max_size = 10000;
 
+
 // Colors.
+var c_red = "#ff1f5b";
 var c_greed = "#00cd6c";
 var c_blue = "#009ade";
 var c_orange = "#f28522";
@@ -26,6 +28,16 @@ var SendKeyDown;
 var SendMouseMotion;
 var SendMouseDown;
 var SendMouseUp;
+
+
+// Misc
+var SetPause;
+var g_pause = false;
+var GetGravity;
+var SetGravity;
+var GetMouseMode;
+var Init;
+
 
 function draw() {
   let canvas = Module['canvas'];
@@ -70,6 +82,34 @@ function draw() {
   }
 }
 
+function restart() {
+  Init();
+  g_pause = false;
+  syncButtons();
+}
+
+function setButtonStyle(button_name, pressed) {
+  document.getElementById('button_' + button_name).className = pressed ? "button pressed" : "button";
+}
+
+function syncButtons() {
+  setButtonStyle('pause', g_pause);
+  mousemode = GetMouseMode();
+  setButtonStyle('r', mousemode == 'repulsion');
+  setButtonStyle('a', mousemode == 'attraction');
+  setButtonStyle('p', mousemode == 'pick');
+  setButtonStyle('f', mousemode == 'freeze');
+  setButtonStyle('o', mousemode == 'portal');
+  setButtonStyle('b', mousemode == 'bond');
+  setButtonStyle('g', GetGravity());
+}
+
+function togglePause() {
+  g_pause = !g_pause;
+  syncButtons();
+  SetPause(g_pause);
+}
+
 function clearOutput() {
   if (output) {
     output.value = '';
@@ -78,12 +118,29 @@ function clearOutput() {
     outputerr.value = '';
   }
 }
+function print(text) {
+  if (output) {
+    output.value += text + "\n";
+    output.scrollTop = output.scrollHeight;
+  }
+}
 function printError(text) {
-  console.error(text);
   if (outputerr) {
     outputerr.value += text + "\n";
     outputerr.scrollTop = outputerr.scrollHeight;
   }
+}
+
+function sendKeyDownChar(c) {
+  keysym = c.charCodeAt(0);
+  if (keysym < 256) {
+    SendKeyDown(keysym);
+  }
+}
+
+function pressButton(c) {
+  sendKeyDownChar(c);
+  syncButtons();
 }
 
 function postRun() {
@@ -96,6 +153,11 @@ function postRun() {
   SendMouseDown = Module.cwrap('SendMouseDown', null, ['number', 'number']);
   SendMouseUp = Module.cwrap('SendMouseUp', null, ['number', 'number']);
   SetControlDebug = Module.cwrap('SetControlDebug', null, ['number']);
+  SetPause = Module.cwrap('SetPause', null, ['number']);
+  GetGravity = Module.cwrap('GetGravity', 'number', []);
+  SetGravity = Module.cwrap('SetGravity', null, ['number']);
+  GetMouseMode = Module.cwrap('GetMouseMode', 'string', []);
+  Init = Module.cwrap('Init', null, []);
 
   g_particles_ptr = Module._malloc(g_particles_max_size * 2);
 
@@ -105,8 +167,11 @@ function postRun() {
   g_tmp_canvas.height = canvas.height;
 
   let handler_keydown = function(e) {
-    keysym = e.key.charCodeAt(0);
-    SendKeyDown(keysym < 256 ? keysym : 0);
+    if (e.key == ' ') {
+      togglePause();
+      return;
+    }
+    pressButton(e.key);
     // Prevent scrolling by Space.
     if(e.keyCode == 32 && e.target == document.body) {
       e.preventDefault();
@@ -163,11 +228,41 @@ function postRun() {
   canvas.addEventListener('touchmove', handler_touchmove);
   canvas.addEventListener('touchstart', handler_touchstart);
   canvas.addEventListener('touchend', handler_touchend);
+
+  // Disable Space on buttons.
+  [
+    window.button_pause, window.button_restart,
+    window.button_r, window.button_a, window.button_p,
+    window.button_f, window.button_o, window.button_b,
+    window.button_i, window.button_g,
+  ].forEach(b => {
+    b.addEventListener('keydown', function(e){
+      if (e.key == ' ') {
+        e.preventDefault();
+      }
+    }, false);
+    b.addEventListener('keyup', function(e){
+      if (e.key == ' ') {
+        e.preventDefault();
+      }
+    }, false);
+  });
+
+  syncButtons();
 }
 
 var Module = {
   preRun: [],
   postRun: [postRun],
+  print: (function(text) {
+    clearOutput();
+    return function(text) {
+      if (arguments.length > 1) {
+        text = Array.prototype.slice.call(arguments).join(' ');
+      }
+      print(text);
+    };
+  })(),
   printErr: (function(text) {
     clearOutput();
     return function(text) {
