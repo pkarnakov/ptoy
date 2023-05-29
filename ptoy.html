@@ -29,6 +29,7 @@
           <input type="button" title='q' class="button" id="button_restart" value="restart" onclick="pressButton('q')">
           <input type="button" title='i' class="button" id="button_i" value="remove portal" onclick="pressButton('i')">
           <input type="button" title='g' class="button" id="button_g" value="gravity" onclick="pressButton('g')">
+          <input type="button" title='use accelerometer' class="button" id="button_accel" value="accel" onclick="toggleAccel()">
           <br>
           <input type="button" title='r' class="button" id="button_r" value="repulse" onclick="pressButton('r')">
           <input type="button" title='a' class="button" id="button_a" value="attract" onclick="pressButton('a')">
@@ -49,6 +50,7 @@
           <kbd>f</kbd>: freeze,
           <kbd>o</kbd>: portal,
           <kbd>b</kbd>: bond
+          <span id="text_accel"></span>
         </div>
         <!---
         <div style="display: inline-block; vertical-align: top; margin: 0;">
@@ -58,7 +60,6 @@
         -->
       </div>
     </div>
-
 
     <script src="libs/lz-string.js"></script>
     <script async defer src="libs/github_buttons.js"></script>

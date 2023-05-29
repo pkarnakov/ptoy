@@ -43,12 +43,16 @@ var SendMouseMotion;
 var SendMouseDown;
 var SendMouseUp;
 
+// Gravity.
+var GetGravity;
+var SetGravity;
+var SetGravityVect;
+var g_accel;
+var flag_accel = false;
 
 // Misc
 var SetPause;
-var g_pause = false;
-var GetGravity;
-var SetGravity;
+var flag_pause = false;
 var GetMouseMode;
 var Init;
 
@@ -124,7 +128,8 @@ function draw() {
 
 function restart() {
   Init();
-  g_pause = false;
+  flag_pause = false;
+  flag_accel = false;
   syncButtons();
 }
 
@@ -133,7 +138,8 @@ function setButtonStyle(button_name, pressed) {
 }
 
 function syncButtons() {
-  setButtonStyle('pause', g_pause);
+  setButtonStyle('pause', flag_pause);
+  setButtonStyle('accel', flag_accel);
   mousemode = GetMouseMode();
   setButtonStyle('r', mousemode == 'repulsion');
   setButtonStyle('a', mousemode == 'attraction');
@@ -145,10 +151,32 @@ function syncButtons() {
 }
 
 function togglePause() {
-  g_pause = !g_pause;
+  flag_pause = !flag_pause;
   syncButtons();
-  SetPause(g_pause);
+  SetPause(flag_pause);
 }
+
+function toggleAccel() {
+  flag_accel = !flag_accel;
+  if (flag_accel && !g_accel) {
+    try {
+      g_accel = new Accelerometer({ frequency: 5 });
+      g_accel.addEventListener("reading", () => {
+        if (flag_accel) {
+          SetGravityVect(-g_accel.x, -g_accel.y);
+          gx = -g_accel.x.toFixed(3);
+          gy = -g_accel.y.toFixed(3);
+          window.text_accel.innerHTML = `<br>gravity=(${gx}, ${gy})`;
+        }
+      });
+      g_accel.start();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  syncButtons();
+}
+
 
 function clearOutput() {
   if (output) {
@@ -201,6 +229,7 @@ function postRun() {
   SetPause = Module.cwrap('SetPause', null, ['number']);
   GetGravity = Module.cwrap('GetGravity', 'number', []);
   SetGravity = Module.cwrap('SetGravity', null, ['number']);
+  SetGravityVect = Module.cwrap('SetGravityVect', null, ['number', 'number']);
   GetMouseMode = Module.cwrap('GetMouseMode', 'string', []);
   Init = Module.cwrap('Init', null, []);
 
