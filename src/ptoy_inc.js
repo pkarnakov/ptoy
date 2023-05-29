@@ -79,18 +79,19 @@ function draw() {
     g_portals = new Uint16Array(Module.HEAPU8.buffer, g_portals_ptr, g_portals_max_size);
     let size = GetPortals(g_portals.byteOffset, g_portals.length);
     ctx.lineWidth = 5;
-    for (let i = 0; i + 1 < size; i += 8) {
-      ctx.strokeStyle = c_blue;
-      ctx.beginPath();
-      ctx.moveTo(g_portals[i + 0], g_portals[i + 1]);
-      ctx.lineTo(g_portals[i + 2], g_portals[i + 3]);
-      ctx.stroke();
-
-      ctx.strokeStyle = c_orange;
-      ctx.beginPath();
-      ctx.moveTo(g_portals[i + 4], g_portals[i + 5]);
-      ctx.lineTo(g_portals[i + 6], g_portals[i + 7]);
-      ctx.stroke();
+    for (let i = 0; i + 1 < size; i += 4) {
+      xa = g_portals[i + 0];
+      ya = g_portals[i + 1];
+      xb = g_portals[i + 2];
+      yb = g_portals[i + 3];
+      // Do not draw empty portals, needed for incomplete pairs.
+      if (xa != xb || ya != yb) {
+        ctx.strokeStyle = (i / 4 % 2 == 0) ? c_blue : c_orange;
+        ctx.beginPath();
+        ctx.moveTo(xa, ya);
+        ctx.lineTo(xb, yb);
+        ctx.stroke();
+      }
     }
   }
 

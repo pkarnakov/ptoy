@@ -56,12 +56,32 @@ void UpdateScene() {
   }
 
   { // Portals.
+    using Portal = Scene::Portal;
+    using Pair = std::array<Portal, 2>;
     const auto& portals = gameinst->partsys->GetPortals();
     g_data.portals.resize(portals.size());
+    const auto& ps = gameinst->partsys;
     for (size_t i = 0; i < portals.size(); ++i) {
-      for (size_t j : {0, 1}) {
-        g_data.portals[i][j].pa = portals[i][j].begin;
-        g_data.portals[i][j].pb = portals[i][j].end;
+      Pair pair{
+          Portal{portals[i][0].begin, portals[i][0].end},
+          Portal{portals[i][1].begin, portals[i][1].end},
+      };
+      g_data.portals[i] = pair;
+    }
+    // Append incomplete pair currently drawn.
+    if (ps->portal_stage_ == 0) {
+      if (ps->portal_mouse_moving_) {
+        g_data.portals.emplace_back(Pair{
+            Portal{ps->portal_begin_, ps->portal_current_},
+            Portal{Vect(-1), Vect(-1)}});
+      }
+    } else {
+      g_data.portals.emplace_back(Pair{
+          Portal{ps->portal_prev_.first, ps->portal_prev_.second},
+          Portal{Vect(-1), Vect(-1)}});
+      if (ps->portal_mouse_moving_) {
+        g_data.portals.back()[1] =
+            Portal{ps->portal_begin_, ps->portal_current_};
       }
     }
     g_scene.portals = g_data.portals;
