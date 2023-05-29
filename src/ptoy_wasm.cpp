@@ -120,7 +120,7 @@ void UpdateScene() {
 static void main_loop() {
   auto gameinst = g_gameinst;
   gameinst->partsys->SetRendererReadyForNext(true);
-  const auto dt = 0.01;
+  const auto dt = 0.03;
   gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
   UpdateScene();
   EM_ASM_({ draw(); });
@@ -247,5 +247,5 @@ const char* GetMouseMode() {
 int main() {
   Init();
   emscripten_set_canvas_element_size("#canvas", g_width, g_height);
-  emscripten_set_main_loop(main_loop, 30, 1);
+  emscripten_set_main_loop(main_loop, 0, 1);
 }
