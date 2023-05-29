@@ -193,6 +193,12 @@ class Particles {
   void SetGravity(bool flag) {
     gravity_enable_ = flag;
   }
+  Vect GetGravityVect() const {
+    return gravity_;
+  }
+  void SetGravityVect(Vect gravity) {
+    gravity_ = gravity;
+  }
   const std::vector<particle>& GetParticles() const {
     return particle_buffer_;
   }
@@ -220,7 +226,7 @@ class Particles {
   blocks Blocks;
   Scal t;
   Scal dt;
-  Vect g;
+  Vect gravity_;
   void calc_forces(size_t i);
   void RHS_bonds();
   void ApplyFrozen();

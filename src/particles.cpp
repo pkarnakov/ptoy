@@ -68,7 +68,7 @@ Particles::Particles()
 
   t = 0.0;
   dt = kTimeStep;
-  g = Vect(0.0, -1.0) * kGravity;
+  gravity_ = Vect(0, -1) * kGravity;
 
   SetDomain(domain);
   SetParticleBuffer();
@@ -895,7 +895,7 @@ void Particles::calc_forces(size_t iblock) {
 
     // Gravity.
     if (gravity_enable_) {
-      f = g * kMass;
+      f = gravity_ * kMass;
     }
 
     // Attraction or repulsion force.

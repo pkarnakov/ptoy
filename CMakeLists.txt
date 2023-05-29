@@ -111,7 +111,8 @@ if (USE_WASM)
     '_main', '_malloc' \
     , '_GetParticles', '_GetPortals', '_GetBonds', '_GetFrozen' \
     , '_SendKeyDown', '_SendMouseMotion', '_SendMouseDown', '_SendMouseUp' \
-    , '_SetControlDebug', '_Init', '_SetPause', '_GetGravity', '_SetGravity', '_GetMouseMode' \
+    , '_SetControlDebug', '_Init', '_SetPause', '_GetMouseMode' \
+    , '_GetGravity', '_SetGravity', '_SetGravityVect' \
   ]")
   target_link_options(${T} PRIVATE "-sEXPORTED_RUNTIME_METHODS=['cwrap', 'ccall']")
   target_compile_options(${T} PRIVATE -fexceptions)

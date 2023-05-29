@@ -233,6 +233,10 @@ void SetGravity(int flag) {
   auto gameinst = g_gameinst;
   gameinst->partsys->SetGravity(flag);
 }
+void SetGravityVect(float gx, float gy) {
+  auto gameinst = g_gameinst;
+  gameinst->partsys->SetGravityVect({gx, gy});
+}
 const char* GetMouseMode() {
   auto gameinst = g_gameinst;
   auto control = g_control;
