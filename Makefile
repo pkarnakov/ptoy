@@ -1,5 +1,5 @@
 all: \
-	index.html \
+	info.html \
 
 PANDOC = pandoc
 PFLAGS =
