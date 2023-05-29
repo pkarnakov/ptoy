@@ -2,8 +2,6 @@
 
 [Play in browser](https://pkarnakov.github.io/ptoy/ptoy.html)
 
-[Homepage](https://pkarnakov.github.io/ptoy)
-
 |   |   |   |
 |:---:|:---:|:---:|
 |<img src="https://pkarnakov.github.io/ptoy/images/screenshot0.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot1.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot2.png" width="200">|
@@ -48,8 +46,8 @@ cd build && ./ptoy
 * `r`: switch mouse to *Repulsion* mode
 * `a`: switch mouse to *Attraction* mode
 * `p`: switch mouse to *Pick* mode
-* `o`: switch mouse to *Portal* mode
 * `f`: switch mouse to *Freeze* mode
+* `o`: switch mouse to *Portal* mode
 * `b`: switch mouse to *Bonds* mode
 * `n`: switch mouse to *No action* mode
 * `g`: toggle gravity
