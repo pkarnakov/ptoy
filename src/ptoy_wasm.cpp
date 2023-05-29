@@ -60,7 +60,7 @@ void UpdateScene() {
 
 static void main_loop() {
   gameinst->partsys->SetRendererReadyForNext(true);
-  const auto dt = 0.02;
+  const auto dt = 0.01;
   gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
   UpdateScene();
   EM_ASM_({ draw(); });
