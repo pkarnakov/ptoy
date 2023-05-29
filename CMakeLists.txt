@@ -109,9 +109,8 @@ if (USE_WASM)
   target_link_libraries(${T} geometry particles control)
   target_link_options(${T} PRIVATE "-sEXPORTED_FUNCTIONS=[\
     '_main', '_malloc' \
-    , '_SetConfig', '_GetConfig' \
-    , '_GetParticles', '_GetPortals' , '_GetBonds' \
-    , '_SendKeyDown', '_SendMouseMotion' , '_SendMouseDown', '_SendMouseUp' \
+    , '_GetParticles', '_GetPortals', '_GetBonds', '_GetFrozen' \
+    , '_SendKeyDown', '_SendMouseMotion', '_SendMouseDown', '_SendMouseUp' \
     , '_SetControlDebug', '_Init', '_SetPause', '_GetGravity', '_SetGravity', '_GetMouseMode' \
   ]")
   target_link_options(${T} PRIVATE "-sEXPORTED_RUNTIME_METHODS=['cwrap', 'ccall']")

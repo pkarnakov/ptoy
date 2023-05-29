@@ -20,6 +20,7 @@ struct Scene {
   Particles particles;
   span<std::array<Portal, 2>> portals;
   span<Bond> bonds;
+  span<Vect> frozen;
 };
 
 class View {

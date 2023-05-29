@@ -51,7 +51,7 @@ textarea {
   background: #808080;
 }
 .pressed {
-  box-shadow:0px 0px 0px 1px #ff1f5b inset;
+  box-shadow:0px 0px 0px 2px #ff1f5b inset;
   border-color: #ff1f5b;
 }
 h1 a, h2 a, h3 a, h4 a, h5 a { 

@@ -1,5 +1,3 @@
-var SetConfig;
-var GetConfig;
 var output = document.getElementById('output');
 var outputerr = document.getElementById('outputerr');
 var g_tmp_canvas;
@@ -22,10 +20,16 @@ var g_bonds;
 var g_bonds_ptr;
 var g_bonds_max_size = 10000;
 
+// Frozen particles.
+var GetFrozen;
+var g_frozen;
+var g_frozen_ptr;
+var g_frozen_max_size = 10000;
+
 
 // Colors.
 var c_red = "#ff1f5b";
-var c_greed = "#00cd6c";
+var c_green = "#00cd6c";
 var c_blue = "#009ade";
 var c_orange = "#f28522";
 var c_gray = "#a0b1ba";
@@ -58,11 +62,10 @@ function draw() {
   ctx.fillStyle = c_background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw particles.
-  {
+  { // Draw particles.
     g_particles = new Uint16Array(Module.HEAPU8.buffer, g_particles_ptr, g_particles_max_size);
     let size = GetParticles(g_particles.byteOffset, g_particles.length);
-    ctx.fillStyle = c_greed;
+    ctx.fillStyle = c_green;
     ctx.lineWidth = 0;
     radius = 7
     for (let i = 0; i + 1 < size; i += 2) {
@@ -72,8 +75,7 @@ function draw() {
     }
   }
 
-  // Draw portals.
-  {
+  { // Draw portals.
     g_portals = new Uint16Array(Module.HEAPU8.buffer, g_portals_ptr, g_portals_max_size);
     let size = GetPortals(g_portals.byteOffset, g_portals.length);
     ctx.lineWidth = 5;
@@ -92,17 +94,29 @@ function draw() {
     }
   }
 
-  // Draw bonds.
-  {
+  { // Draw bonds.
     g_bonds = new Uint16Array(Module.HEAPU8.buffer, g_bonds_ptr, g_bonds_max_size);
     let size = GetBonds(g_bonds.byteOffset, g_bonds.length);
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = "#ffffff80";
     for (let i = 0; i + 1 < size; i += 4) {
-      ctx.strokeStyle = c_white;
       ctx.beginPath();
       ctx.moveTo(g_bonds[i + 0], g_bonds[i + 1]);
       ctx.lineTo(g_bonds[i + 2], g_bonds[i + 3]);
       ctx.stroke();
+    }
+  }
+
+  { // Draw frozen particles.
+    g_frozen = new Uint16Array(Module.HEAPU8.buffer, g_bonds_ptr, g_bonds_max_size);
+    let size = GetFrozen(g_frozen.byteOffset, g_frozen.length);
+    ctx.fillStyle = c_black;
+    ctx.lineWidth = 0;
+    radius = 4
+    for (let i = 0; i + 1 < size; i += 2) {
+      ctx.beginPath();
+      ctx.arc(g_frozen[i], g_frozen[i + 1], radius, 0, 2 * Math.PI, true);
+      ctx.fill();
     }
   }
 }
@@ -164,16 +178,20 @@ function sendKeyDownChar(c) {
 }
 
 function pressButton(c) {
-  sendKeyDownChar(c);
-  syncButtons();
+  if (c == 'q') {
+    restart();
+  } else {
+    sendKeyDownChar(c);
+    syncButtons();
+  }
 }
 
 function postRun() {
-  SetConfig = Module.cwrap('SetConfig', 'number', ['string']);
-  GetConfig = Module.cwrap('GetConfig', 'string', []);
   GetParticles = Module.cwrap('GetParticles', 'number', ['number', 'number']);
   GetPortals = Module.cwrap('GetPortals', 'number', ['number', 'number']);
   GetBonds = Module.cwrap('GetBonds', 'number', ['number', 'number']);
+  GetFrozen = Module.cwrap('GetFrozen', 'number', ['number', 'number']);
+
   SendKeyDown = Module.cwrap('SendKeyDown', null, ['number']);
   SendMouseMotion = Module.cwrap('SendMouseMotion', null, ['number', 'number']);
   SendMouseDown = Module.cwrap('SendMouseDown', null, ['number', 'number']);
@@ -186,6 +204,9 @@ function postRun() {
   Init = Module.cwrap('Init', null, []);
 
   g_particles_ptr = Module._malloc(g_particles_max_size * 2);
+  g_portals_ptr = Module._malloc(g_portals_max_size * 2);
+  g_bonds_ptr = Module._malloc(g_bonds_max_size * 2);
+  g_frozen_ptr = Module._malloc(g_frozen_max_size * 2);
 
   let canvas = Module['canvas'];
   g_tmp_canvas = document.createElement('canvas');
