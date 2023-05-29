@@ -24,6 +24,9 @@ struct SceneData {
 
   using Portal = Scene::Portal;
   std::vector<std::array<Portal, 2>> portals;
+
+  using Bond = Scene::Bond;
+  std::vector<Bond> bonds;
 };
 
 const int g_width = 800;
@@ -37,6 +40,7 @@ bool state_pause;
 
 void UpdateScene() {
   auto gameinst = g_gameinst;
+  // Particles.
   const auto& particles = gameinst->partsys->GetParticles();
   g_data.particles.p.resize(particles.size());
   g_data.particles.v.resize(particles.size());
@@ -47,6 +51,7 @@ void UpdateScene() {
   g_scene.particles.p = g_data.particles.p;
   g_scene.particles.v = g_data.particles.v;
 
+  // Portals.
   const auto& portals = gameinst->partsys->GetPortals();
   g_data.portals.resize(portals.size());
   for (size_t i = 0; i < portals.size(); ++i) {
@@ -56,6 +61,22 @@ void UpdateScene() {
     }
   }
   g_scene.portals = g_data.portals;
+
+  // Bonds.
+  g_data.bonds.clear();
+  size_t i = 0;
+  const auto& ps = gameinst->partsys;
+  const auto& norend = ps->GetNoRendering();
+  const auto& pos = ps->GetBlockData().position;
+  const auto& bbi = ps->GetBlockById();
+  for (auto bond : ps->GetBonds()) {
+    const auto& a = bbi[bond.first];
+    const auto& b = bbi[bond.second];
+    if (!norend.count(bond)) {
+      g_data.bonds.push_back({pos[a.first][a.second], pos[b.first][b.second]});
+    }
+  }
+  g_scene.bonds = g_data.bonds;
 }
 
 static void main_loop() {
@@ -105,6 +126,24 @@ int GetPortals(uint16_t* data, int max_size) {
     append(pair[0].pb);
     append(pair[1].pa);
     append(pair[1].pb);
+  }
+  return i;
+}
+int GetBonds(uint16_t* data, int max_size) {
+  auto gameinst = g_gameinst;
+  const int entrysize = 4;
+  int i = 0;
+  for (auto bond : g_scene.bonds) {
+    if (i + entrysize > max_size) {
+      break;
+    }
+    auto append = [&](Vect p) {
+      data[i + 0] = (1 + p.x) * gameinst->width_ * 0.5;
+      data[i + 1] = (1 - p.y) * gameinst->height_ * 0.5;
+      i += 2;
+    };
+    append(bond.pa);
+    append(bond.pb);
   }
   return i;
 }

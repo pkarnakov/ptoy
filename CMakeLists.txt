@@ -110,7 +110,7 @@ if (USE_WASM)
   target_link_options(${T} PRIVATE "-sEXPORTED_FUNCTIONS=[\
     '_main', '_malloc' \
     , '_SetConfig', '_GetConfig' \
-    , '_GetParticles', '_GetPortals' \
+    , '_GetParticles', '_GetPortals' , '_GetBonds' \
     , '_SendKeyDown', '_SendMouseMotion' , '_SendMouseDown', '_SendMouseUp' \
     , '_SetControlDebug', '_Init', '_SetPause', '_GetGravity', '_SetGravity', '_GetMouseMode' \
   ]")

@@ -16,12 +16,22 @@ var g_portals;
 var g_portals_ptr;
 var g_portals_max_size = 10000;
 
+// Bonds.
+var GetBonds;
+var g_bonds;
+var g_bonds_ptr;
+var g_bonds_max_size = 10000;
+
 
 // Colors.
 var c_red = "#ff1f5b";
 var c_greed = "#00cd6c";
 var c_blue = "#009ade";
 var c_orange = "#f28522";
+var c_gray = "#a0b1ba";
+var c_white = "#ffffff";
+var c_black = "#000000";
+var c_background = "#50585d";
 
 // Control.
 var SendKeyDown;
@@ -45,7 +55,8 @@ function draw() {
   ctx.drawImage(g_tmp_canvas, 0, 0, canvas.width, canvas.height);
 
   // Clear the canvas.
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = c_background;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw particles.
   {
@@ -80,6 +91,20 @@ function draw() {
       ctx.stroke();
     }
   }
+
+  // Draw bonds.
+  {
+    g_bonds = new Uint16Array(Module.HEAPU8.buffer, g_bonds_ptr, g_bonds_max_size);
+    let size = GetBonds(g_bonds.byteOffset, g_bonds.length);
+    ctx.lineWidth = 5;
+    for (let i = 0; i + 1 < size; i += 4) {
+      ctx.strokeStyle = c_white;
+      ctx.beginPath();
+      ctx.moveTo(g_bonds[i + 0], g_bonds[i + 1]);
+      ctx.lineTo(g_bonds[i + 2], g_bonds[i + 3]);
+      ctx.stroke();
+    }
+  }
 }
 
 function restart() {
@@ -100,7 +125,7 @@ function syncButtons() {
   setButtonStyle('p', mousemode == 'pick');
   setButtonStyle('f', mousemode == 'freeze');
   setButtonStyle('o', mousemode == 'portal');
-  setButtonStyle('b', mousemode == 'bond');
+  setButtonStyle('b', mousemode == 'bonds');
   setButtonStyle('g', GetGravity());
 }
 
@@ -148,6 +173,7 @@ function postRun() {
   GetConfig = Module.cwrap('GetConfig', 'string', []);
   GetParticles = Module.cwrap('GetParticles', 'number', ['number', 'number']);
   GetPortals = Module.cwrap('GetPortals', 'number', ['number', 'number']);
+  GetBonds = Module.cwrap('GetBonds', 'number', ['number', 'number']);
   SendKeyDown = Module.cwrap('SendKeyDown', null, ['number']);
   SendMouseMotion = Module.cwrap('SendMouseMotion', null, ['number', 'number']);
   SendMouseDown = Module.cwrap('SendMouseDown', null, ['number', 'number']);

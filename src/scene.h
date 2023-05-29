@@ -12,9 +12,14 @@ struct Scene {
     Vect pa;
     Vect pb;
   };
+  struct Bond {
+    Vect pa;
+    Vect pb;
+  };
 
   Particles particles;
   span<std::array<Portal, 2>> portals;
+  span<Bond> bonds;
 };
 
 class View {
