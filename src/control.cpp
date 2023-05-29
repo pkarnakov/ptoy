@@ -38,7 +38,7 @@ const char* Control::MouseModeToStr(MouseMode s) {
   }
 }
 
-Control::Control(Particles* partsys) : partsys_(partsys) {}
+Control::Control(Particles* partsys_) : partsys_(partsys_) {}
 
 void Control::Send(Event e) {
   Handle(e);
@@ -110,6 +110,75 @@ void Control::Handle(Event e) {
       case 'i':
         std::cout << "Remove last portal" << std::endl;
         partsys_->RemoveLastPortal();
+        break;
+      default:
+        break;
+    }
+  } else if (e.type == EventType::mouse_motion) {
+    switch (mouse_mode) {
+      case MouseMode::Attraction:
+      case MouseMode::Repulsion:
+        partsys_->SetForce(e.mousepos);
+        break;
+      case MouseMode::Bond:
+        partsys_->BondsMove(e.mousepos);
+        break;
+      case MouseMode::Pick:
+        partsys_->PickMove(e.mousepos);
+        break;
+      case MouseMode::Freeze:
+        partsys_->FreezeMove(e.mousepos);
+        break;
+      case MouseMode::Portal:
+        partsys_->PortalMove(e.mousepos);
+        break;
+      case MouseMode::None:
+        break;
+      default:
+        break;
+    }
+  } else if (e.type == EventType::mouse_down) {
+    switch (mouse_mode) {
+      case MouseMode::Attraction:
+      case MouseMode::Repulsion:
+        partsys_->SetForce(e.mousepos, true);
+        break;
+      case MouseMode::Bond:
+        partsys_->BondsStart(e.mousepos);
+        break;
+      case MouseMode::Pick:
+        partsys_->PickStart(e.mousepos);
+        break;
+      case MouseMode::Freeze:
+        partsys_->FreezeStart(e.mousepos);
+        break;
+      case MouseMode::Portal:
+        partsys_->PortalStart(e.mousepos);
+        break;
+      case MouseMode::None:
+        break;
+      default:
+        break;
+    }
+  } else if (e.type == EventType::mouse_up) {
+    switch (mouse_mode) {
+      case MouseMode::Attraction:
+      case MouseMode::Repulsion:
+        partsys_->SetForce(false);
+        break;
+      case MouseMode::Bond:
+        partsys_->BondsStop(e.mousepos);
+        break;
+      case MouseMode::Pick:
+        partsys_->PickStop(e.mousepos);
+        break;
+      case MouseMode::Freeze:
+        partsys_->FreezeStop(e.mousepos);
+        break;
+      case MouseMode::Portal:
+        partsys_->PortalStop(e.mousepos);
+        break;
+      case MouseMode::None:
         break;
       default:
         break;

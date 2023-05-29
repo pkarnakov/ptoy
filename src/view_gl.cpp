@@ -987,31 +987,7 @@ void ViewGl::Imp::Control() {
           break;
       }
     } else if (e.type == SDL_MOUSEMOTION) {
-      const Vect mousepos = GetDomainMousePosition();
-      control_.SendMouseMotion(mousepos);
-
-      switch (control_.mouse_mode) {
-        case Control::MouseMode::Attraction:
-        case Control::MouseMode::Repulsion:
-          partsys->SetForce(mousepos);
-          break;
-        case Control::MouseMode::Bond:
-          partsys->BondsMove(mousepos);
-          break;
-        case Control::MouseMode::Pick:
-          partsys->PickMove(mousepos);
-          break;
-        case Control::MouseMode::Freeze:
-          partsys->FreezeMove(mousepos);
-          break;
-        case Control::MouseMode::Portal:
-          partsys->PortalMove(mousepos);
-          break;
-        case Control::MouseMode::None:
-          break;
-        default:
-          break;
-      }
+      control_.SendMouseMotion(GetDomainMousePosition());
     } else if (e.type == SDL_MOUSEBUTTONDOWN) {
       int x, y;
       SDL_GetMouseState(&x, &y);
@@ -1022,52 +998,10 @@ void ViewGl::Imp::Control() {
           b->handler();
         }
       } else {
-        const Vect mousepos = GetDomainMousePosition();
-        control_.SendMouseDown(mousepos);
-        switch (control_.mouse_mode) {
-          case Control::MouseMode::Attraction:
-          case Control::MouseMode::Repulsion:
-            partsys->SetForce(mousepos, true);
-            break;
-          case Control::MouseMode::Bond:
-            partsys->BondsStart(mousepos);
-            break;
-          case Control::MouseMode::Pick:
-            partsys->PickStart(mousepos);
-            break;
-          case Control::MouseMode::Freeze:
-            partsys->FreezeStart(mousepos);
-            break;
-          case Control::MouseMode::Portal:
-            partsys->PortalStart(mousepos);
-            break;
-          case Control::MouseMode::None:
-            break;
-        }
+        control_.SendMouseDown(GetDomainMousePosition());
       }
     } else if (e.type == SDL_MOUSEBUTTONUP) {
-      const Vect mousepos = GetDomainMousePosition();
-      control_.SendMouseDown(mousepos);
-      switch (control_.mouse_mode) {
-        case Control::MouseMode::Attraction:
-        case Control::MouseMode::Repulsion:
-          partsys->SetForce(false);
-          break;
-        case Control::MouseMode::Bond:
-          partsys->BondsStop(mousepos);
-          break;
-        case Control::MouseMode::Pick:
-          partsys->PickStop(mousepos);
-          break;
-        case Control::MouseMode::Freeze:
-          partsys->FreezeStop(mousepos);
-          break;
-        case Control::MouseMode::Portal:
-          partsys->PortalStop(mousepos);
-          break;
-        case Control::MouseMode::None:
-          break;
-      }
+      control_.SendMouseUp(GetDomainMousePosition());
     } else if (e.type == SDL_WINDOWEVENT) {
       switch (e.window.event) {
         case SDL_WINDOWEVENT_RESIZED:
