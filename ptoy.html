@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <link rel="icon" type="image/png" href="favicon.png">
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=400">
+    <meta name="viewport" content="width=400, initial-scale=1">
     <title>ptoy</title>
     <link rel="stylesheet" href="ptoy.css" />
   </head>
@@ -18,11 +18,36 @@
     <div style="text-align: center;">
       <div style="display: inline; vertical-align: top;">
         <div style="display: inline-block; vertical-align: top;">
-          <canvas class="emscripten" id="canvas" tabindex=-1></canvas>
           <div>
             <a class="github-button" href="https://github.com/pkarnakov/ptoy" data-size="large" data-show-count="true" aria-label="Star on GitHub">Star</a>
             <a href="https://github.com/pkarnakov/ptoy" style="position:relative; bottom:0.6em;">github.com/pkarnakov/ptoy</a>
           </div>
+          <canvas class="emscripten" id="canvas" tabindex=-1></canvas>
+        </div>
+        <div style="margin:auto;">
+          <input type="button" title="space" class="button" id="button_pause" value="pause" onclick="togglePause();">
+          <input type="button" class="button" id="button_restart" value="restart" onclick="restart();">
+          <br>
+          <input type="button" title='r' class="button" id="button_r" value="repulse" onclick="pressButton('r')">
+          <input type="button" title='a' class="button" id="button_a" value="attract" onclick="pressButton('a')">
+          <input type="button" title='p' class="button" id="button_p" value="pick" onclick="pressButton('p')">
+          <input type="button" title='f' class="button" id="button_f" value="freeze" onclick="pressButton('f')">
+          <input type="button" title='o' class="button" id="button_o" value="portal" onclick="pressButton('o')">
+          <input type="button" title='b' class="button" id="button_b" value="bond" onclick="pressButton('b')">
+          <br>
+          <input type="button" title='i' class="button" id="button_i" value="remove portal" onclick="pressButton('i')">
+          <input type="button" title='g' class="button" id="button_g" value="gravity" onclick="pressButton('g')">
+        </div>
+        <div style="width:300px;margin:auto;text-align:left;">
+          <kbd>space</kbd>: toggle pause<br>
+          <kbd>r</kbd>: mouse mode to Repulse<br>
+          <kbd>a</kbd>: mouse mode to Attract<br>
+          <kbd>p</kbd>: mouse mode to Pick<br>
+          <kbd>f</kbd>: mouse mode to Freeze<br>
+          <kbd>o</kbd>: mouse mode to Portal<br>
+          <kbd>b</kbd>: mouse mode to Bond<br>
+          <kbd>i</kbd>: remove last pair of portals<br>
+          <kbd>g</kbd>: toggle gravity<br>
         </div>
         <!---
         <div style="display: inline-block; vertical-align: top; margin: 0;">
