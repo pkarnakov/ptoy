@@ -3,23 +3,31 @@ var GetConfig;
 var output = document.getElementById('output');
 var outputerr = document.getElementById('outputerr');
 var g_tmp_canvas;
-var kScale = 2;
 
+// Particles.
 var GetParticles;
 var g_particles;
 var g_particles_ptr;
 var g_particles_max_size = 10000;
 
+// Portals.
 var GetPortals;
 var g_portals;
 var g_portals_ptr;
 var g_portals_max_size = 10000;
 
+// Colors.
 var c_greed = "#00cd6c";
 var c_blue = "#009ade";
 var c_orange = "#f28522";
 
-function Draw() {
+// Control.
+var SendKeyDown;
+var SendMouseMotion;
+var SendMouseDown;
+var SendMouseUp;
+
+function draw() {
   let canvas = Module['canvas'];
   let ctx = canvas.getContext('2d');
   ctx.drawImage(g_tmp_canvas, 0, 0, canvas.width, canvas.height);
@@ -62,7 +70,7 @@ function Draw() {
   }
 }
 
-function ClearOutput() {
+function clearOutput() {
   if (output) {
     output.value = '';
   }
@@ -70,18 +78,23 @@ function ClearOutput() {
     outputerr.value = '';
   }
 }
-function PrintError(text) {
+function printError(text) {
   console.error(text);
   if (outputerr) {
     outputerr.value += text + "\n";
     outputerr.scrollTop = outputerr.scrollHeight;
   }
 }
-function PostRun() {
-  SetConfig = Module.cwrap('SetConfig', 'int', ['string']);
+
+function postRun() {
+  SetConfig = Module.cwrap('SetConfig', 'number', ['string']);
   GetConfig = Module.cwrap('GetConfig', 'string', []);
   GetParticles = Module.cwrap('GetParticles', 'number', ['number', 'number']);
   GetPortals = Module.cwrap('GetPortals', 'number', ['number', 'number']);
+  SendKeyDown = Module.cwrap('SendKeyDown', null, ['number']);
+  SendMouseMotion = Module.cwrap('SendMouseMotion', null, ['number', 'number']);
+  SendMouseDown = Module.cwrap('SendMouseDown', null, ['number', 'number']);
+  SendMouseUp = Module.cwrap('SendMouseUp', null, ['number', 'number']);
 
   g_particles_ptr = Module._malloc(g_particles_max_size * 2);
 
@@ -89,18 +102,49 @@ function PostRun() {
   g_tmp_canvas = document.createElement('canvas');
   g_tmp_canvas.width = canvas.width;
   g_tmp_canvas.height = canvas.height;
+
+  let handler_keydown = function(e) {
+    keysym = e.key.charCodeAt(0);
+    SendKeyDown(keysym < 256 ? keysym : 0);
+    // Prevent scrolling by Space.
+    if(e.keyCode == 32 && e.target == document.body) {
+      e.preventDefault();
+    }
+  };
+  let get_xy = function(e) {
+    let x = -1 + 2 * e.offsetX / canvas.clientWidth;
+    let y = 1 - 2 * e.offsetY / canvas.clientHeight;
+    return [x, y]
+  };
+  let handler_mousemove = function(e) {
+    xy = get_xy(e);
+    SendMouseMotion(xy[0], xy[1]);
+  };
+  let handler_mousedown = function(e) {
+    xy = get_xy(e);
+    SendMouseDown(xy[0], xy[1]);
+  };
+  let handler_mouseup = function(e) {
+    xy = get_xy(e);
+    SendMouseUp(xy[0], xy[1]);
+  };
+
+  window.addEventListener('keydown', handler_keydown, false);
+  canvas.addEventListener('mousemove', handler_mousemove, false);
+  canvas.addEventListener('mousedown', handler_mousedown, false);
+  canvas.addEventListener('mouseup', handler_mouseup, false);
 }
 
 var Module = {
   preRun: [],
-  postRun: [PostRun],
+  postRun: [postRun],
   printErr: (function(text) {
-    ClearOutput();
+    clearOutput();
     return function(text) {
       if (arguments.length > 1) {
         text = Array.prototype.slice.call(arguments).join(' ');
       }
-      PrintError(text);
+      printError(text);
     };
   })(),
   canvas: (function() { return document.getElementById('canvas'); })(),

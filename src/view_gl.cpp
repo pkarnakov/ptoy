@@ -11,7 +11,6 @@
 
 #include "logger.h"
 #include "view_gl.h"
-
 #include "control.h"
 
 #define CHECK_ERROR()                                                \
@@ -413,8 +412,6 @@ struct ViewGl::Imp {
       , height(height_)
       , state_quit(state_quit_)
       , state_pause(state_pause_) {
-    control_.debug = true; // XXX Control debug output.
-
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
       SDL_Log("Unable to initialize SDL: %s\n", SDL_GetError());
       throw std::runtime_error(SDL_GetError());
@@ -898,12 +895,12 @@ Q: quit after three presses
   }
 
   Vect GetDomainMousePosition(int x, int y) {
-    Vect c;
-    Vect A(-1., -1.),
-        B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
-    c.x = A.x + (B.x - A.x) * (float(x) / width);
-    c.y = B.y + (A.y - B.y) * (float(y) / height);
-    return c;
+    Vect A(-1., -1.);
+    Vect B(-1 + 2. * width / kInitWidth, -1. + 2. * height / kInitHeight);
+    return {
+        A.x + (B.x - A.x) * (float(x) / width),
+        B.y + (A.y - B.y) * (float(y) / height),
+    };
   }
 
   Vect GetDomainMousePosition() {

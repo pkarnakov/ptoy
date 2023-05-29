@@ -44,7 +44,7 @@ class Control {
   static const char* MouseModeToStr(MouseMode s);
 
  public:
-  bool debug;
+  bool debug = false;
   MouseMode mouse_mode = MouseMode::Repulsion;
 
  private:

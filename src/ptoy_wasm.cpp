@@ -9,6 +9,7 @@
 #include <memory>
 #include <sstream>
 
+#include "control.h"
 #include "game.h"
 #include "logger.h"
 #include "macros.h"
@@ -30,6 +31,7 @@ struct SceneData {
 Scene g_scene;
 SceneData g_data;
 std::unique_ptr<Game> gameinst;
+std::unique_ptr<Control> control;
 std::string g_buf;
 bool state_pause;
 bool state_quit;
@@ -61,7 +63,7 @@ static void main_loop() {
   const auto dt = 0.02;
   gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
   UpdateScene();
-  EM_ASM_({ Draw(); });
+  EM_ASM_({ draw(); });
 }
 
 extern "C" {
@@ -103,6 +105,18 @@ int GetPortals(uint16_t* data, int max_size) {
   }
   return i;
 }
+void SendKeyDown(char keysym) {
+  control->SendKeyDown(keysym);
+}
+void SendMouseMotion(float x, float y) {
+  control->SendMouseMotion({x, y});
+}
+void SendMouseDown(float x, float y) {
+  control->SendMouseDown({x, y});
+}
+void SendMouseUp(float x, float y) {
+  control->SendMouseUp({x, y});
+}
 } // extern "C"
 
 int main() {
@@ -110,9 +124,11 @@ int main() {
   state_quit = false;
   const int width = 800;
   const int height = 800;
-  gameinst = std::unique_ptr<Game>(new Game(width, height));
+  gameinst = std::make_unique<Game>(width, height);
+  control = std::make_unique<Control>(gameinst->partsys.get());
+  //control->debug = true;
   UpdateScene();
-  gameinst->partsys->InvertGravity();
+
   emscripten_set_canvas_element_size(
       "#canvas", width / kScale, height / kScale);
   emscripten_set_main_loop(main_loop, 30, 1);

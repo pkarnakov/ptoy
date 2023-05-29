@@ -15,6 +15,7 @@
 ## Requirements
 
 * Linux or Mac OS X
+* C++14 compiler
 * CMake (optional)
 * emscripten (optional to build WebAssembly)
 * SDL2
