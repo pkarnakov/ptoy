@@ -95,6 +95,7 @@ function postRun() {
   SendMouseMotion = Module.cwrap('SendMouseMotion', null, ['number', 'number']);
   SendMouseDown = Module.cwrap('SendMouseDown', null, ['number', 'number']);
   SendMouseUp = Module.cwrap('SendMouseUp', null, ['number', 'number']);
+  SetControlDebug = Module.cwrap('SetControlDebug', null, ['number']);
 
   g_particles_ptr = Module._malloc(g_particles_max_size * 2);
 
@@ -116,23 +117,52 @@ function postRun() {
     let y = 1 - 2 * e.offsetY / canvas.clientHeight;
     return [x, y]
   };
+  let get_touch_xy = function(e, touch) {
+    var rect = e.target.getBoundingClientRect();
+    var x = -1 + 2 * (e.changedTouches[0].pageX - rect.left) / canvas.clientWidth;
+    var y = 1 - 2 * (e.changedTouches[0].pageY - rect.top) / canvas.clientHeight;
+    return [x, y]
+  };
+
+
   let handler_mousemove = function(e) {
+    e.preventDefault();
     xy = get_xy(e);
     SendMouseMotion(xy[0], xy[1]);
   };
   let handler_mousedown = function(e) {
+    e.preventDefault();
     xy = get_xy(e);
     SendMouseDown(xy[0], xy[1]);
   };
   let handler_mouseup = function(e) {
+    e.preventDefault();
     xy = get_xy(e);
     SendMouseUp(xy[0], xy[1]);
   };
+  let handler_touchmove = function(e) {
+    e.preventDefault();
+    xy = get_touch_xy(e);
+    SendMouseMotion(xy[0], xy[1]);
+  };
+  let handler_touchstart = function(e) {
+    e.preventDefault();
+    xy = get_touch_xy(e);
+    SendMouseDown(xy[0], xy[1]);
+  };
+  let handler_touchend = function(e) {
+    e.preventDefault();
+    xy = get_touch_xy(e);
+    SendMouseUp(xy[0], xy[1]);
+  };
 
-  window.addEventListener('keydown', handler_keydown, false);
-  canvas.addEventListener('mousemove', handler_mousemove, false);
-  canvas.addEventListener('mousedown', handler_mousedown, false);
-  canvas.addEventListener('mouseup', handler_mouseup, false);
+  window.addEventListener('keydown', handler_keydown);
+  canvas.addEventListener('mousemove', handler_mousemove);
+  canvas.addEventListener('mousedown', handler_mousedown);
+  canvas.addEventListener('mouseup', handler_mouseup);
+  canvas.addEventListener('touchmove', handler_touchmove);
+  canvas.addEventListener('touchstart', handler_touchstart);
+  canvas.addEventListener('touchend', handler_touchend);
 }
 
 var Module = {

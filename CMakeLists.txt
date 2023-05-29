@@ -112,6 +112,7 @@ if (USE_WASM)
     , '_SetConfig', '_GetConfig' \
     , '_GetParticles', '_GetPortals' \
     , '_SendKeyDown', '_SendMouseMotion' , '_SendMouseDown', '_SendMouseUp' \
+    , '_SetControlDebug' \
   ]")
   target_link_options(${T} PRIVATE "-sEXPORTED_RUNTIME_METHODS=['cwrap', 'ccall']")
   target_compile_options(${T} PRIVATE -fexceptions)

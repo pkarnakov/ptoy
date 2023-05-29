@@ -117,6 +117,9 @@ void SendMouseDown(float x, float y) {
 void SendMouseUp(float x, float y) {
   control->SendMouseUp({x, y});
 }
+void SetControlDebug(int flag) {
+  control->debug = flag;
+}
 } // extern "C"
 
 int main() {
@@ -126,7 +129,6 @@ int main() {
   const int height = 800;
   gameinst = std::make_unique<Game>(width, height);
   control = std::make_unique<Control>(gameinst->partsys.get());
-  //control->debug = true;
   UpdateScene();
 
   emscripten_set_canvas_element_size(
