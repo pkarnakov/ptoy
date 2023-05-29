@@ -253,19 +253,25 @@ function postRun() {
     SendMouseUp(xy[0], xy[1]);
   };
   let handler_touchmove = function(e) {
-    e.preventDefault();
-    xy = get_touch_xy(e);
-    SendMouseMotion(xy[0], xy[1]);
+    if (e.changedTouches.length == 1) {
+      e.preventDefault();
+      xy = get_touch_xy(e);
+      SendMouseMotion(xy[0], xy[1]);
+    }
   };
   let handler_touchstart = function(e) {
-    e.preventDefault();
-    xy = get_touch_xy(e);
-    SendMouseDown(xy[0], xy[1]);
+    if (e.changedTouches.length == 1) {
+      e.preventDefault();
+      xy = get_touch_xy(e);
+      SendMouseDown(xy[0], xy[1]);
+    }
   };
   let handler_touchend = function(e) {
-    e.preventDefault();
-    xy = get_touch_xy(e);
-    SendMouseUp(xy[0], xy[1]);
+    if (e.changedTouches.length == 1) {
+      e.preventDefault();
+      xy = get_touch_xy(e);
+      SendMouseUp(xy[0], xy[1]);
+    }
   };
 
   window.addEventListener('keydown', handler_keydown);
