@@ -15,7 +15,6 @@ extern const Scal kPortalThickness;
 struct particle {
   Vect p;
   Vect v;
-  Vect f;
   particle() {}
   particle(Vect p_, Vect v_) : p(p_), v(v_) {}
 };
@@ -119,6 +118,7 @@ class Particles {
     return frozen_;
   }
   void step(Scal time_target, bool quit);
+  void step_old(Scal time_target, bool quit);
   void SetForce(Vect center, bool enabled);
   void SetForce(Vect center);
   void SetForce(bool enabled);

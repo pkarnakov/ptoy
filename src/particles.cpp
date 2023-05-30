@@ -68,7 +68,7 @@ Particles::Particles()
   ResetEnvObjFrame(domain);
 
   const Scal dx = kPortalThickness;
-  if (1) {
+  if (0) {
     PortalStart(Vect(box.A.x - dx, box.A.y));
     PortalStop(Vect(box.A.x - dx, box.B.y + 0.2));
     PortalStart(Vect(box.B.x + dx, box.A.y));
@@ -78,19 +78,65 @@ Particles::Particles()
 Particles::~Particles() {}
 void Particles::SetParticleBuffer() {
   blocks_buffer_ = Blocks;
-  std::vector<particle> res;
+  auto& res = particle_buffer_;
+  res.clear();
   for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
     const auto& data = blocks_buffer_.GetData();
     for (size_t p = 0; p < data.position[iblock].size(); ++p) {
       res.emplace_back(data.position[iblock][p], data.velocity[iblock][p]);
     }
   }
-  particle_buffer_ = res;
 }
 void Particles::AddEnvObj(env_object* env) {
   ENVOBJ.push_back(std::unique_ptr<env_object>(env));
 }
 void Particles::step(Scal time_target, bool quit) {
+  {
+    while (t < time_target && !quit) {
+      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
+        calc_forces(iblock);
+      }
+
+      RHS_bonds();
+
+      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
+        auto& data = Blocks.GetData();
+        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
+          data.velocity_tmp[iblock][p] = data.velocity[iblock][p];
+          data.position_tmp[iblock][p] = data.position[iblock][p];
+          data.velocity[iblock][p] +=
+              data.force[iblock][p] * (dt * 0.5 / kMass);
+          data.position[iblock][p] += data.velocity[iblock][p] * dt * 0.5;
+        }
+      }
+
+      t += 0.5 * dt;
+
+      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
+        calc_forces(iblock);
+      }
+
+      RHS_bonds();
+
+      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
+        auto& data = Blocks.GetData();
+        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
+          data.velocity[iblock][p] = data.velocity_tmp[iblock][p] +
+                                     data.force[iblock][p] * (dt / kMass);
+          data.position[iblock][p] =
+              data.position_tmp[iblock][p] + data.velocity[iblock][p] * dt;
+        }
+      }
+
+      Blocks.SortParticles();
+      CheckBonds();
+      SetParticleBuffer();
+      t += 0.5 * dt;
+    }
+  }
+}
+
+void Particles::step_old(Scal time_target, bool quit) {
 #pragma omp parallel
   {
     while (t < time_target && !quit) {
