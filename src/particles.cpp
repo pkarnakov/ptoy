@@ -4,43 +4,36 @@
 #include "macros.h"
 #include "particles.h"
 
+const Scal kRadius = 0.02;
+const Scal kSigma = 1;
+const Scal kSigmaWall = 1;
+const Scal kSigmaBond = 1e5;
+const Scal kSigmaPick = 1e3;
+const Scal kSigmaPortalEdge = 1;
+const Scal kRadiusPortalEdge = 3 * kRadius;
+const Scal kMass = kRadius * kRadius * 100;
+const Scal kPointForce = 0.1;
+const Scal kPointForceAttractive = 0.1;
+const Scal kDissipation = 0.001;
+const Scal kBlockSize = 4. * kRadius;
+const Scal kGravity = 10;
+const Scal kPortalThickness = 0.02;
+const Scal kVelocityLimit = 10;
+
+const int kParticleIdNone = -1;
+const Scal kTimeStep = 0.0005;
+
 Particles::Particles()
-    : domain(RectVect(Vect(-1., -1.), Vect(1., 1.)))
+    : domain(RectVect(Vect(-1, -1), Vect(1, 1)))
     , Blocks(domain, Vect(kBlockSize, kBlockSize))
     , blocks_buffer_(Blocks) {
   force_enabled = false;
-  force_center = Vect(0., 0.);
+  force_center = Vect(0, 0);
   remove_last_portal_ = false;
 
-  // place particles in the domain
   const Scal r = kRadius;
-  /*
-  const int row = 1. / r;
-  const int col = 0.5 / r;
-  const int N = row * col;
-
-  std::vector<particle> P;
-  for(int i=0; i<N; ++i) {
-    const Vect p((i%row*2.0+1.0)*r-1.0, (i/row*2.0+1.0)*r-1.0);
-    const Vect v(0., 0.);
-    // TODO: adjust sigma so that with r->0 it converges to a solid body
-    const Scal sigma = kSigma;
-    switch (i % 1) {
-      case 0:
-        P.push_back(particle(p, v, 0.01, r, sigma, 0x1, rgb(1.,0.,0.)));
-        break;
-      case 1:
-        P.push_back(particle(p, v, 0.02, r, sigma, 0x2, rgb(0.,1.,0.)));
-        break;
-      case 2:
-        P.push_back(particle(p, v, 0.05, r, sigma, 0x4, rgb(0.,0.,1.)));
-        break;
-    }
-  }
-  */
-
-  const size_t rows = 20;
-  const size_t columns = 20;
+  const size_t rows = 25;
+  const size_t columns = 25;
   const Scal width = columns * 2. * kRadius;
   const Scal height = rows * std::sqrt(3.) * kRadius;
   std::vector<particle> P;
@@ -49,8 +42,7 @@ Particles::Particles()
     for (size_t i = 0; i < columns; ++i) {
       const Scal x = box.A.x + kRadius * (2. * i + 1. + (j % 2));
       const Scal y = box.A.y + kRadius * (std::sqrt(3.) * j + 1.);
-      P.emplace_back(
-          Vect(x, y), Vect(0., 0.), kMass, r, kSigma, 0x1, rgb(1., 0., 0.));
+      P.emplace_back(Vect(x, y), Vect(0., 0.));
     }
   }
 
@@ -90,20 +82,13 @@ void Particles::SetParticleBuffer() {
   for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
     const auto& data = blocks_buffer_.GetData();
     for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-      res.push_back(particle(
-          data.position[iblock][p], data.velocity[iblock][p], 0.01, kRadius,
-          kSigma, 0x1, rgb(1., 0., 0.)));
+      res.emplace_back(data.position[iblock][p], data.velocity[iblock][p]);
     }
   }
   particle_buffer_ = res;
 }
 void Particles::AddEnvObj(env_object* env) {
   ENVOBJ.push_back(std::unique_ptr<env_object>(env));
-}
-void Particles::status(std::ostream& out) {
-  out << "status N/A";
-  // out<<"Particles system"<<std::endl<<"Particles number =
-  // "<<P.size()<<std::endl;
 }
 void Particles::step(Scal time_target, bool quit) {
 #pragma omp parallel
@@ -203,7 +188,6 @@ void Particles::step(Scal time_target, bool quit) {
 
         // Pass the data to renderer if ready
         if (renderer_ready_for_next_) {
-          std::lock_guard<std::mutex> lg(m_buffer_);
           SetParticleBuffer();
           RHS_bonds();
           no_rendering_buffer_ = no_rendering_;
@@ -529,27 +513,41 @@ void Particles::FreezeStart(Vect point) {
   FreezeMove(point);
 }
 
-void Particles::FreezeMove(Vect point) {
+void Particles::FreezeMove(Vect mousepos) {
   if (!freeze_enabled_) {
     return;
   }
 
+  const auto kFreezeRadius = kRadius * 3;
+  size_t min_iblock = -1;
+  size_t min_ip = -1;
+  Scal min_dist = kFreezeRadius;
+
+  auto& data = blocks_buffer_.GetData();
+  // Find the nearest particle within the radius.
   for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
-    auto& data = blocks_buffer_.GetData();
-    for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-      if (data.position[iblock][p].dist(point) < kRadius) {
-        const int id = data.id[iblock][p];
-        if (id != freeze_last_id_) {
-          if (frozen_.count(id)) {
-            frozen_.erase(id);
-            std::cout << "Unfreeze particle id=" << id << std::endl;
-          } else {
-            frozen_.insert(id);
-            std::cout << "Freeze particle id=" << id << std::endl;
-          }
-        }
-        freeze_last_id_ = id;
+    for (size_t ip = 0; ip < data.position[iblock].size(); ++ip) {
+      const Scal dist = data.position[iblock][ip].dist(mousepos);
+      if (dist < min_dist) {
+        min_dist = dist;
+        min_iblock = iblock;
+        min_ip = ip;
       }
+    }
+  }
+  // Freeze or unfreeze the particle if diffferent from previous.
+  if (min_dist < kFreezeRadius) {
+    const int id = data.id[min_iblock][min_ip];
+    if (id != freeze_last_id_) {
+      const auto it = frozen_.find(id);
+      if (it == frozen_.end()) {
+        frozen_.insert(it, id);
+        std::cout << "Freeze particle id=" << id << std::endl;
+      } else {
+        frozen_.erase(id);
+        std::cout << "Unfreeze particle id=" << id << std::endl;
+      }
+      freeze_last_id_ = id;
     }
   }
 }
@@ -696,52 +694,6 @@ void CalcForceAvx(
 }
 #else
 #define CALC_FORCE CalcForceSerial
-#endif
-
-#if 0
-void print(const __m256& mm) {
-  float a[8];
-  _mm256_store_ps(a, mm);
-  for (size_t i = 0; i < 8; ++i) {
-    std::cout << a[i] << " ";
-  }
-  std::cout << std::endl;
-}
-void TestUni() {
-  std::cout.precision(8);
-  std::cout << std::scientific;
-  const Vect p0(0., 0.);
-  const Vect q0(1., 0.);
-  const Vect zero(0., 0.);
-
-  const size_t N = 8;
-  ArrayVect position(N, p0);
-  ArrayVect position_other(N, q0);
-
-  for (size_t i = 0; i < N; ++i) {
-    const Scal k = 0.1;
-    position[i] += Vect(0., k * i);
-    position_other[i] += Vect(0., k * i);
-  }
-
-  Vect offset(1., 0.);
-  for (size_t i = 0; i < N; ++i) {
-    position[i] += offset;
-    position_other[i] += offset;
-  }
-
-  ArrayVect force2(N, zero);
-  CalcForceSerial(force2, position, position_other);
-
-  ArrayVect force(N, zero);
-  CalcForceAvx(force, position, position_other);
-
-  for (size_t i = 0; i < N; ++i) {
-    std::cout << force2[i] << " " << force[i] << " "
-              << (force[i] - force2[i]) * (1. / force2[i].length()) << " "
-              << std::endl;
-  }
-}
 #endif
 
 void Particles::UpdatePortalBlocks(Portal& portal) {

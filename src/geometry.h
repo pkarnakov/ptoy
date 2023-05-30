@@ -9,6 +9,12 @@ using Scal = float;
 
 const Scal PI = atan(1.0) * 4.0;
 
+template <class T>
+T sqr(T a) {
+  return a * a;
+}
+
+
 class Vect {
  public:
   Vect() {}

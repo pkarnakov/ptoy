@@ -3,58 +3,21 @@
 #include <functional>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <set>
 #include <vector>
+
 #include "blocks.h"
 #include "geometry.h"
 
-using std::endl;
-using std::min;
-using std::size_t;
-using std::vector;
-
-const Scal kRadius = 0.02;
-const Scal kSigma = 1.;
-const Scal kSigmaWall = 1.;
-const Scal kSigmaBond = 1e5;
-const Scal kSigmaPick = 1e3;
-const Scal kSigmaPortalEdge = 1;
-const Scal kRadiusPortalEdge = 3. * kRadius;
-const Scal kMass = kRadius * kRadius * 100.;
-const Scal kPointForce = 0.1;
-const Scal kPointForceAttractive = 0.1;
-const Scal kDissipation = .01;
-const Scal kTimeStep = 0.0003;
-const Scal kBlockSize = 4. * kRadius;
-const Scal kGravity = 10.;
-const Scal kPortalThickness = 0.02;
-const Scal kVelocityLimit = 10.;
-
-const int kParticleIdNone = -1;
-
-template <class T>
-T sqr(T a) {
-  return a * a;
-}
-
-void TestUni();
+extern const Scal kRadius;
+extern const Scal kPortalThickness;
 
 struct particle {
   Vect p;
   Vect v;
   Vect f;
-  Vect p0;
-  Vect v0;
-  // unsigned int layers_mask;
-  // rgb color;
   particle() {}
-  particle(
-      Vect _p, Vect _v, Scal /*_m*/, Scal /*_r*/, Scal /*_sigma*/,
-      unsigned int /*_layers_mask*/, rgb /*_color*/)
-      : p(_p)
-      , v(_v) //, layers_mask(_layers_mask), color(_color)
-  {}
+  particle(Vect p_, Vect v_) : p(p_), v(v_) {}
 };
 
 Vect F12(Vect p1, Vect p2, Scal sigma, Scal R);
@@ -155,7 +118,6 @@ class Particles {
   const std::set<int>& GetFrozen() const {
     return frozen_;
   }
-  void status(std::ostream& out);
   void step(Scal time_target, bool quit);
   void SetForce(Vect center, bool enabled);
   void SetForce(Vect center);
@@ -218,8 +180,6 @@ class Particles {
     renderer_ready_for_next_ = value;
   }
 
-  mutable std::mutex m_buffer_;
-
  private:
   RectVect domain;
   RectVect resize_queue_;
@@ -230,7 +190,7 @@ class Particles {
   void calc_forces(size_t i);
   void RHS_bonds();
   void ApplyFrozen();
-  vector<std::unique_ptr<env_object>> ENVOBJ;
+  std::vector<std::unique_ptr<env_object>> ENVOBJ;
   std::vector<std::vector<size_t>> block_envobj_;
   Vect force_center;
   bool force_enabled;
