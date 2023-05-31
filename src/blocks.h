@@ -7,114 +7,105 @@
 #include "aligned_allocator.h"
 #include "geometry.h"
 
-using ArrayVect = std::vector<Vect, AlignedAllocator<Vect, 64>>;
-using ArrayInt = std::vector<int, AlignedAllocator<int, 64>>;
+template <class T>
+using Array = std::array<T, 16>;
+
+using ArrayVect = Array<Vect>;
+using ArrayInt = Array<int>;
+
+template <class T>
+using Data = std::vector<Array<T>, AlignedAllocator<Array<T>, 64>>;
 
 class Blocks {
  public:
   static const size_t kNumNeighbors = 9;
-  static const size_t kBlockNone = static_cast<size_t>(-1);
-  using DataVect = std::vector<ArrayVect>;
-  using DataInt = std::vector<ArrayInt>;
+  static const size_t kBlockNone = -1;
   struct BlockData {
-   private:
-    Blocks* parent;
-
    public:
-    DataVect position, position_tmp, velocity, velocity_tmp, force;
-    DataInt id;
+    Data<Vect> position, position_tmp, velocity, velocity_tmp, force;
+    Data<int> id;
+    std::vector<int> block_size;
     BlockData() = delete;
-    BlockData(Blocks* parent_) : parent(parent_) {}
-    void clear() {
+    BlockData(Blocks* owner) : owner_(owner) {}
+    void Clear() {
       position.clear();
       position_tmp.clear();
       velocity.clear();
       velocity_tmp.clear();
       force.clear();
       id.clear();
+      block_size.clear();
 
-      for (auto& pair : parent->block_by_id_) {
+      for (auto& pair : owner_->block_by_id_) {
         pair.first = kBlockNone;
       }
     }
-    void resize(size_t size) {
+    void Resize(size_t size) {
       position.resize(size);
       position_tmp.resize(size);
       velocity.resize(size);
       velocity_tmp.resize(size);
       force.resize(size);
       id.resize(size);
-
-      for (size_t i = 0; i < position.size(); ++i) {
-        const size_t kBlockPadding = 16;
-        position[i].reserve(kBlockPadding);
-        position_tmp[i].reserve(kBlockPadding);
-        velocity[i].reserve(kBlockPadding);
-        velocity_tmp[i].reserve(kBlockPadding);
-        force[i].reserve(kBlockPadding);
-        id[i].reserve(kBlockPadding);
-      }
+      block_size.resize(size, 0);
 
       // TODO: consider updating block_by_id_ here
-      for (auto& pair : parent->block_by_id_) {
+      for (auto& pair : owner_->block_by_id_) {
         pair.first = kBlockNone;
       }
     }
-    void RemoveParticle(
-        size_t src, // source block
-        size_t idx // particle index within the source block
-    ) {
-      std::swap(position[src][idx], position[src].back());
-      std::swap(position_tmp[src][idx], position_tmp[src].back());
-      std::swap(velocity[src][idx], velocity[src].back());
-      std::swap(velocity_tmp[src][idx], velocity_tmp[src].back());
-      std::swap(force[src][idx], force[src].back());
-      std::swap(id[src][idx], id[src].back());
+    // src: source block
+    // idx: particle index within the source block
+    void RemoveParticle(size_t src, size_t idx) {
+      const int last = block_size[src] - 1;
+      std::swap(position[src][idx], position[src][last]);
+      std::swap(position_tmp[src][idx], position_tmp[src][last]);
+      std::swap(velocity[src][idx], velocity[src][last]);
+      std::swap(velocity_tmp[src][idx], velocity_tmp[src][last]);
+      std::swap(force[src][idx], force[src][last]);
+      std::swap(id[src][idx], id[src][last]);
 
-      parent->block_by_id_[id[src][idx]] = {src, idx};
-      parent->block_by_id_[id[src].back()].first = kBlockNone;
+      owner_->block_by_id_[id[src][idx]] = {src, idx};
+      owner_->block_by_id_[id[src][last]].first = kBlockNone;
 
-      position[src].pop_back();
-      position_tmp[src].pop_back();
-      velocity[src].pop_back();
-      velocity_tmp[src].pop_back();
-      force[src].pop_back();
-      id[src].pop_back();
+      --block_size[src];
     }
-    void MoveParticle(
-        size_t src, // source block
-        size_t idx, // particle index within the source block
-        size_t dest // destination block
-    ) {
-      assert(src != dest);
-      position[dest].push_back(position[src][idx]);
-      position_tmp[dest].push_back(position_tmp[src][idx]);
-      velocity[dest].push_back(velocity[src][idx]);
-      velocity_tmp[dest].push_back(velocity_tmp[src][idx]);
-      force[dest].push_back(force[src][idx]);
-      id[dest].push_back(id[src][idx]);
+    // src: source block
+    // idx: particle index within the source block
+    // dest: destination block
+    void MoveParticle(size_t src, size_t idx, size_t dest) {
+      const int end = block_size[dest];
+      position[dest][end] = position[src][idx];
+      position_tmp[dest][end] = position_tmp[src][idx];
+      velocity[dest][end] = velocity[src][idx];
+      velocity_tmp[dest][end] = velocity_tmp[src][idx];
+      force[dest][end] = force[src][idx];
+      id[dest][end] = id[src][idx];
 
       RemoveParticle(src, idx);
-
-      parent->block_by_id_[id[dest].back()] = {dest, position[dest].size() - 1};
+      owner_->block_by_id_[id[dest][end]] = {dest, end};
+      ++block_size[dest];
     }
     void AddParticle(
-        size_t dest, // destination block
-        Vect particle_position, Vect particle_velocity, int particle_id) {
-      position[dest].push_back(particle_position);
-      position_tmp[dest].push_back(GetNan<Vect>());
-      velocity[dest].push_back(particle_velocity);
-      velocity_tmp[dest].push_back(GetNan<Vect>());
-      force[dest].push_back(GetNan<Vect>());
-      id[dest].push_back(particle_id);
-
-      assert(id[dest].back() >= 0);
-      const size_t pid = static_cast<size_t>(id[dest].back());
-      if (parent->block_by_id_.size() <= pid) {
-        parent->block_by_id_.resize(pid + 1);
+        size_t dest, Vect particle_position, Vect particle_velocity,
+        int particle_id) {
+      const int end = block_size[dest];
+      position[dest][end] = particle_position;
+      position_tmp[dest][end] = GetNan<Vect>();
+      velocity[dest][end] = particle_velocity;
+      velocity_tmp[dest][end] = GetNan<Vect>();
+      force[dest][end] = GetNan<Vect>();
+      id[dest][end] = particle_id;
+      const size_t pid = static_cast<size_t>(id[dest][end]);
+      if (owner_->block_by_id_.size() <= pid) {
+        owner_->block_by_id_.resize(pid + 1);
       }
-      parent->block_by_id_[pid] = {dest, position[dest].size() - 1};
+      owner_->block_by_id_[pid] = {dest, block_size[dest]};
+      ++block_size[dest];
     }
+
+   private:
+    Blocks* owner_;
   };
   void SetDomain(RectVect proposal) {
     RectVect domain = domain_;
@@ -142,7 +133,6 @@ class Blocks {
   Scal GetCircumRadius() const {
     return block_size_.length() * 0.5;
   }
-  // TODO: draw blocks
   Vect GetCenter(size_t block) const {
     const MIdx m(block / dims_.j, block % dims_.j);
     return domain_.A +
@@ -176,9 +166,10 @@ class Blocks {
     }
     SortParticles();
   }
+  template <class VectorVect, class VectorInt>
   void AddParticles(
-      const ArrayVect& position, const ArrayVect& velocity,
-      const std::vector<int>& id) {
+      const VectorVect& position, const VectorVect& velocity,
+      const VectorInt& id) {
     const size_t size = position.size();
     assert(velocity.size() == size);
     assert(id.size() == size);
@@ -217,7 +208,7 @@ class Blocks {
     size_t max_per_cell = 0;
     for (size_t i = 0; i < num_blocks_; ++i) {
       size_t p = 0;
-      size_t pe = data_.position[i].size();
+      size_t pe = data_.block_size[i];
       while (p < pe) {
         const size_t j = FindBlock(data_.position[i][p]);
         if (i != j) {
@@ -262,8 +253,8 @@ class Blocks {
 
     assert(dims_.i > 0 && dims_.j > 0 && num_blocks_ > 0);
 
-    data_.clear();
-    data_.resize(num_blocks_);
+    data_.Clear();
+    data_.Resize(num_blocks_);
 
     // Calc offsets to neighbors
     size_t n = 0;

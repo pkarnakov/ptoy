@@ -46,8 +46,8 @@ Particles::Particles()
     }
   }
 
-  ArrayVect position;
-  ArrayVect velocity;
+  std::vector<Vect> position;
+  std::vector<Vect> velocity;
   std::vector<int> id;
 
   for (auto p : plist) {
@@ -58,7 +58,7 @@ Particles::Particles()
 
   blocks_.AddParticles(position, velocity, id);
 
-  time_ = 0.0;
+  time_ = 0;
   gravity_ = Vect(0, -1) * kGravity;
 
   SetDomain(domain);
