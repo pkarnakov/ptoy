@@ -10,7 +10,7 @@
 using ArrayVect = std::vector<Vect, AlignedAllocator<Vect, 64>>;
 using ArrayInt = std::vector<int, AlignedAllocator<int, 64>>;
 
-class blocks {
+class Blocks {
  public:
   static const size_t kNumNeighbors = 9;
   static const size_t kBlockNone = static_cast<size_t>(-1);
@@ -18,13 +18,13 @@ class blocks {
   using DataInt = std::vector<ArrayInt>;
   struct BlockData {
    private:
-    blocks* parent;
+    Blocks* parent;
 
    public:
     DataVect position, position_tmp, velocity, velocity_tmp, force;
     DataInt id;
     BlockData() = delete;
-    BlockData(blocks* parent_) : parent(parent_) {}
+    BlockData(Blocks* parent_) : parent(parent_) {}
     void clear() {
       position.clear();
       position_tmp.clear();
@@ -148,7 +148,7 @@ class blocks {
     return domain_.A +
            Vect((0.5 + m.i) * block_size_.x, (0.5 + m.j) * block_size_.y);
   }
-  blocks(RectVect domain, Vect block_size)
+  Blocks(RectVect domain, Vect block_size)
       : data_(this), num_particles_(0), num_per_cell_(0) {
     InitEmptyBlocks(domain, block_size);
   }

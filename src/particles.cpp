@@ -21,28 +21,28 @@ const Scal kPortalThickness = 0.02;
 const Scal kVelocityLimit = 10;
 
 const int kParticleIdNone = -1;
-const Scal kTimeStep = 0.0005;
+const Scal kTimeStep = 0.0004;
 
 Particles::Particles()
     : domain(RectVect(Vect(-1, -1), Vect(1, 1)))
-    , Blocks(domain, Vect(kBlockSize, kBlockSize))
-    , blocks_buffer_(Blocks) {
+    , blocks_(domain, Vect(kBlockSize, kBlockSize))
+    , blocks_buffer_(blocks_) {
   force_enabled = false;
   force_center = Vect(0, 0);
   remove_last_portal_ = false;
 
   const Scal r = kRadius;
-  const size_t rows = 25;
-  const size_t columns = 25;
+  const size_t rows = 50;
+  const size_t columns = 50;
   const Scal width = columns * 2. * kRadius;
   const Scal height = rows * std::sqrt(3.) * kRadius;
-  std::vector<particle> P;
+  std::vector<Particle> plist;
   RectVect box(Vect(-0.5 * width, -1.), Vect(0.5 * width, -1. + height));
   for (size_t j = 0; j < rows; ++j) {
     for (size_t i = 0; i < columns; ++i) {
       const Scal x = box.A.x + kRadius * (2. * i + 1. + (j % 2));
       const Scal y = box.A.y + kRadius * (std::sqrt(3.) * j + 1.);
-      P.emplace_back(Vect(x, y), Vect(0., 0.));
+      plist.emplace_back(Vect(x, y), Vect(0., 0.));
     }
   }
 
@@ -50,16 +50,15 @@ Particles::Particles()
   ArrayVect velocity;
   std::vector<int> id;
 
-  for (auto part : P) {
-    position.push_back(part.p);
-    velocity.push_back(part.v);
+  for (auto p : plist) {
+    position.push_back(p.p);
+    velocity.push_back(p.v);
     id.push_back(id.size());
   }
 
-  Blocks.AddParticles(position, velocity, id);
+  blocks_.AddParticles(position, velocity, id);
 
-  t = 0.0;
-  dt = kTimeStep;
+  time_ = 0.0;
   gravity_ = Vect(0, -1) * kGravity;
 
   SetDomain(domain);
@@ -77,124 +76,120 @@ Particles::Particles()
 }
 Particles::~Particles() {}
 void Particles::SetParticleBuffer() {
-  blocks_buffer_ = Blocks;
+  blocks_buffer_ = blocks_;
   auto& res = particle_buffer_;
   res.clear();
-  for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
+  for (size_t ib = 0; ib < blocks_buffer_.GetNumBlocks(); ++ib) {
     const auto& data = blocks_buffer_.GetData();
-    for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-      res.emplace_back(data.position[iblock][p], data.velocity[iblock][p]);
+    for (size_t p = 0; p < data.position[ib].size(); ++p) {
+      res.emplace_back(data.position[ib][p], data.velocity[ib][p]);
     }
   }
 }
-void Particles::AddEnvObj(env_object* env) {
-  ENVOBJ.push_back(std::unique_ptr<env_object>(env));
+void Particles::AddEnvObj(Obstacle* env) {
+  obstacles_.push_back(std::unique_ptr<Obstacle>(env));
 }
 void Particles::step(Scal time_target, bool quit) {
-  {
-    while (t < time_target && !quit) {
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        calc_forces(iblock);
-      }
-
-      RHS_bonds();
-
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        auto& data = Blocks.GetData();
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          data.velocity_tmp[iblock][p] = data.velocity[iblock][p];
-          data.position_tmp[iblock][p] = data.position[iblock][p];
-          data.velocity[iblock][p] +=
-              data.force[iblock][p] * (dt * 0.5 / kMass);
-          data.position[iblock][p] += data.velocity[iblock][p] * dt * 0.5;
-        }
-      }
-
-      t += 0.5 * dt;
-
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        calc_forces(iblock);
-      }
-
-      RHS_bonds();
-
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        auto& data = Blocks.GetData();
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          data.velocity[iblock][p] = data.velocity_tmp[iblock][p] +
-                                     data.force[iblock][p] * (dt / kMass);
-          data.position[iblock][p] =
-              data.position_tmp[iblock][p] + data.velocity[iblock][p] * dt;
-        }
-      }
-
-      Blocks.SortParticles();
-      CheckBonds();
-      SetParticleBuffer();
-      t += 0.5 * dt;
+  const Scal dt = kTimeStep;
+  while (time_ < time_target && !quit) {
+    for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+      CalcForces(ib);
     }
+    AppendBondForces();
+
+    for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+      auto& data = blocks_.GetData();
+      for (size_t p = 0; p < data.position[ib].size(); ++p) {
+        data.velocity_tmp[ib][p] = data.velocity[ib][p];
+        data.position_tmp[ib][p] = data.position[ib][p];
+        data.velocity[ib][p] += data.force[ib][p] * (dt * 0.5 / kMass);
+        data.position[ib][p] += data.velocity[ib][p] * dt * 0.5;
+      }
+    }
+
+    time_ += 0.5 * dt;
+
+    for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+      CalcForces(ib);
+    }
+    AppendBondForces();
+
+    for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+      auto& data = blocks_.GetData();
+      for (size_t p = 0; p < data.position[ib].size(); ++p) {
+        data.velocity[ib][p] =
+            data.velocity_tmp[ib][p] + data.force[ib][p] * (dt / kMass);
+        data.position[ib][p] =
+            data.position_tmp[ib][p] + data.velocity[ib][p] * dt;
+      }
+    }
+
+    blocks_.SortParticles();
+    CheckBonds();
+    SetParticleBuffer();
+    time_ += 0.5 * dt;
   }
 }
 
 void Particles::step_old(Scal time_target, bool quit) {
+  const Scal dt = kTimeStep;
 #pragma omp parallel
   {
-    while (t < time_target && !quit) {
+    while (time_ < time_target && !quit) {
 #pragma omp for schedule(dynamic, 8)
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        calc_forces(iblock);
+      for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+        CalcForces(ib);
       }
 
 #pragma omp single
       {
-        RHS_bonds();
+        AppendBondForces();
         ApplyPortalsForces();
         ApplyFrozen();
       }
 
 #pragma omp for schedule(dynamic, 8)
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        auto& data = Blocks.GetData();
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          data.velocity_tmp[iblock][p] = data.velocity[iblock][p];
-          data.position_tmp[iblock][p] = data.position[iblock][p];
-          data.velocity[iblock][p] +=
-              data.force[iblock][p] * (dt * 0.5 / kMass);
-          if (data.velocity[iblock][p].length() > kVelocityLimit) {
-            data.velocity[iblock][p] *=
-                kVelocityLimit / data.velocity[iblock][p].length();
+      for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+        auto& data = blocks_.GetData();
+        for (size_t p = 0; p < data.position[ib].size(); ++p) {
+          data.velocity_tmp[ib][p] = data.velocity[ib][p];
+          data.position_tmp[ib][p] = data.position[ib][p];
+          data.velocity[ib][p] += data.force[ib][p] * (dt * 0.5 / kMass);
+          if (data.velocity[ib][p].length() > kVelocityLimit) {
+            data.velocity[ib][p] *=
+                kVelocityLimit / data.velocity[ib][p].length();
           }
-          data.position[iblock][p] += data.velocity[iblock][p] * dt * 0.5;
+          data.position[ib][p] += data.velocity[ib][p] * dt * 0.5;
         }
       }
 
 #pragma omp single
-      t += 0.5 * dt;
+      time_ += 0.5 * dt;
 
 #pragma omp for schedule(dynamic, 8)
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        calc_forces(iblock);
+      for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+        CalcForces(ib);
       }
 
 #pragma omp single
       {
-        RHS_bonds();
+        AppendBondForces();
         ApplyPortalsForces();
         ApplyFrozen();
       }
 
 #pragma omp for schedule(dynamic, 8)
-      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-        auto& data = Blocks.GetData();
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          data.velocity[iblock][p] = data.velocity_tmp[iblock][p] +
-                                     data.force[iblock][p] * (dt / kMass);
-          if (data.velocity[iblock][p].length() > kVelocityLimit) {
-            data.velocity[iblock][p] *=
-                kVelocityLimit / data.velocity[iblock][p].length();
+      for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+        auto& data = blocks_.GetData();
+        for (size_t p = 0; p < data.position[ib].size(); ++p) {
+          data.velocity[ib][p] =
+              data.velocity_tmp[ib][p] + data.force[ib][p] * (dt / kMass);
+          if (data.velocity[ib][p].length() > kVelocityLimit) {
+            data.velocity[ib][p] *=
+                kVelocityLimit / data.velocity[ib][p].length();
           }
-          data.position[iblock][p] =
-              data.position_tmp[iblock][p] + data.velocity[iblock][p] * dt;
+          data.position[ib][p] =
+              data.position_tmp[ib][p] + data.velocity[ib][p] * dt;
         }
       }
 
@@ -213,7 +208,7 @@ void Particles::step_old(Scal time_target, bool quit) {
         limit(new_domain.B.x, resize_queue_.B.x);
         limit(new_domain.B.y, resize_queue_.B.y);
 
-        if (int(t / dt) % int(0.01 / dt) == 0) {
+        if (int(time_ / dt) % int(0.01 / dt) == 0) {
           if (new_domain != domain) {
             SetDomain(new_domain);
             ResetEnvObjFrame(new_domain);
@@ -222,7 +217,7 @@ void Particles::step_old(Scal time_target, bool quit) {
 
         DetectPortals();
         ApplyPortals();
-        Blocks.SortParticles();
+        blocks_.SortParticles();
         CheckBonds();
 
         if (remove_last_portal_) {
@@ -235,24 +230,24 @@ void Particles::step_old(Scal time_target, bool quit) {
         // Pass the data to renderer if ready
         if (renderer_ready_for_next_) {
           SetParticleBuffer();
-          RHS_bonds();
+          AppendBondForces();
           no_rendering_buffer_ = no_rendering_;
           renderer_ready_for_next_ = false;
           // std::this_thread::sleep_for(std::chrono::milliseconds(25));
         }
 
         // Advance in time (another half)
-        t += 0.5 * dt;
+        time_ += 0.5 * dt;
       }
     }
   }
 }
 
 void Particles::CheckBonds() {
-  const auto bbi = Blocks.GetBlockById();
+  const auto bbi = blocks_.GetBlockById();
   for (auto it = bonds_.begin(); it != bonds_.end();) {
-    if (bbi[it->first].first == blocks::kBlockNone ||
-        bbi[it->second].first == blocks::kBlockNone) {
+    if (bbi[it->first].first == Blocks::kBlockNone ||
+        bbi[it->second].first == Blocks::kBlockNone) {
       it = bonds_.erase(it);
     } else {
       ++it;
@@ -272,18 +267,18 @@ void Particles::SetForce(bool enabled) {
 }
 
 void Particles::PickStart(Vect point) {
-  size_t min_block = blocks::kBlockNone;
+  size_t min_block = Blocks::kBlockNone;
   size_t min_particle = 0;
   Scal min_dist;
 
   auto& data = blocks_buffer_.GetData();
-  for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
-    for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-      if (min_block == blocks::kBlockNone ||
-          data.position[iblock][p].dist(point) < min_dist) {
-        min_block = iblock;
+  for (size_t ib = 0; ib < blocks_buffer_.GetNumBlocks(); ++ib) {
+    for (size_t p = 0; p < data.position[ib].size(); ++p) {
+      if (min_block == Blocks::kBlockNone ||
+          data.position[ib][p].dist(point) < min_dist) {
+        min_block = ib;
         min_particle = p;
-        min_dist = data.position[iblock][p].dist(point);
+        min_dist = data.position[ib][p].dist(point);
       }
     }
   }
@@ -341,14 +336,14 @@ void Particles::DetectPortals() {
       const Vect r = b - a;
       const Vect n = Vect(-r.y, r.x).GetNormalized();
 
-      auto& data = Blocks.GetData();
-      for (size_t iblock : portal.blocks) {
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          auto id = static_cast<size_t>(data.id[iblock][p]);
+      auto& data = blocks_.GetData();
+      for (size_t ib : portal.blocks) {
+        for (size_t p = 0; p < data.position[ib].size(); ++p) {
+          auto id = static_cast<size_t>(data.id[ib][p]);
           if (particle_to_move_.size() <= id) {
             particle_to_move_.resize(id + 1);
           }
-          const Vect curr = data.position[iblock][p];
+          const Vect curr = data.position[ib][p];
           const Scal lambda_curr = (curr - a).dot(r) / r.dot(r);
           const Scal offset_curr = (curr - a).dot(n);
           if (lambda_curr > 0. && lambda_curr < 1. &&
@@ -379,10 +374,10 @@ void Particles::ApplyPortalsForces() {
       const Vect n = Vect(-r.y, r.x).GetNormalized();
       const Vect other_r = other_b - other_a;
       const Vect other_n = Vect(-other_r.y, other_r.x).GetNormalized();
-      auto& data = Blocks.GetData();
-      for (size_t iblock : portal.blocks) {
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          const Vect curr = data.position[iblock][p];
+      auto& data = blocks_.GetData();
+      for (size_t ib : portal.blocks) {
+        for (size_t p = 0; p < data.position[ib].size(); ++p) {
+          const Vect curr = data.position[ib][p];
           const Scal lambda_curr = r.dot(curr - a) / r.dot(r);
           const Scal offset_curr = (curr - a).dot(n);
 
@@ -395,7 +390,7 @@ void Particles::ApplyPortalsForces() {
                 const Scal offset_neighbor = (neighbor - a).dot(n);
                 if (lambda_neighbor > 0. && lambda_neighbor < 1. &&
                     offset_neighbor * offset_curr < 0.) {
-                  data.force[iblock][p] -= F12(curr, neighbor);
+                  data.force[ib][p] -= F12(curr, neighbor);
                 }
               }
             }
@@ -415,7 +410,7 @@ void Particles::ApplyPortalsForces() {
                   const Vect proj = a + r * other_lambda_neighbor +
                                     n * (other_offset_neighbor +
                                          2. * sign * kPortalThickness);
-                  data.force[iblock][p] += F12(curr, proj);
+                  data.force[ib][p] += F12(curr, proj);
                 }
               }
             }
@@ -430,22 +425,21 @@ void Particles::ApplyPortals() {
   // with their velocity
   // so that (position - dt * velocity) is the previous position
 
-  auto& data = Blocks.GetData();
+  auto& data = blocks_.GetData();
   for (auto& pair : portals_) {
     for (int d = 0; d <= 1; ++d) {
       auto& portal = pair[d];
       auto& other = pair[1 - d];
 
-      for (size_t iblock : portal.blocks) {
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          const auto id = static_cast<size_t>(data.id[iblock][p]);
+      for (size_t ib : portal.blocks) {
+        for (size_t p = 0; p < data.position[ib].size(); ++p) {
+          const auto id = static_cast<size_t>(data.id[ib][p]);
           if (particle_to_move_.size() <= id) {
             particle_to_move_.resize(id + 1);
           }
           if (particle_to_move_[id]) {
             MoveToPortal(
-                data.position[iblock][p], data.velocity[iblock][p], portal,
-                other);
+                data.position[ib][p], data.velocity[ib][p], portal, other);
             particle_to_move_[id] = 0;
           }
         }
@@ -499,11 +493,11 @@ void Particles::BondsStart(Vect point) {
   bonds_enabled_ = true;
   int id = kParticleIdNone;
 
-  for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
+  for (size_t ib = 0; ib < blocks_buffer_.GetNumBlocks(); ++ib) {
     auto& data = blocks_buffer_.GetData();
-    for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-      if (data.position[iblock][p].dist(point) < kRadius) {
-        id = data.id[iblock][p];
+    for (size_t p = 0; p < data.position[ib].size(); ++p) {
+      if (data.position[ib][p].dist(point) < kRadius) {
+        id = data.id[ib][p];
       }
     }
   }
@@ -517,12 +511,12 @@ void Particles::BondsMove(Vect point) {
   }
   int id = kParticleIdNone;
 
-  for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
+  for (size_t ib = 0; ib < blocks_buffer_.GetNumBlocks(); ++ib) {
     auto& data = blocks_buffer_.GetData();
-    for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-      if (data.position[iblock][p].dist(point) < kRadius &&
-          data.id[iblock][p] != bonds_prev_particle_id_) {
-        id = data.id[iblock][p];
+    for (size_t p = 0; p < data.position[ib].size(); ++p) {
+      if (data.position[ib][p].dist(point) < kRadius &&
+          data.id[ib][p] != bonds_prev_particle_id_) {
+        id = data.id[ib][p];
       }
     }
   }
@@ -571,12 +565,12 @@ void Particles::FreezeMove(Vect mousepos) {
 
   auto& data = blocks_buffer_.GetData();
   // Find the nearest particle within the radius.
-  for (size_t iblock = 0; iblock < blocks_buffer_.GetNumBlocks(); ++iblock) {
-    for (size_t ip = 0; ip < data.position[iblock].size(); ++ip) {
-      const Scal dist = data.position[iblock][ip].dist(mousepos);
+  for (size_t ib = 0; ib < blocks_buffer_.GetNumBlocks(); ++ib) {
+    for (size_t ip = 0; ip < data.position[ib].size(); ++ip) {
+      const Scal dist = data.position[ib][ip].dist(mousepos);
       if (dist < min_dist) {
         min_dist = dist;
-        min_iblock = iblock;
+        min_iblock = ib;
         min_ip = ip;
       }
     }
@@ -744,21 +738,21 @@ void CalcForceAvx(
 
 void Particles::UpdatePortalBlocks(Portal& portal) {
   portal.blocks.clear();
-  for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-    if (portal.IsClose(Blocks.GetCenter(iblock), Blocks.GetCircumRadius())) {
-      portal.blocks.push_back(iblock);
+  for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+    if (portal.IsClose(blocks_.GetCenter(ib), blocks_.GetCircumRadius())) {
+      portal.blocks.push_back(ib);
     }
   }
 }
 
 void Particles::UpdateEnvObj() {
-  block_envobj_.clear();
-  block_envobj_.resize(Blocks.GetNumBlocks());
-  for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
-    for (size_t k = 0; k < ENVOBJ.size(); ++k) {
-      if (ENVOBJ[k]->IsClose(
-              Blocks.GetCenter(iblock), Blocks.GetCircumRadius())) {
-        block_envobj_[iblock].push_back(k);
+  obstacles_in_block_.clear();
+  obstacles_in_block_.resize(blocks_.GetNumBlocks());
+  for (size_t ib = 0; ib < blocks_.GetNumBlocks(); ++ib) {
+    for (size_t k = 0; k < obstacles_.size(); ++k) {
+      if (obstacles_[k]->IsClose(
+              blocks_.GetCenter(ib), blocks_.GetCircumRadius())) {
+        obstacles_in_block_[ib].push_back(k);
       }
     }
   }
@@ -804,15 +798,15 @@ Vect F12_pick(Vect p1, Vect p2) {
   return dp * (sigma * k);
 }
 
-void Particles::RHS_bonds() {
-  const auto& bbi = Blocks.GetBlockById();
-  auto& data = Blocks.GetData();
+void Particles::AppendBondForces() {
+  const auto& bbi = blocks_.GetBlockById();
+  auto& data = blocks_.GetData();
   no_rendering_.clear();
   for (auto bond : bonds_) {
     const auto& p = bbi[bond.first];
     const auto& q = bbi[bond.second];
-    assert(p.first != blocks::kBlockNone);
-    assert(q.first != blocks::kBlockNone);
+    assert(p.first != Blocks::kBlockNone);
+    assert(q.first != Blocks::kBlockNone);
 
     const Vect p_pos = data.position[p.first][p.second];
     const Vect q_pos = data.position[q.first][q.second];
@@ -872,22 +866,22 @@ void Particles::RHS_bonds() {
 }
 
 void Particles::ApplyFrozen() {
-  const auto& bbi = Blocks.GetBlockById();
-  auto& data = Blocks.GetData();
+  const auto& bbi = blocks_.GetBlockById();
+  auto& data = blocks_.GetData();
   for (int id : frozen_) {
-    const auto iblock = bbi[id].first;
+    const auto ib = bbi[id].first;
     const auto p = bbi[id].second;
-    data.velocity[iblock][p] *= 0.;
-    data.force[iblock][p] *= 0.;
+    data.velocity[ib][p] *= 0.;
+    data.force[ib][p] *= 0.;
   }
 }
 
-void Particles::calc_forces(size_t iblock) {
-  auto& data = Blocks.GetData();
-  for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-    auto& f = data.force[iblock][p];
-    auto& x = data.position[iblock][p];
-    auto& v = data.velocity[iblock][p];
+void Particles::CalcForces(size_t ib) {
+  auto& data = blocks_.GetData();
+  for (size_t p = 0; p < data.position[ib].size(); ++p) {
+    auto& f = data.force[ib][p];
+    auto& x = data.position[ib][p];
+    auto& v = data.velocity[ib][p];
 
     f = Vect(0);
 
@@ -917,40 +911,36 @@ void Particles::calc_forces(size_t iblock) {
     }
 
     // Force from Pick tool.
-    if (pick_enabled_ && data.id[iblock][p] == pick_particle_id_) {
+    if (pick_enabled_ && data.id[ib][p] == pick_particle_id_) {
       f += F12_pick(x, pick_pointer_);
     }
 
-    // dissipation
-    // f -= v * (0.1 * p1.m);
+    // Friction.
     f -= v * (kDissipation * kMass);
   }
 
   // pairwise interactions
-  for (int offset : Blocks.GetNeighborOffsets()) {
-    const size_t j = iblock + offset;
+  for (int offset : blocks_.GetNeighborOffsets()) {
+    const size_t j = ib + offset;
     // TODO: revise outside block condition
-    if (j >= Blocks.GetNumBlocks()) {
+    if (j >= blocks_.GetNumBlocks()) {
       continue;
     }
 
-    if (iblock != j) { // no check for self-force needed
-      CALC_FORCE<false>(
-          data.force[iblock], data.position[iblock], data.position[j]);
+    if (ib != j) { // no check for self-force needed
+      CALC_FORCE<false>(data.force[ib], data.position[ib], data.position[j]);
     }
 
-    if (iblock == j) { // apply threshold to distance to avoid self-force
-      CALC_FORCE<true>(
-          data.force[iblock], data.position[iblock], data.position[j]);
+    if (ib == j) { // apply threshold to distance to avoid self-force
+      CALC_FORCE<true>(data.force[ib], data.position[ib], data.position[j]);
     }
   }
 
   // environment objects
-  for (size_t k : block_envobj_[iblock]) {
-    for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-      auto& obj = ENVOBJ[k];
-      data.force[iblock][p] +=
-          obj->F(data.position[iblock][p], data.velocity[iblock][p]);
+  for (size_t k : obstacles_in_block_[ib]) {
+    for (size_t p = 0; p < data.position[ib].size(); ++p) {
+      auto& obj = obstacles_[k];
+      data.force[ib][p] += obj->F(data.position[ib][p], data.velocity[ib][p]);
     }
   }
 }

@@ -12,27 +12,26 @@
 extern const Scal kRadius;
 extern const Scal kPortalThickness;
 
-struct particle {
+struct Particle {
   Vect p;
   Vect v;
-  particle() {}
-  particle(Vect p_, Vect v_) : p(p_), v(v_) {}
+  Particle() {}
+  Particle(Vect p_, Vect v_) : p(p_), v(v_) {}
 };
 
 Vect F12(Vect p1, Vect p2, Scal sigma, Scal R);
 Vect F12wall(Vect p1, Vect p2);
 Vect F12(Vect p1, Vect p2);
 
-class env_object {
+class Obstacle {
  public:
-  virtual ~env_object() = default;
+  virtual ~Obstacle() = default;
   virtual Vect F(Vect p, Vect v) = 0;
   virtual bool IsClose(Vect p, Scal R) = 0;
 };
 
-class line : public env_object {
+class Line : public Obstacle {
   Vect A, B;
-  // Scal eps;
   Vect GetNearest(Vect p) {
     Vect Q;
     Scal lambda = (B - A).dot(p - A) / (B - A).dot(B - A);
@@ -45,10 +44,8 @@ class line : public env_object {
   }
 
  public:
-  line(Vect _A, Vect _B) : A(_A), B(_B) {
-    ;
-  }
-  Vect F(Vect p, Vect /*v*/) override {
+  Line(Vect _A, Vect _B) : A(_A), B(_B) {}
+  Vect F(Vect p, Vect) override {
     return F12wall(p, GetNearest(p));
   }
   bool IsClose(Vect p, Scal R) override {
@@ -90,23 +87,23 @@ class Particles {
   void RemoveLastPortal() {
     remove_last_portal_ = true;
   }
-  void AddEnvObj(env_object* env);
+  void AddEnvObj(Obstacle* env);
   void ClearEnvObj() {
-    ENVOBJ.clear();
+    obstacles_.clear();
   }
   void UpdateEnvObj();
   void ResetEnvObjFrame(RectVect new_domain) {
     const Vect A = new_domain.A, B = new_domain.B;
     ClearEnvObj();
-    AddEnvObj(new line(Vect(A.x, A.y), Vect(B.x, A.y)));
-    AddEnvObj(new line(Vect(A.x, B.y), Vect(B.x, B.y)));
-    AddEnvObj(new line(Vect(A.x, A.y), Vect(A.x, B.y)));
-    AddEnvObj(new line(Vect(B.x, A.y), Vect(B.x, B.y)));
+    AddEnvObj(new Line(Vect(A.x, A.y), Vect(B.x, A.y)));
+    AddEnvObj(new Line(Vect(A.x, B.y), Vect(B.x, B.y)));
+    AddEnvObj(new Line(Vect(A.x, A.y), Vect(A.x, B.y)));
+    AddEnvObj(new Line(Vect(B.x, A.y), Vect(B.x, B.y)));
     UpdateEnvObj();
   }
   void SetDomain(RectVect new_domain) {
     domain = new_domain;
-    Blocks.SetDomain(domain);
+    blocks_.SetDomain(domain);
   }
   void PushResize(RectVect new_domain) {
     resize_queue_ = new_domain;
@@ -139,10 +136,7 @@ class Particles {
   void PortalMove(Vect point);
   void PortalStop(Vect point);
   Scal GetTime() const {
-    return t;
-  }
-  size_t GetNumSteps() const {
-    return static_cast<size_t>(t / dt);
+    return time_;
   }
   RectVect GetDomain() const {
     return domain;
@@ -161,7 +155,7 @@ class Particles {
   void SetGravityVect(Vect gravity) {
     gravity_ = gravity;
   }
-  const std::vector<particle>& GetParticles() const {
+  const std::vector<Particle>& GetParticles() const {
     return particle_buffer_;
   }
   size_t GetNumParticles() const {
@@ -173,7 +167,7 @@ class Particles {
   const std::vector<std::pair<size_t, size_t>> GetBlockById() const {
     return blocks_buffer_.GetBlockById();
   }
-  const blocks::BlockData& GetBlockData() const {
+  const Blocks::BlockData& GetBlockData() const {
     return blocks_buffer_.GetData();
   };
   void SetRendererReadyForNext(bool value) {
@@ -183,28 +177,27 @@ class Particles {
  private:
   RectVect domain;
   RectVect resize_queue_;
-  blocks Blocks;
-  Scal t;
-  Scal dt;
+  Blocks blocks_;
+  Scal time_;
   Vect gravity_;
-  void calc_forces(size_t i);
-  void RHS_bonds();
+  void CalcForces(size_t i);
+  void AppendBondForces();
   void ApplyFrozen();
-  std::vector<std::unique_ptr<env_object>> ENVOBJ;
-  std::vector<std::vector<size_t>> block_envobj_;
+  std::vector<std::unique_ptr<Obstacle>> obstacles_;
+  std::vector<std::vector<size_t>> obstacles_in_block_;
   Vect force_center;
   bool force_enabled;
   bool force_attractive_ = false;
   bool gravity_enable_ = true;
-  std::vector<particle> particle_buffer_;
-  blocks blocks_buffer_;
+  std::vector<Particle> particle_buffer_;
+  Blocks blocks_buffer_;
   int bonds_prev_particle_id_;
   bool bonds_enabled_ = false;
   int pick_particle_id_;
   bool pick_enabled_ = false;
   Vect pick_pointer_;
-  std::set<std::pair<int, int>> bonds_;
-  std::set<int> frozen_; // particle id
+  std::set<std::pair<int, int>> bonds_; // Id's of particles with bonds.
+  std::set<int> frozen_; // Id's of frozen particles.
   bool freeze_enabled_ = false;
   int freeze_last_id_;
   bool renderer_ready_for_next_ = true;
