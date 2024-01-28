@@ -1,14 +1,22 @@
 # ptoy
 
-[Play in browser](https://pkarnakov.github.io/ptoy/ptoy.html)
+[Play web version](https://pkarnakov.github.io/ptoy/ptoy.html)
 
+| Native | [Web](https://pkarnakov.github.io/ptoy/ptoy.html) |
+|:---:|:---:|
+|<img src="https://pkarnakov.github.io/ptoy/images/ptoy_native.png" height="170">|<img src="https://pkarnakov.github.io/ptoy/images/ptoy_web.png" height="170"> |
+
+
+Screenshots from older version
 |   |   |   |
 |:---:|:---:|:---:|
-|<img src="https://pkarnakov.github.io/ptoy/images/screenshot0.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot1.png" width="200">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot2.png" width="200">|
+|<img src="https://pkarnakov.github.io/ptoy/images/screenshot0.png" height="100">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot1.png" height="100">|<img src="https://pkarnakov.github.io/ptoy/images/screenshot2.png" height="100">|
 
 ## Clone
 
-    git clone https://github.com/pkarnakov/ptoy.git
+```
+git clone https://github.com/pkarnakov/ptoy.git
+```
 
 ## Requirements
 
