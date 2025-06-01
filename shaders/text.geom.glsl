@@ -8,7 +8,7 @@ in VERT {
   flat vec2 lowcorner;
   flat float size;
   flat vec4 color;
-  flat float char;
+  flat float character;
   flat float width;
 } vert[];
 
@@ -18,7 +18,7 @@ out GEOM {
   flat vec2 lowcorner;
   flat float size;
   flat vec4 color;
-  flat float char;
+  flat float character;
   flat float width;
 } geom;
 
@@ -29,7 +29,7 @@ void main() {
   geom.lowcorner = vert[0].lowcorner;
   geom.size = vert[0].size;
   geom.color = vert[0].color;
-  geom.char = vert[0].char;
+  geom.character = vert[0].character;
   geom.width = vert[0].width;
 
   gl_Position = p + vec4(0, 0, 0, 0);

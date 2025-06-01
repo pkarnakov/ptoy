@@ -776,7 +776,7 @@ struct ViewGl::Imp {
       auto attr_color =
           std::make_shared<VertexAttribute<GLfloat, 4>>("color", program);
       auto attr_char =
-          std::make_shared<VertexAttribute<GLfloat, 1>>("char", program);
+          std::make_shared<VertexAttribute<GLfloat, 1>>("character", program);
       auto attr_width =
           std::make_shared<VertexAttribute<GLfloat, 1>>("width", program);
 
