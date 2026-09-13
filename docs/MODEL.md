@@ -142,49 +142,67 @@ Writing $a = F/m$, `Particles::step()` performs:
 v^{*}   &= v^{n} + \tfrac{h}{2}\, a(x^{n}, v^{n}) \\
 x^{*}   &= x^{n} + \tfrac{h}{2}\, v^{*} \\
 v^{n+1} &= v^{n} + h \, a(x^{*}, v^{*}) \\
-x^{n+1} &= x^{n} + \tfrac{h}{2}\,\left(v^{n} + v^{n+1}\right)
+x^{n+1} &= x^{n} + h\, v^{n+1}
 \end{aligned}
 ```
 
-A midpoint force evaluation with a trapezoidal position update. The first two
-lines are the predictor; note that $x^{*}$ advances with $v^{*}$ rather than
-$v^{n}$. The corrector restarts from the state saved in `position_tmp` and
-`velocity_tmp` rather than continuing from the predictor.
+A midpoint force evaluation with a first-order position update, which is the
+default. The first two lines are the predictor; note that $x^{\ast}$ advances
+with $v^{\ast}$ rather than $v^{n}$. The corrector restarts from the state saved
+in `position_tmp` and `velocity_tmp` rather than continuing from the predictor.
+
+Configuring with `-DUSE_TRAPEZOID=1`, or pressing `t` at runtime, replaces the
+last line with the trapezoidal average
+
+```math
+x^{n+1} = x^{n} + \tfrac{h}{2}\,\left(v^{n} + v^{n+1}\right)
+```
+
+which raises the scheme to second order. That single line is the only
+difference between the two; everything about the force evaluation below applies
+to both.
 
 Both force evaluations take a velocity, because of the dashpot, and the
 midpoint rule wants every argument at the midpoint: the corrector uses
-$a(x^{*}, v^{*})$, not $a(x^{*}, v^{n})$.
+$a(x^{\ast}, v^{\ast})$, not $a(x^{\ast}, v^{n})$.
 
 There is a trap in how the code expresses that. `calc_forces()` has no velocity
-parameter — it reads `data.velocity`, which holds $v^{*}$ only because the
+parameter — it reads `data.velocity`, which holds $v^{\ast}$ only because the
 predictor overwrote it in place beforehand. The requirement is invisible at the
 call site, so reordering those loops, or computing the corrector force from a
-saved copy of the velocity, would quietly make the scheme first order.
+saved copy of the velocity, would quietly drop the velocity update to first
+order — and with `-DUSE_TRAPEZOID=1`, throw away the accuracy it is there for.
 
 ### Accuracy and stability
 
-The scheme is **second order in both position and velocity**, including with
-the velocity-dependent dashpot force. Measured convergence at fixed $T$ on a
-damped oscillator: the error drops by 4x when $h$ halves, giving 2.04 in $x$
-and 2.00 in $v$. Degrading either the position average or the dashpot argument
-as above gives 1.00, as expected.
+With the trapezoidal update the scheme is **second order in both position and
+velocity**, including with the velocity-dependent dashpot force. Measured
+convergence at fixed $T$ on a damped oscillator: the error drops by 4x when $h$
+halves, giving 2.04 in $x$ and 2.00 in $v$. The default position update, or
+degrading the dashpot argument as above, gives 1.00, as expected.
 
 The linear stability limit is $\omega h \le 2$ for the undamped spring, reduced
 mildly by the dashpot as noted above. `kVelocityLimit` is a further nonlinear
 safety net, clamping speed after each of the two velocity updates.
 
-The scheme is not symplectic. On the harmonic test problem $a(x) = -\omega^2 x$,
-with $z = \omega h$, one step is a linear map whose amplification matrix in the
-scaled coordinates $(x, v/\omega)$ satisfies
+Neither variant is symplectic. On the harmonic test problem
+$a(x) = -\omega^2 x$, with $z = \omega h$, one step is a linear map whose
+amplification matrix in the scaled coordinates $(x, v/\omega)$ satisfies
 
 ```math
-\det M = 1 - \frac{z^4}{8}
+\det M = 1 - \frac{z^4}{8} \qquad\text{(trapezoidal)},
+\qquad
+\det M = 1 - \frac{z^2}{2} \qquad\text{(default)}
 ```
 
-so it still bleeds a little phase-space volume, 0.007 % per step at contact
-frequency. That is a rounding error next to the dashpot and is not relied on.
+The trapezoidal variant bleeds only a little phase-space volume, 0.007 % per
+step at contact frequency, which is a rounding error next to the dashpot and is
+not relied on. The default contracts far harder, 1.2–2.3 % per step at the same
+frequency — the stiffness-selective numerical damping described under History
+below, which is now damping the pile on top of the dashpot rather than instead
+of it.
 
-The leak is there because the scheme is not time-symmetric either. The
+The trapezoidal leak is there because that scheme is not time-symmetric. The
 trapezoidal position update is, but the velocity update sits on an *explicit*
 midpoint predictor, which is not. A symmetric method would need
 $\det M(h) \det M(-h) = 1$, and ours is even in $h$, so that would force
@@ -193,23 +211,23 @@ second order without being symmetric, as explicit midpoint RK2 also is. A
 genuinely symmetric scheme, such as implicit midpoint, has $\det M = 1$ and
 loses nothing.
 
-### History: the scheme used to be first order on purpose
+### History: the first-order update and its numerical damping
 
-The position update was originally $x^{n+1} = x^{n} + h\,v^{n+1}$ — using the
-new velocity rather than the average. That is a one-term Taylor error, and it
-gave
+The default position update, $x^{n+1} = x^{n} + h\,v^{n+1}$ — the new velocity
+rather than the average — is also the original one. That is a one-term Taylor
+error, and it gives
 
 ```math
 \det M = 1 - \frac{z^2}{2} \qquad \text{exactly}
 ```
 
 a phase-space contraction of 1.2–2.3 % per step at contact frequency against
-0.0005 % for bulk motion at a 1 s period. The scheme was accidentally a
+0.0005 % for bulk motion at a 1 s period. The scheme is accidentally a
 stiffness-selective damper, about 12000x stronger at contact scale than the
-linear drag, and that numerical damping was the only thing settling piles. It
-was documented as load-bearing and not to be "corrected".
+linear drag, and for a long time that numerical damping was the only thing
+settling piles. It was documented as load-bearing and not to be "corrected".
 
-It has since been corrected, because the damping is now explicit. Fixing the
+The trapezoidal update became possible once the damping was explicit. Fixing the
 position update alone was tried first and is **not** sufficient: the residual
 $z^4/8$ damping is 170x too weak, and a pile that used to settle to a kinetic
 energy of about 1 instead plateaued near 116 and shivered indefinitely. Only
@@ -226,12 +244,23 @@ The dashpot costs about 14 % of a step at 6 threads (69 to 79 µs per step on a
 45x45 grid), which is the price of the two extra velocity loads in
 `CalcForceAvx`.
 
-The old position update is still reachable: configure with `-DUSE_TRAPEZOID=0`,
-which flips `kTrapezoidPosition` in `src/particles.cpp`. It keeps the dashpot
+The old position update is the default, and the trapezoidal one is reachable by
+configuring with `-DUSE_TRAPEZOID=1`, which flips `kTrapezoidPosition` in
+`src/particles.cpp`; `t` toggles it at runtime. The default keeps the dashpot
 and adds the old numerical damping on top, so piles settle a few seconds sooner
-at the cost of first-order accuracy. It is not a cure for an over-packed domain
-— pack more particles into the domain than hexagonal packing holds, for instance
-by shrinking the window onto a full pile, and both schemes explode alike.
+at the cost of first-order accuracy.
+
+It is the default because it behaves better in practice: a settled pile boils
+visibly less than with the trapezoidal update. That is an observation about the
+two schemes as they now stand, both with the dashpot, and nothing above predicts
+it — no mechanism is claimed here. The table measures the old scheme *without*
+the dashpot, so it is not evidence for the comparison either. The first-order
+update is also the simpler of the two, a single term rather than an average of
+two velocities.
+
+Neither choice is a cure for an over-packed domain — pack more particles into
+the domain than hexagonal packing holds, for instance by shrinking the window
+onto a full pile, and both schemes explode alike.
 
 ### Reproducing the numbers
 

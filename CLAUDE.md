@@ -30,7 +30,7 @@ executable for experiments.
 CMake options that select code paths: `USE_AVX`, `USE_OPENMP`, `USE_EXE`,
 `USE_WASM`, `USE_BACKEND_SDL`, `USE_BACKEND_TEXT`, `USE_SANDBOX`,
 `USE_WARNINGS`, `USE_TRAPEZOID`. Reconfigure an existing build directory with
-`(cd build && cmake -DUSE_TRAPEZOID=0 ..)` and then `make` as usual.
+`(cd build && cmake -DUSE_TRAPEZOID=1 ..)` and then `make` as usual.
 In C++ they are tested with `USEFLAG(X)` from `src/macros.h`, which expands to
 `0USE_X` so an undefined flag evaluates to 0 — write `#if USEFLAG(BACKEND_SDL)`,
 not `#ifdef USE_BACKEND_SDL`.
@@ -94,12 +94,13 @@ simulation is single precision.
   must stay at least the force cutoff, since forces are only computed between
   neighboring blocks.
 - **The integrator in `Particles::step()`** is a midpoint force evaluation with
-  a trapezoidal position update, second order in both variables. `calc_forces()`
-  takes no velocity parameter: the corrector needs the dashpot evaluated at
-  $v^*$, and gets it only because the predictor overwrote `data.velocity` in
-  place first. Reordering those loops, or using a saved copy of the velocity,
-  silently drops the scheme to first order. `-DUSE_TRAPEZOID=0` swaps the
-  position update back to the original first-order one. See `docs/MODEL.md`.
+  a first-order position update by default; `-DUSE_TRAPEZOID=1` selects the
+  trapezoidal one, second order in both variables, and `t` toggles it at
+  runtime. `calc_forces()` takes no velocity parameter: the corrector needs the
+  dashpot evaluated at $v^\ast$, and gets it only because the predictor
+  overwrote `data.velocity` in place first. Reordering those loops, or using a
+  saved copy of the velocity, silently drops the scheme to first order. See
+  `docs/MODEL.md`.
 - **Contact damping comes from the dashpot in `F12()`** (`kDashpot`), not from
   `kDissipation` and no longer from integrator error. It acts only along the
   line of centres and only while particles overlap, so it settles piles without

@@ -10,7 +10,7 @@ option(USE_WASM "Build WebAssembly" OFF)
 option(USE_BACKEND_SDL "Enable SDL2 backend" ON)
 option(USE_BACKEND_TEXT "Enable text backend" OFF)
 option(USE_WARNINGS "Enable compiler warnings" ON)
-option(USE_TRAPEZOID "Second-order position update in the integrator" ON)
+option(USE_TRAPEZOID "Second-order position update in the integrator" OFF)
 
 # Default build type.
 set(BuildTypeValues None Debug Release RelWithDebInfo MinSizeRel)
