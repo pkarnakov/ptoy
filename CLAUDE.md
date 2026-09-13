@@ -91,10 +91,16 @@ simulation is single precision.
   live at the top of `src/particles.cpp` and are tightly coupled — `kBlockSize`
   must stay at least the force cutoff, since forces are only computed between
   neighboring blocks.
-- **The integrator in `Particles::step()`** is neither Euler nor velocity
-  Verlet, and it looks like a half-finished Verlet. It is not: the scheme is
-  non-symplectic and the resulting numerical damping is what keeps stiff
-  contacts stable. Do not "correct" it without reading `docs/MODEL.md`.
+- **The integrator in `Particles::step()`** is a midpoint force evaluation with
+  a trapezoidal position update, second order in both variables. Two details
+  are load-bearing: the position update must average `v^n` and `v^{n+1}`, and
+  the dashpot in the corrector must see `v*` (which it does because the
+  predictor writes `v*` into `data.velocity` in place). Either one done the
+  obvious way drops the scheme to first order. See `docs/MODEL.md`.
+- **Contact damping comes from the dashpot in `F12()`** (`kDashpot`), not from
+  `kDissipation` and no longer from integrator error. It acts only along the
+  line of centres and only while particles overlap, so it settles piles without
+  slowing bulk flow. Removing it makes piles shiver indefinitely.
 - **Assertions** use `fassert`, `fassert_equal`, `NAMEVALUE` from `src/logger.h`
   (they throw, they are not `assert`).
 

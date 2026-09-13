@@ -86,5 +86,5 @@ Mode|Key|Click action
 
 ## Documentation
 
-* [docs/MODEL.md](docs/MODEL.md): the forces, the constants and the time
-  integrator, including why the integrator is not velocity Verlet
+* [docs/MODEL.md](docs/MODEL.md): the forces, the constants, the contact
+  dashpot and the time integrator
