@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdint>
 #include <thread>
 
 #include "macros.h"
@@ -625,9 +626,19 @@ void CalcForceSerialPadded(
 #if USEFLAG(AVX)
 #include <x86intrin.h>
 #define CALC_FORCE CalcForceAvx
+// Accesses `force` and `position` in groups of 8 particles, up to the next
+// multiple of 8 past their size. This stays inside the allocation since
+// `blocks` keeps the capacity of every block padded to a multiple of
+// blocks::kVectorWidth with the padding elements initialized.
 template <bool ApplyThreshold = true>
 void CalcForceAvx(
     ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
+  static_assert(blocks::kVectorWidth == 8, "kernel processes 8 particles");
+  assert(position.capacity() % blocks::kVectorWidth == 0);
+  assert(force.capacity() >= position.capacity());
+  assert(reinterpret_cast<uintptr_t>(position.data()) % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(force.data()) % 32 == 0);
+
   // sigma = kSigma;
   const __m256 sigma = _mm256_broadcast_ss(&kSigma);
   // R2 = (2. * kRadius) ^ 2;
@@ -639,6 +650,10 @@ void CalcForceAvx(
   const float tmp_zero = 0.;
   const __m256 zero = _mm256_broadcast_ss(&tmp_zero);
 
+  // Padding elements are accessed through the data pointers, past the size.
+  const float* position_data = (const float*)position.data();
+  float* force_data = (float*)force.data();
+
   for (size_t q = 0; q < position_other.size(); ++q) {
     const __m256 qx = _mm256_broadcast_ss((float*)&position_other[q].x);
     const __m256 qy = _mm256_broadcast_ss((float*)&position_other[q].y);
@@ -646,8 +661,8 @@ void CalcForceAvx(
     const __m256 qxy = _mm256_blend_ps(qx, qy, 0xAA);
     for (size_t p = 0; p < position.size(); p += 8) {
       // pxy =(p.x, p.y)
-      const __m256 pxy_l = _mm256_load_ps((float*)&position[p]);
-      const __m256 pxy_h = _mm256_load_ps((float*)&position[p + 4]);
+      const __m256 pxy_l = _mm256_load_ps(position_data + p * 2);
+      const __m256 pxy_h = _mm256_load_ps(position_data + p * 2 + 8);
       // rxy = pxy - qxy
       const __m256 rxy_l = _mm256_sub_ps(pxy_l, qxy);
       const __m256 rxy_h = _mm256_sub_ps(pxy_h, qxy);
@@ -681,14 +696,14 @@ void CalcForceAvx(
       const __m256 kxy_h = _mm256_unpackhi_ps(k, k);
 
       // load force to fxy
-      __m256 fxy_l = _mm256_load_ps((float*)&force[p]);
-      __m256 fxy_h = _mm256_load_ps((float*)&force[p + 4]);
+      __m256 fxy_l = _mm256_load_ps(force_data + p * 2);
+      __m256 fxy_h = _mm256_load_ps(force_data + p * 2 + 8);
       // fxy += rxy * kxy
       fxy_l = _mm256_add_ps(fxy_l, _mm256_mul_ps(kxy_l, rxy_l));
       fxy_h = _mm256_add_ps(fxy_h, _mm256_mul_ps(kxy_h, rxy_h));
       // store force
-      _mm256_store_ps((float*)&force[p], fxy_l);
-      _mm256_store_ps((float*)&force[p + 4], fxy_h);
+      _mm256_store_ps(force_data + p * 2, fxy_l);
+      _mm256_store_ps(force_data + p * 2 + 8, fxy_h);
     }
   }
 }

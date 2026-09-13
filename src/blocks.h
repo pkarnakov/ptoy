@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -14,11 +15,62 @@ class blocks {
  public:
   static const size_t kNumNeighbors = 9;
   static const size_t kBlockNone = static_cast<size_t>(-1);
+  // Number of particles processed at once by the vectorized force kernel
+  // (CalcForceAvx in particles.cpp). The kernel treats a block as if its size
+  // was rounded up to a multiple of kVectorWidth, so the arrays of every block
+  // keep their capacity a multiple of kVectorWidth and the elements up to that
+  // capacity initialized. See PadTail().
+  static const size_t kVectorWidth = 8;
+  // Position given to the padding elements. Padding is never a source of
+  // force, so the value only has to keep the force computed for the padding
+  // itself in the normal range of floats: placing it much further away makes
+  // the intermediate powers of the distance denormal, which is slow.
+  static constexpr Scal kPadPosition = 10;
   using DataVect = std::vector<ArrayVect>;
   using DataInt = std::vector<ArrayInt>;
   struct BlockData {
    private:
     blocks* parent;
+
+    static size_t PaddedCapacity(size_t size) {
+      return (size + kVectorWidth - 1) / kVectorWidth * kVectorWidth;
+    }
+    // Initializes the element at `idx` in block `dest`, which lies past the
+    // size but within the capacity. The vectorized kernel reads the position
+    // and writes the force of such elements, and discards the result. The
+    // position is far enough away to contribute no force.
+    void PadElement(size_t dest, size_t idx) {
+      assert(idx < position[dest].capacity());
+      position[dest].data()[idx] = Vect(kPadPosition);
+      force[dest].data()[idx] = Vect(0);
+    }
+    // Initializes the elements between the size and the capacity of block
+    // `dest`. Only needed after the capacity changes, since insertions and
+    // removals keep the remaining padding intact.
+    void PadTail(size_t dest) {
+      for (size_t i = position[dest].size(); i < position[dest].capacity();
+           ++i) {
+        PadElement(dest, i);
+      }
+    }
+    // Reserves space for one more particle in block `dest`, keeping the
+    // capacity a multiple of kVectorWidth. Growth is geometric, so the
+    // amortized cost of a single insertion stays constant.
+    void ReserveForPush(size_t dest) {
+      const size_t need = position[dest].size() + 1;
+      if (need <= position[dest].capacity()) {
+        return;
+      }
+      const size_t capacity =
+          PaddedCapacity(std::max(2 * position[dest].capacity(), need));
+      position[dest].reserve(capacity);
+      position_tmp[dest].reserve(capacity);
+      velocity[dest].reserve(capacity);
+      velocity_tmp[dest].reserve(capacity);
+      force[dest].reserve(capacity);
+      id[dest].reserve(capacity);
+      PadTail(dest);
+    }
 
    public:
     DataVect position, position_tmp, velocity, velocity_tmp, force;
@@ -46,13 +98,14 @@ class blocks {
       id.resize(size);
 
       for (size_t i = 0; i < position.size(); ++i) {
-        const size_t kBlockPadding = 16;
+        const size_t kBlockPadding = 2 * kVectorWidth;
         position[i].reserve(kBlockPadding);
         position_tmp[i].reserve(kBlockPadding);
         velocity[i].reserve(kBlockPadding);
         velocity_tmp[i].reserve(kBlockPadding);
         force[i].reserve(kBlockPadding);
         id[i].reserve(kBlockPadding);
+        PadTail(i);
       }
 
       // TODO: consider updating block_by_id_ here
@@ -80,6 +133,9 @@ class blocks {
       velocity_tmp[src].pop_back();
       force[src].pop_back();
       id[src].pop_back();
+
+      // The slot freed by the removal still holds the removed particle.
+      PadElement(src, position[src].size());
     }
     void MoveParticle(
         size_t src, // source block
@@ -87,6 +143,7 @@ class blocks {
         size_t dest // destination block
     ) {
       assert(src != dest);
+      ReserveForPush(dest);
       position[dest].push_back(position[src][idx]);
       position_tmp[dest].push_back(position_tmp[src][idx]);
       velocity[dest].push_back(velocity[src][idx]);
@@ -101,6 +158,7 @@ class blocks {
     void AddParticle(
         size_t dest, // destination block
         Vect particle_position, Vect particle_velocity, int particle_id) {
+      ReserveForPush(dest);
       position[dest].push_back(particle_position);
       position_tmp[dest].push_back(GetNan<Vect>());
       velocity[dest].push_back(particle_velocity);
