@@ -5,8 +5,6 @@ CMAKE = cmake
 DEBUG_BUILD = build_debug
 DEBUG_MAKEFILE = $(DEBUG_BUILD)/Makefile
 
-PKG = pkgconf --libs --cflags sdl2 glew
-
 WASM_BUILD = build_wasm
 WASM_MAKEFILE = $(WASM_BUILD)/Makefile
 WASM_CMAKE = emcmake cmake
@@ -42,19 +40,7 @@ serve:
 pages:
 	git clone -b gh-pages --single-branch git@github.com:pkarnakov/ptoy.git pages
 
-legacy:
-	mkdir -p "$(BUILD)"
-	+make $(BUILD)/ptoy
-
-$(BUILD)/ptoy: src/main.cpp src/geometry.cpp src/particles.cpp src/view_gl.cpp \
-	src/control.cpp src/scene.cpp
-	mkdir -p $(BUILD)
-	$(CXX) $$($(PKG)) -DUSE_AVX=1 -DUSE_BACKEND_SDL=1 -DUSE_BACKEND_TEXT=0 \
-		-DPTOY_ASSETS_DIR='"$(CURDIR)"' \
-		-std=c++14 -march=native -pthread -fopenmp -O3 \
-		$^ $(CFLAGS) -o "$@"
-
 clean:
 	rm -rf $(BUILD) $(DEBUG_BUILD) $(WASM_BUILD)
 
-.PHONY: default cmake debug wasm serve clean legacy
+.PHONY: default cmake debug wasm serve clean

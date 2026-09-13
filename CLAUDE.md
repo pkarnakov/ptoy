@@ -14,7 +14,6 @@ page rendered by JavaScript on a 2D canvas.
 make                 # Release build into build/ (USE_AVX=1), binary build/ptoy
 make debug           # Debug build into build_debug/, same options, assertions on
 make target=<t>      # forward a target to the generated build/Makefile (also with debug)
-make legacy          # single-command g++ build, no CMake, uses pkgconf for sdl2 glew
 make wasm            # emcmake build into build_wasm/ (no OpenMP, no SDL, no AVX)
 make serve           # emrun build_wasm/ptoy.html
 make clean           # remove build/, build_debug/ and build_wasm/

@@ -22,7 +22,7 @@ git clone https://github.com/pkarnakov/ptoy.git
 
 * Linux or Mac OS X
 * C++14 compiler
-* CMake (optional)
+* CMake
 * emscripten (optional to build WebAssembly)
 * SDL2
 * glew
@@ -33,12 +33,6 @@ Build with CMake
 
 ```
 make
-```
-
-Build without CMake, using `pkgconf` to find SDL2 and glew
-
-```
-make legacy
 ```
 
 Build with debug info and assertions
