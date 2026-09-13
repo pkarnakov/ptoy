@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdlib>
+#include <limits>
+#include <new>
 
 template <typename T, unsigned alignment>
 class AlignedAllocator {
@@ -35,8 +37,7 @@ class AlignedAllocator {
     p->~T();
   }
   size_type max_size() const {
-    std::allocator<T> a;
-    return a.max_size();
+    return std::numeric_limits<size_type>::max() / sizeof(T);
   }
   pointer address(reference x) const;
   const_pointer address(const_reference x) const;

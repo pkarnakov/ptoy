@@ -37,10 +37,10 @@ legacy:
 	+make $(BUILD)/ptoy
 
 $(BUILD)/ptoy: src/main.cpp src/geometry.cpp src/particles.cpp src/view_gl.cpp \
-	src/scene.cpp
+	src/control.cpp src/scene.cpp
 	mkdir -p $(BUILD)
 	$(CXX) $$($(PKG)) -DUSE_AVX=1 -DUSE_BACKEND_SDL=1 -DUSE_BACKEND_TEXT=0 \
-		-march=native -pthread -fopenmp -O3 \
+		-std=c++14 -march=native -pthread -fopenmp -O3 \
 		$^ $(CFLAGS) -o "$@"
 
 clean:
