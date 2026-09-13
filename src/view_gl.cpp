@@ -457,9 +457,7 @@ struct ViewGl::Imp {
 
     auto gray = SplitRgb(colors_geo[6]);
     glClearColor(gray[0] * 0.5, gray[1] * 0.5, gray[2] * 0.5, 1.0);
-    glDrawBuffer(GL_FRONT);
     glClear(GL_COLOR_BUFFER_BIT);
-    glDrawBuffer(GL_BACK);
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
@@ -999,9 +997,6 @@ void ViewGl::Imp::Control() {
           gui.SetWindowSize(width, height);
           glViewport(0, 0, width, height);
           gameinst->SetWindowSize(width, height);
-          glDrawBuffer(GL_FRONT);
-          glClear(GL_COLOR_BUFFER_BIT);
-          glDrawBuffer(GL_BACK);
           break;
       }
     }
