@@ -151,27 +151,23 @@ lines are the predictor; note that $x^{*}$ advances with $v^{*}$ rather than
 $v^{n}$. The corrector restarts from the state saved in `position_tmp` and
 `velocity_tmp` rather than continuing from the predictor.
 
-Two details are load-bearing and easy to undo by accident:
+Both force evaluations take a velocity, because of the dashpot, and the
+midpoint rule wants every argument at the midpoint: the corrector uses
+$a(x^{*}, v^{*})$, not $a(x^{*}, v^{n})$.
 
-- **The dashpot in the corrector is evaluated at $v^{*}$, not $v^{n}$.** The
-  code gets this for free because the predictor writes $v^{*}$ into
-  `data.velocity` in place before `calc_forces()` runs again. Feeding $v^{n}$
-  there instead drops the scheme to first order.
-- **The position update averages the two velocities.** Using $v^{n+1}$ alone
-  overshoots by $h^2 a / 2$ and is also first order.
+There is a trap in how the code expresses that. `calc_forces()` has no velocity
+parameter — it reads `data.velocity`, which holds $v^{*}$ only because the
+predictor overwrote it in place beforehand. The requirement is invisible at the
+call site, so reordering those loops, or computing the corrector force from a
+saved copy of the velocity, would quietly make the scheme first order.
 
 ### Accuracy and stability
 
 The scheme is **second order in both position and velocity**, including with
 the velocity-dependent dashpot force. Measured convergence at fixed $T$ on a
-damped oscillator: the error drops by 4x when $h$ halves.
-
-| position update | dashpot velocity | global order in $x$, $v$ |
-|---|---|---|
-| $x^{n} + h v^{n+1}$ | $v^{n}$ | 1.00, 0.99 |
-| $x^{n} + h v^{n+1}$ | $v^{*}$ | 1.00, 1.00 |
-| $x^{n} + \frac{h}{2}(v^{n} + v^{n+1})$ | $v^{n}$ | 1.00, 1.00 |
-| $x^{n} + \frac{h}{2}(v^{n} + v^{n+1})$ | $v^{*}$ | **2.04, 2.00** |
+damped oscillator: the error drops by 4x when $h$ halves, giving 2.04 in $x$
+and 2.00 in $v$. Degrading either the position average or the dashpot argument
+as above gives 1.00, as expected.
 
 The linear stability limit is $\omega h \le 2$ for the undamped spring, reduced
 mildly by the dashpot as noted above. `kVelocityLimit` is a further nonlinear
@@ -187,6 +183,15 @@ scaled coordinates $(x, v/\omega)$ satisfies
 
 so it still bleeds a little phase-space volume, 0.007 % per step at contact
 frequency. That is a rounding error next to the dashpot and is not relied on.
+
+The leak is there because the scheme is not time-symmetric either. The
+trapezoidal position update is, but the velocity update sits on an *explicit*
+midpoint predictor, which is not. A symmetric method would need
+$\det M(h) \det M(-h) = 1$, and ours is even in $h$, so that would force
+$z^4 = 0$. Symmetry implies even order but not the reverse: this scheme is
+second order without being symmetric, as explicit midpoint RK2 also is. A
+genuinely symmetric scheme, such as implicit midpoint, has $\det M = 1$ and
+loses nothing.
 
 ### History: the scheme used to be first order on purpose
 

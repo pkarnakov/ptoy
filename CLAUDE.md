@@ -92,11 +92,11 @@ simulation is single precision.
   must stay at least the force cutoff, since forces are only computed between
   neighboring blocks.
 - **The integrator in `Particles::step()`** is a midpoint force evaluation with
-  a trapezoidal position update, second order in both variables. Two details
-  are load-bearing: the position update must average $v^n$ and $v^{n+1}$, and
-  the dashpot in the corrector must see $v^*$ (which it does because the
-  predictor writes $v^*$ into `data.velocity` in place). Either one done the
-  obvious way drops the scheme to first order. See `docs/MODEL.md`.
+  a trapezoidal position update, second order in both variables. `calc_forces()`
+  takes no velocity parameter: the corrector needs the dashpot evaluated at
+  $v^*$, and gets it only because the predictor overwrote `data.velocity` in
+  place first. Reordering those loops, or using a saved copy of the velocity,
+  silently drops the scheme to first order. See `docs/MODEL.md`.
 - **Contact damping comes from the dashpot in `F12()`** (`kDashpot`), not from
   `kDissipation` and no longer from integrator error. It acts only along the
   line of centres and only while particles overlap, so it settles piles without
