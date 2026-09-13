@@ -93,9 +93,9 @@ simulation is single precision.
   neighboring blocks.
 - **The integrator in `Particles::step()`** is a midpoint force evaluation with
   a trapezoidal position update, second order in both variables. Two details
-  are load-bearing: the position update must average `v^n` and `v^{n+1}`, and
-  the dashpot in the corrector must see `v*` (which it does because the
-  predictor writes `v*` into `data.velocity` in place). Either one done the
+  are load-bearing: the position update must average $v^n$ and $v^{n+1}$, and
+  the dashpot in the corrector must see $v^*$ (which it does because the
+  predictor writes $v^*$ into `data.velocity` in place). Either one done the
   obvious way drops the scheme to first order. See `docs/MODEL.md`.
 - **Contact damping comes from the dashpot in `F12()`** (`kDashpot`), not from
   `kDissipation` and no longer from integrator error. It acts only along the
