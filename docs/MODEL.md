@@ -139,10 +139,10 @@ Writing $a = F/m$, `Particles::step()` performs:
 
 ```math
 \begin{aligned}
-v^{*}   &= v^{n} + \tfrac{h}{2}\, a(x^{n}, v^{n}) \\
-x^{*}   &= x^{n} + \tfrac{h}{2}\, v^{*} \\
-v^{n+1} &= v^{n} + h \, a(x^{*}, v^{*}) \\
-x^{n+1} &= x^{n} + h\, v^{n+1}
+v^{\ast} &= v^{n} + \tfrac{h}{2}\, a(x^{n}, v^{n}) \\
+x^{\ast} &= x^{n} + \tfrac{h}{2}\, v^{\ast} \\
+v^{n+1}  &= v^{n} + h \, a(x^{\ast}, v^{\ast}) \\
+x^{n+1}  &= x^{n} + h\, v^{n+1}
 \end{aligned}
 ```
 
