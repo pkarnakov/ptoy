@@ -198,6 +198,8 @@ class Particles {
   size_t GetNumParticles() const {
     return blocks_buffer_.GetNumParticles();
   }
+  // Total kinetic energy of all particles.
+  Scal GetKineticEnergy() const;
   size_t GetNumPerCell() const {
     return blocks_buffer_.GetNumPerCell();
   }

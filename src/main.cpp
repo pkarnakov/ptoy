@@ -70,7 +70,8 @@ void display() {
               << "  particles=" << gameinst->partsys->GetNumParticles()
               << "  speed=" << std::setprecision(3)
               << (curr_gtime - g_last_gtime) / frame_wtime
-              << "  t=" << gameinst->partsys->GetTime() << std::endl;
+              << "  t=" << gameinst->partsys->GetTime()
+              << "  ke=" << gameinst->partsys->GetKineticEnergy() << std::endl;
     g_report_wtime = curr_wtime;
   }
 

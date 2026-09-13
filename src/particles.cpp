@@ -223,6 +223,16 @@ void Particles::SetParticleBuffer() {
   }
   particle_buffer_ = res;
 }
+// Reads the buffer rather than the live blocks, so it stays consistent with
+// the particle count reported next to it.
+Scal Particles::GetKineticEnergy() const {
+  Scal res = 0;
+  for (const auto& p : particle_buffer_) {
+    res += p.v.dot(p.v);
+  }
+  return 0.5 * kMass * res;
+}
+
 void Particles::AddEnvObj(env_object* env) {
   ENVOBJ.push_back(std::unique_ptr<env_object>(env));
 }
