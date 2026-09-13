@@ -41,11 +41,19 @@ Build without CMake, using `pkgconf` to find SDL2 and glew
 make legacy
 ```
 
+Build with debug info and assertions
+
+```
+make debug
+```
+
 ## Run
 
 ```
-cd build && ./ptoy
+./build/ptoy
 ```
+
+or `./build_debug/ptoy` for the debug build.
 
 ## Control
 

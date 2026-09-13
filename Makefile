@@ -2,6 +2,9 @@ BUILD = build
 MAKEFILE = $(BUILD)/Makefile
 CMAKE = cmake
 
+DEBUG_BUILD = build_debug
+DEBUG_MAKEFILE = $(DEBUG_BUILD)/Makefile
+
 PKG = pkgconf --libs --cflags sdl2 glew
 
 WASM_BUILD = build_wasm
@@ -17,7 +20,14 @@ cmake: $(MAKEFILE)
 
 $(MAKEFILE):
 	mkdir -p "$(BUILD)"
-	(cd "$(BUILD)" && $(CMAKE) -DUSE_AVX=1 ..)
+	(cd "$(BUILD)" && $(CMAKE) -DUSE_AVX=1 -DCMAKE_BUILD_TYPE=Release ..)
+
+debug: $(DEBUG_MAKEFILE)
+	+make -C $(DEBUG_BUILD) $(target)
+
+$(DEBUG_MAKEFILE):
+	mkdir -p "$(DEBUG_BUILD)"
+	(cd "$(DEBUG_BUILD)" && $(CMAKE) -DUSE_AVX=1 -DCMAKE_BUILD_TYPE=Debug ..)
 
 $(WASM_MAKEFILE):
 	mkdir -p "$(WASM_BUILD)"
@@ -40,10 +50,11 @@ $(BUILD)/ptoy: src/main.cpp src/geometry.cpp src/particles.cpp src/view_gl.cpp \
 	src/control.cpp src/scene.cpp
 	mkdir -p $(BUILD)
 	$(CXX) $$($(PKG)) -DUSE_AVX=1 -DUSE_BACKEND_SDL=1 -DUSE_BACKEND_TEXT=0 \
+		-DPTOY_ASSETS_DIR='"$(CURDIR)"' \
 		-std=c++14 -march=native -pthread -fopenmp -O3 \
 		$^ $(CFLAGS) -o "$@"
 
 clean:
-	rm -rf $(BUILD) $(WASM_BUILD)
+	rm -rf $(BUILD) $(DEBUG_BUILD) $(WASM_BUILD)
 
-.PHONY: default cmake wasm serve clean legacy
+.PHONY: default cmake debug wasm serve clean legacy

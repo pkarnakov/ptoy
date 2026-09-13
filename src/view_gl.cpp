@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -26,6 +27,19 @@
       fassert(false, msg);                                           \
     }                                                                \
   } while (0);
+
+// Path to a file from the source tree, such as "shaders/vert.glsl".
+// Defaults to the source directory recorded at build time, so the executable
+// can be started from any working directory. Override with PTOY_ASSETS.
+std::string Asset(std::string relative) {
+  static const std::string root = []() -> std::string {
+    if (const char* env = std::getenv("PTOY_ASSETS")) {
+      return env;
+    }
+    return PTOY_ASSETS_DIR;
+  }();
+  return root + "/" + relative;
+}
 
 std::string ReadFile(std::string path) {
   std::ifstream fs(path);
@@ -457,8 +471,8 @@ struct ViewGl::Imp {
 
     { // Draw particles.
       GLuint program = CreateProgram(
-          "../shaders/vert.glsl", "../shaders/frag.glsl",
-          "../shaders/geom.glsl");
+          Asset("shaders/vert.glsl"), Asset("shaders/frag.glsl"),
+          Asset("shaders/geom.glsl"));
 
       auto attr_point =
           std::make_shared<VertexAttribute<GLfloat, 2>>("point", program);
@@ -521,8 +535,8 @@ struct ViewGl::Imp {
 
     { // Draw lines (frame, bonds, portals).
       GLuint program = CreateProgram(
-          "../shaders/lines.vert.glsl", "../shaders/lines.frag.glsl",
-          "../shaders/lines.geom.glsl");
+          Asset("shaders/lines.vert.glsl"), Asset("shaders/lines.frag.glsl"),
+          Asset("shaders/lines.geom.glsl"));
 
       auto attr_point =
           std::make_shared<VertexAttribute<GLfloat, 2>>("point", program);
@@ -623,7 +637,7 @@ struct ViewGl::Imp {
 
     { // Blur rectangle.
       GLuint program = CreateProgram(
-          "../shaders/blur.vert.glsl", "../shaders/blur.frag.glsl", "");
+          Asset("shaders/blur.vert.glsl"), Asset("shaders/blur.frag.glsl"), "");
 
       auto attr_point =
           std::make_shared<VertexAttribute<GLfloat, 2>>("point", program);
@@ -681,8 +695,8 @@ struct ViewGl::Imp {
 
     { // GUI.
       GLuint program = CreateProgram(
-          "../shaders/gui.vert.glsl", "../shaders/gui.frag.glsl",
-          "../shaders/gui.geom.glsl");
+          Asset("shaders/gui.vert.glsl"), Asset("shaders/gui.frag.glsl"),
+          Asset("shaders/gui.geom.glsl"));
 
       auto attr_lowcorner =
           std::make_shared<VertexAttribute<GLfloat, 2>>("lowcorner", program);
@@ -739,13 +753,13 @@ struct ViewGl::Imp {
     }
 
     { // Text.
-      auto font = LoadFont("../assets/font/font");
+      auto font = LoadFont(Asset("assets/font/font"));
       auto tex_font = std::make_shared<Texture>();
       tex_font->SetData(font.mask, font.width, font.height);
 
       GLuint program = CreateProgram(
-          "../shaders/text.vert.glsl", "../shaders/text.frag.glsl",
-          "../shaders/text.geom.glsl");
+          Asset("shaders/text.vert.glsl"), Asset("shaders/text.frag.glsl"),
+          Asset("shaders/text.geom.glsl"));
 
       auto attr_lowcorner =
           std::make_shared<VertexAttribute<GLfloat, 2>>("lowcorner", program);

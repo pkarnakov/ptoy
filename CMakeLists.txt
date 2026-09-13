@@ -92,6 +92,10 @@ if (USE_BACKEND_SDL)
   add_library(${T} src/view_gl.cpp)
   target_link_libraries(${T} geometry particles)
 
+  # Where to look for shaders and assets at runtime, see Asset() in view_gl.cpp.
+  target_compile_definitions(${T} PRIVATE
+      PTOY_ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+
   # OpenGL and GLX.
   set(OpenGL_GL_PREFERENCE "GLVND")
   find_package(OpenGL REQUIRED)
