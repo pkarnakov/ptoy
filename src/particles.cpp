@@ -17,6 +17,10 @@ const Scal kMass = kRadius * kRadius * 100;
 const Scal kPointForce = 0.1;
 const Scal kPointForceAttractive = 0.1;
 const Scal kDissipation = 0.001;
+// Damping of the normal relative velocity inside a contact. Unlike
+// kDissipation it only acts between overlapping particles and only on their
+// approach, so it leaves bulk motion alone. See docs/MODEL.md.
+const Scal kDashpot = 100;
 const Scal kBlockSize = 4. * kRadius;
 const Scal kGravity = 10;
 const Scal kPortalThickness = 0.02;
@@ -205,7 +209,9 @@ void Particles::step(Scal time_target, bool quit) {
                 kVelocityLimit / data.velocity[iblock][p].length();
           }
           data.position[iblock][p] =
-              data.position_tmp[iblock][p] + data.velocity[iblock][p] * dt;
+              data.position_tmp[iblock][p] +
+              (data.velocity_tmp[iblock][p] + data.velocity[iblock][p]) *
+                  (dt * 0.5);
         }
       }
 
@@ -764,30 +770,49 @@ Vect F12(Vect p1, Vect p2) {
   return dp * std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
 }
 
+// Pair force with the contact dashpot. The damping acts along the line of
+// centers, so it does not resist shear, and it is scaled by the overlap so
+// that it vanishes together with the contact instead of jumping to zero.
+Vect F12(Vect p1, Vect p2, Vect v1, Vect v2) {
+  const Scal threshold = std::pow(kRadius, 2) * 1e-3;
+  const Scal sigma = kSigma;
+  const Scal R = 2. * kRadius;
+  const Vect dp = p1 - p2;
+  const Scal r2 = std::max(threshold, dp.dot(dp));
+  const Scal r2inv = 1. / r2;
+  const Scal d2 = r2inv * (R * R);
+  const Scal d6 = d2 * d2 * d2;
+  const Scal d12 = d6 * d6;
+  const Scal spring = std::max<Scal>(0., sigma * (d12 - d6) * r2inv);
+  const Scal overlap = std::max<Scal>(0., 1. - r2 / (R * R));
+  const Scal damping = -kDashpot * overlap * (v1 - v2).dot(dp) * r2inv;
+  return dp * (spring + damping);
+}
+
 template <bool ApplyThreshold = true>
 void CalcForceSerial(
-    ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
+    ArrayVect& force, ArrayVect& position, ArrayVect& position_other,
+    ArrayVect& velocity, ArrayVect& velocity_other) {
   for (size_t q = 0; q < position_other.size(); ++q) {
     for (size_t p = 0; p < position.size(); ++p) {
       if (&position[p] != &position_other[q])
-        force[p] += F12(position[p], position_other[q]);
+        force[p] +=
+            F12(position[p], position_other[q], velocity[p], velocity_other[q]);
     }
   }
 }
 
 template <bool ApplyThreshold = true>
 void CalcForceSerialPadded(
-    ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
+    ArrayVect& force, ArrayVect& position, ArrayVect& position_other,
+    ArrayVect& velocity, ArrayVect& velocity_other) {
   for (size_t q = 0; q < position_other.size(); ++q) {
     for (size_t p = 0; p < position.size(); p += 8) {
-      force[p] += F12(position[p], position_other[q]);
-      force[p + 1] += F12(position[p + 1], position_other[q]);
-      force[p + 2] += F12(position[p + 2], position_other[q]);
-      force[p + 3] += F12(position[p + 3], position_other[q]);
-      force[p + 4] += F12(position[p + 4], position_other[q]);
-      force[p + 5] += F12(position[p + 5], position_other[q]);
-      force[p + 6] += F12(position[p + 6], position_other[q]);
-      force[p + 7] += F12(position[p + 7], position_other[q]);
+      for (size_t k = 0; k < 8; ++k) {
+        force[p + k] +=
+            F12(position[p + k], position_other[q], velocity[p + k],
+                velocity_other[q]);
+      }
     }
   }
 }
@@ -801,12 +826,15 @@ void CalcForceSerialPadded(
 // blocks::kVectorWidth with the padding elements initialized.
 template <bool ApplyThreshold = true>
 void CalcForceAvx(
-    ArrayVect& force, ArrayVect& position, ArrayVect& position_other) {
+    ArrayVect& force, ArrayVect& position, ArrayVect& position_other,
+    ArrayVect& velocity, ArrayVect& velocity_other) {
   static_assert(blocks::kVectorWidth == 8, "kernel processes 8 particles");
   assert(position.capacity() % blocks::kVectorWidth == 0);
   assert(force.capacity() >= position.capacity());
+  assert(velocity.capacity() >= position.capacity());
   assert(reinterpret_cast<uintptr_t>(position.data()) % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(force.data()) % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(velocity.data()) % 32 == 0);
 
   // sigma = kSigma;
   const __m256 sigma = _mm256_broadcast_ss(&kSigma);
@@ -818,9 +846,19 @@ void CalcForceAvx(
   const __m256 threshold = _mm256_broadcast_ss(&tmp_th);
   const float tmp_zero = 0.;
   const __m256 zero = _mm256_broadcast_ss(&tmp_zero);
+  // one = 1, used to turn r2 / R2 into the overlap.
+  const float tmp_one = 1.;
+  const __m256 one = _mm256_broadcast_ss(&tmp_one);
+  // R2inv = 1 / (2. * kRadius) ^ 2
+  const float tmp_r2inv = 1. / tmp;
+  const __m256 R2inv = _mm256_broadcast_ss(&tmp_r2inv);
+  // dashpot = -kDashpot, folded into the sign of the damping term
+  const float tmp_dashpot = -kDashpot;
+  const __m256 dashpot = _mm256_broadcast_ss(&tmp_dashpot);
 
   // Padding elements are accessed through the data pointers, past the size.
   const float* position_data = (const float*)position.data();
+  const float* velocity_data = (const float*)velocity.data();
   float* force_data = (float*)force.data();
 
   for (size_t q = 0; q < position_other.size(); ++q) {
@@ -828,6 +866,10 @@ void CalcForceAvx(
     const __m256 qy = _mm256_broadcast_ss((float*)&position_other[q].y);
     // qxy = (q.x, q.y)
     const __m256 qxy = _mm256_blend_ps(qx, qy, 0xAA);
+    const __m256 qvx = _mm256_broadcast_ss((float*)&velocity_other[q].x);
+    const __m256 qvy = _mm256_broadcast_ss((float*)&velocity_other[q].y);
+    // qvxy = (q.v.x, q.v.y)
+    const __m256 qvxy = _mm256_blend_ps(qvx, qvy, 0xAA);
     for (size_t p = 0; p < position.size(); p += 8) {
       // pxy =(p.x, p.y)
       const __m256 pxy_l = _mm256_load_ps(position_data + p * 2);
@@ -858,6 +900,25 @@ void CalcForceAvx(
           _mm256_mul_ps(sigma, _mm256_mul_ps(c2, _mm256_sub_ps(d12, d6)));
 
       k = _mm256_max_ps(k, zero);
+
+      // Contact dashpot: k += -kDashpot * overlap * dot(vrel, rxy) / r2,
+      // which acts along rxy and so damps only the normal relative motion.
+      // vxy = (p.v.x, p.v.y)
+      const __m256 vxy_l = _mm256_load_ps(velocity_data + p * 2);
+      const __m256 vxy_h = _mm256_load_ps(velocity_data + p * 2 + 8);
+      // vrel = vxy - qvxy
+      const __m256 vrel_l = _mm256_sub_ps(vxy_l, qvxy);
+      const __m256 vrel_h = _mm256_sub_ps(vxy_h, qvxy);
+      // rv = dot(vrel, rxy), in the same lane order as r2
+      const __m256 rv = _mm256_hadd_ps(
+          _mm256_mul_ps(vrel_l, rxy_l), _mm256_mul_ps(vrel_h, rxy_h));
+      // overlap = max(0, 1 - r2 / R2), zero once the contact breaks
+      const __m256 overlap =
+          _mm256_max_ps(_mm256_sub_ps(one, _mm256_mul_ps(r2, R2inv)), zero);
+      // kd = -kDashpot * overlap * rv * c2
+      const __m256 kd =
+          _mm256_mul_ps(_mm256_mul_ps(dashpot, overlap), _mm256_mul_ps(rv, c2));
+      k = _mm256_add_ps(k, kd);
 
       // lo = k([3] [3] [2] [2] [1] [1] [0] [0])
       const __m256 kxy_l = _mm256_unpacklo_ps(k, k);
@@ -1074,12 +1135,14 @@ void Particles::calc_forces(size_t iblock) {
 
     if (iblock != j) { // no check for self-force needed
       CALC_FORCE<false>(
-          data.force[iblock], data.position[iblock], data.position[j]);
+          data.force[iblock], data.position[iblock], data.position[j],
+          data.velocity[iblock], data.velocity[j]);
     }
 
     if (iblock == j) { // apply threshold to distance to avoid self-force
       CALC_FORCE<true>(
-          data.force[iblock], data.position[iblock], data.position[j]);
+          data.force[iblock], data.position[iblock], data.position[j],
+          data.velocity[iblock], data.velocity[j]);
     }
   }
 

@@ -37,11 +37,12 @@ class blocks {
     }
     // Initializes the element at `idx` in block `dest`, which lies past the
     // size but within the capacity. The vectorized kernel reads the position
-    // and writes the force of such elements, and discards the result. The
-    // position is far enough away to contribute no force.
+    // and the velocity and writes the force of such elements, and discards the
+    // result. The position is far enough away to contribute no force.
     void PadElement(size_t dest, size_t idx) {
       assert(idx < position[dest].capacity());
       position[dest].data()[idx] = Vect(kPadPosition);
+      velocity[dest].data()[idx] = Vect(0);
       force[dest].data()[idx] = Vect(0);
     }
     // Initializes the elements between the size and the capacity of block
