@@ -170,7 +170,7 @@ class Particles {
   size_t GetNumPerCell() const {
     return blocks_buffer_.GetNumPerCell();
   }
-  const std::vector<std::pair<size_t, size_t>> GetBlockById() const {
+  const std::vector<std::pair<size_t, size_t>>& GetBlockById() const {
     return blocks_buffer_.GetBlockById();
   }
   const blocks::BlockData& GetBlockData() const {

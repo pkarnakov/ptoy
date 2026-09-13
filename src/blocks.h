@@ -197,7 +197,7 @@ class blocks {
   BlockData& GetData() {
     return data_;
   }
-  const std::vector<std::pair<size_t, size_t>> GetBlockById() const {
+  const std::vector<std::pair<size_t, size_t>>& GetBlockById() const {
     return block_by_id_;
   }
   size_t GetNumBlocks() const {

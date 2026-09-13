@@ -203,7 +203,7 @@ void Particles::step(Scal time_target, bool quit) {
 }
 
 void Particles::CheckBonds() {
-  const auto bbi = Blocks.GetBlockById();
+  const auto& bbi = Blocks.GetBlockById();
   for (auto it = bonds_.begin(); it != bonds_.end();) {
     if (bbi[it->first].first == blocks::kBlockNone ||
         bbi[it->second].first == blocks::kBlockNone) {
