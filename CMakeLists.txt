@@ -128,7 +128,10 @@ if (USE_WASM)
     , '_SetControlDebug', '_Init', '_SetPause', '_GetMouseMode' \
     , '_GetGravity', '_SetGravity', '_SetGravityVect' \
   ]")
-  target_link_options(${T} PRIVATE "-sEXPORTED_RUNTIME_METHODS=['cwrap', 'ccall']")
+  # HEAPU8 is read by ptoy_inc.js to view the packed coordinate buffers. The
+  # memory views stopped being exported by default in emscripten 4.0.7.
+  target_link_options(${T} PRIVATE
+      "-sEXPORTED_RUNTIME_METHODS=['cwrap', 'ccall', 'HEAPU8']")
   target_compile_options(${T} PRIVATE -fexceptions)
   target_link_options(${T} PRIVATE -fexceptions)
   set_target_properties(${T} PROPERTIES OUTPUT_NAME ptoy)
