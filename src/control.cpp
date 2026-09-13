@@ -121,6 +121,10 @@ void Control::Handle(Event e) {
       case 'l':
         partsys_->SetParticleGrid(kGridLarge);
         break;
+      case 'd':
+        partsys_->AddParticleBlock(
+            Vect(kBlockPositionX, kBlockPositionY), kBlockGrid);
+        break;
       default:
         break;
     }

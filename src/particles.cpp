@@ -98,6 +98,36 @@ void Particles::SetParticleGrid(size_t size) {
   std::cout << "Particle grid " << size << "x" << size << " = "
             << size * size << " particles" << std::endl;
 }
+
+void Particles::AddParticleBlock(Vect relative, size_t size) {
+  const Vect center = domain.A + domain.size() * relative;
+  // Hexagonal packing, as in SetParticleGrid().
+  const Scal width = size * 2. * kRadius;
+  const Scal height = size * std::sqrt(3.) * kRadius;
+  const Vect low = center - Vect(width, height) * 0.5;
+
+  // Ids are never reused, so the first free one is past the last known.
+  int next_id = static_cast<int>(Blocks.GetBlockById().size());
+  ArrayVect position;
+  ArrayVect velocity;
+  std::vector<int> id;
+  for (size_t j = 0; j < size; ++j) {
+    for (size_t i = 0; i < size; ++i) {
+      position.push_back(Vect(
+          low.x + kRadius * (2. * i + 1. + (j % 2)),
+          low.y + kRadius * (std::sqrt(3.) * j + 1.)));
+      velocity.push_back(Vect(0.));
+      id.push_back(next_id);
+      ++next_id;
+    }
+  }
+  Blocks.AddParticles(position, velocity, id);
+  SetParticleBuffer();
+
+  std::cout << "Added " << size << "x" << size << " particles, "
+            << Blocks.GetNumParticles() << " in total" << std::endl;
+}
+
 Particles::~Particles() {}
 void Particles::SetParticleBuffer() {
   blocks_buffer_ = Blocks;

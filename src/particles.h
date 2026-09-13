@@ -16,6 +16,11 @@ extern const Scal kPortalThickness;
 constexpr size_t kGridSmall = 10;
 constexpr size_t kGridMedium = 25;
 constexpr size_t kGridLarge = 45;
+// Block added by AddParticleBlock(), in particles per side.
+constexpr size_t kBlockGrid = 10;
+// Where that block appears, relative to the domain.
+constexpr Scal kBlockPositionX = 0.5;
+constexpr Scal kBlockPositionY = 0.8;
 
 struct particle {
   Vect p;
@@ -126,6 +131,10 @@ class Particles {
   // Replaces all particles with a grid of `size` by `size` of them.
   // Resets the simulation, see the definition.
   void SetParticleGrid(size_t size);
+  // Adds a block of `size` by `size` particles centered at `relative`
+  // position in the domain, where (0,0) is its lower left corner and (1,1) the
+  // upper right one. Keeps the particles that are already there.
+  void AddParticleBlock(Vect relative, size_t size);
   // Size of the grid passed to the last SetParticleGrid().
   size_t GetParticleGrid() const {
     return grid_size_;

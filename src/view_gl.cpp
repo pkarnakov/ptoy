@@ -697,6 +697,14 @@ struct ViewGl::Imp {
       add_grid_button("M", kGridMedium);
       add_grid_button("L", kGridLarge);
 
+      gui.AddButton(Gui::Button( //
+          "+",
+          [this]() {
+            partsys->AddParticleBlock(
+                Vect(kBlockPositionX, kBlockPositionY), kBlockGrid);
+          },
+          {1, 1, 1}));
+
       gui.SetWindowSize(width, height);
     }
 
@@ -836,6 +844,7 @@ O: switch to portal
 B: switch to bond
 N: switch to no action
 S, M, L: restart with a small, medium or large grid of particles
+D: drop a block of particles
 G: toggle gravity
 I: remove last pair of portals
 SPACE: toggle pause
