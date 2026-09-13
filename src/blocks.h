@@ -270,17 +270,32 @@ class blocks {
   std::array<int, kNumNeighbors> GetNeighborOffsets() const {
     return neighbor_offsets_;
   }
-  void SortParticles() {
+  // Finds the block each particle of block `i` belongs to after it moved and
+  // records it in dest_. Only reads block `i`, so blocks can be scanned in
+  // parallel. Followed by ApplyMoves(), which does the moving.
+  void ScanBlock(size_t i) {
+    const auto& position = data_.position[i];
+    dest_[i].resize(position.size());
+    for (size_t p = 0; p < position.size(); ++p) {
+      dest_[i][p] = FindBlock(position[p]);
+    }
+  }
+  // Moves the particles to the blocks found by ScanBlock() and drops those
+  // that left the domain. Modifies every block, so it runs serially.
+  void ApplyMoves() {
     size_t lnum_particles_ = 0;
     size_t max_per_cell = 0;
     for (size_t i = 0; i < num_blocks_; ++i) {
       size_t p = 0;
-      size_t pe = data_.position[i].size();
+      size_t pe = dest_[i].size();
       while (p < pe) {
-        const size_t j = FindBlock(data_.position[i][p]);
+        const size_t j = dest_[i][p];
         if (i != j) {
           if (j != kBlockNone) {
             data_.MoveParticle(i, p, j);
+            // The particle is now in the block it belongs to. Recorded for
+            // block `j` to keep dest_[j] and the block the same size.
+            dest_[j].push_back(j);
             // if the new block is already processed, increase the counter
             if (j < i) {
               ++lnum_particles_;
@@ -288,6 +303,9 @@ class blocks {
           } else {
             data_.RemoveParticle(i, p);
           }
+          // Both leave the last particle of the block in the freed slot.
+          dest_[i][p] = dest_[i].back();
+          dest_[i].pop_back();
           --pe;
         } else {
           ++p;
@@ -300,6 +318,12 @@ class blocks {
     num_particles_ = lnum_particles_;
     num_per_cell_ = max_per_cell;
   }
+  void SortParticles() {
+    for (size_t i = 0; i < num_blocks_; ++i) {
+      ScanBlock(i);
+    }
+    ApplyMoves();
+  }
 
  private:
   RectVect domain_;
@@ -309,6 +333,8 @@ class blocks {
   size_t num_blocks_;
   std::array<int, kNumNeighbors> neighbor_offsets_;
   std::vector<std::pair<size_t, size_t>> block_by_id_;
+  // Destination block of every particle, see ScanBlock().
+  std::vector<std::vector<size_t>> dest_;
   size_t num_particles_;
   size_t num_per_cell_;
   void InitEmptyBlocks(RectVect domain, Vect block_size) {
@@ -322,6 +348,8 @@ class blocks {
 
     data_.clear();
     data_.resize(num_blocks_);
+    dest_.clear();
+    dest_.resize(num_blocks_);
 
     // Calc offsets to neighbors
     size_t n = 0;

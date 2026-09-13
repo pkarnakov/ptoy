@@ -198,7 +198,18 @@ void Particles::step(Scal time_target, bool quit) {
 
         DetectPortals();
         ApplyPortals();
-        Blocks.SortParticles();
+      }
+
+      // Re-bin the particles that left their block. The scan is parallel,
+      // the moves that follow are not, see blocks::ScanBlock().
+#pragma omp for schedule(static)
+      for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
+        Blocks.ScanBlock(iblock);
+      }
+
+#pragma omp single
+      {
+        Blocks.ApplyMoves();
         CheckBonds();
         CheckFrozen();
 
