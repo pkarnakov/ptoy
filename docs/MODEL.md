@@ -20,11 +20,11 @@ on one are summed in `calc_forces()`:
 
 The repulsive part is a Lennard-Jones-like kernel, cut off at the minimum:
 
-$$
+```math
 F_\text{spring}(r) = \frac{\sigma}{r}
   \left[ \left(\frac{R}{r}\right)^{12} - \left(\frac{R}{r}\right)^{6} \right],
 \qquad R = 2 r_0
-$$
+```
 
 $F_\text{spring}$ is zero at $r = R$ and `std::max(0., ...)` clamps everything
 beyond it, so the force is **exactly** zero past the cutoff, not merely small.
@@ -34,9 +34,9 @@ below is tapered so that it preserves this property.
 
 Particles rest touching at $r = R$. The stiffness there is
 
-$$
+```math
 k = -\left.\frac{dF}{dr}\right|_{r=R} = \frac{6\sigma}{R^2} = 3750
-$$
+```
 
 taking the derivative from the compressed side, since the clamp makes the force
 one-sided at the cutoff. That stiffness sets the fastest timescale in the
@@ -65,19 +65,19 @@ visibly slows the bulk flow, which is the motion the player came to watch.
 
 `F12()` therefore adds, on top of the spring,
 
-$$
+```math
 \mathbf{F}_\text{damp}
   = -c \, \phi(r) \, \big[(\mathbf{v}_1 - \mathbf{v}_2)\cdot\hat{\mathbf{n}}\big]
     \, \hat{\mathbf{n}},
 \qquad
 \hat{\mathbf{n}} = \frac{\mathbf{p}_1 - \mathbf{p}_2}{r}
-$$
+```
 
 with the overlap taper
 
-$$
+```math
 \phi(r) = \max\left(0,\; 1 - \frac{r^2}{R^2}\right)
-$$
+```
 
 Three properties matter:
 
@@ -96,10 +96,10 @@ Three properties matter:
 
 Written as a damping ratio for a pair, with reduced mass $\mu = m/2$:
 
-$$
+```math
 \zeta = \frac{c \, \phi(r)}{2\sqrt{k\mu}},
 \qquad \sqrt{k\mu} = 8.66
-$$
+```
 
 | overlap | $\phi(r)$ | $\zeta$ | $\gamma h$ |
 |---|---|---|---|
@@ -138,14 +138,14 @@ $400$ and above explode — consistent with $\gamma h \to 1$.
 
 Writing $a = F/m$, `Particles::step()` performs:
 
-$$
+```math
 \begin{aligned}
 v^{*}   &= v^{n} + \tfrac{h}{2}\, a(x^{n}, v^{n}) \\
 x^{*}   &= x^{n} + \tfrac{h}{2}\, v^{*} \\
 v^{n+1} &= v^{n} + h \, a(x^{*}, v^{*}) \\
 x^{n+1} &= x^{n} + \tfrac{h}{2}\,\left(v^{n} + v^{n+1}\right)
 \end{aligned}
-$$
+```
 
 A midpoint force evaluation with a trapezoidal position update. The first two
 lines are the predictor; note that $x^{*}$ advances with $v^{*}$ rather than
@@ -182,9 +182,9 @@ The scheme is not symplectic. On the harmonic test problem $a(x) = -\omega^2 x$,
 with $z = \omega h$, one step is a linear map whose amplification matrix in the
 scaled coordinates $(x, v/\omega)$ satisfies
 
-$$
+```math
 \det M = 1 - \frac{z^4}{8}
-$$
+```
 
 so it still bleeds a little phase-space volume, $0.007\,\%$ per step at contact
 frequency. That is a rounding error next to the dashpot and is not relied on.
@@ -195,9 +195,9 @@ The position update was originally $x^{n+1} = x^{n} + h\,v^{n+1}$ — using the
 new velocity rather than the average. That is a one-term Taylor error, and it
 gave
 
-$$
+```math
 \det M = 1 - \frac{z^2}{2} \qquad \text{exactly}
-$$
+```
 
 a phase-space contraction of $1.2$–$2.3\,\%$ per step at contact frequency
 against $0.0005\,\%$ for bulk motion at a $\sim 1\,\text{s}$ period. The scheme
