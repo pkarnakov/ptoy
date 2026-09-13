@@ -60,6 +60,8 @@ or `./build_debug/ptoy` for the debug build.
 * `o`: switch mouse to *Portal* mode
 * `b`: switch mouse to *Bonds* mode
 * `n`: switch mouse to *No action* mode
+* `s`, `m`, `l`: restart with a small (10x10), medium (25x25)
+  or large (45x45) grid of particles
 * `g`: toggle gravity
 * `i`: remove last pair of portals
 * `space`: toggle pause

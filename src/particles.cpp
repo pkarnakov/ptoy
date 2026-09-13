@@ -32,49 +32,70 @@ Particles::Particles()
   force_center = Vect(0, 0);
   remove_last_portal_ = false;
 
-  const Scal r = kRadius;
-  const size_t rows = 25;
-  const size_t columns = 25;
-  const Scal width = columns * 2. * kRadius;
-  const Scal height = rows * std::sqrt(3.) * kRadius;
-  std::vector<particle> P;
-  RectVect box(Vect(-0.5 * width, -1.), Vect(0.5 * width, -1. + height));
-  for (size_t j = 0; j < rows; ++j) {
-    for (size_t i = 0; i < columns; ++i) {
-      const Scal x = box.A.x + kRadius * (2. * i + 1. + (j % 2));
-      const Scal y = box.A.y + kRadius * (std::sqrt(3.) * j + 1.);
-      P.emplace_back(Vect(x, y), Vect(0., 0.));
-    }
-  }
-
-  ArrayVect position;
-  ArrayVect velocity;
-  std::vector<int> id;
-
-  for (auto part : P) {
-    position.push_back(part.p);
-    velocity.push_back(part.v);
-    id.push_back(id.size());
-  }
-
-  Blocks.AddParticles(position, velocity, id);
-
   t = 0.0;
   dt = kTimeStep;
   gravity_ = Vect(0, -1) * kGravity;
 
   SetDomain(domain);
-  SetParticleBuffer();
   resize_queue_ = domain;
   ResetEnvObjFrame(domain);
 
-  const Scal dx = kPortalThickness;
-  if (1) {
-    PortalStart(Vect(box.A.x - dx, box.A.y));
-    PortalStop(Vect(box.A.x - dx, box.B.y + 0.2));
-    PortalStart(Vect(box.B.x + dx, box.A.y));
-    PortalStop(Vect(box.B.x + dx, box.B.y + 0.2));
+  SetParticleGrid(kGridMedium);
+}
+
+// Bonds, frozen particles and portals refer to particles by id, so they cannot
+// outlive the particles they were made of and are cleared here. The two
+// portals flanking the grid are recreated, as in the initial state. The domain
+// is left alone since it follows the window size.
+void Particles::SetParticleGrid(size_t size) {
+  grid_size_ = size;
+
+  bonds_.clear();
+  no_rendering_.clear();
+  no_rendering_buffer_.clear();
+  frozen_.clear();
+  portals_.clear();
+  particle_to_move_.clear();
+  bonds_prev_particle_id_ = kParticleIdNone;
+  bonds_enabled_ = false;
+  freeze_enabled_ = false;
+  pick_enabled_ = false;
+  portal_enabled_ = false;
+  portal_mouse_moving_ = false;
+  portal_stage_ = 0;
+  t = 0.;
+
+  auto& data = Blocks.GetData();
+  data.clear();
+  data.resize(Blocks.GetNumBlocks());
+
+  // Hexagonal packing resting on the bottom of the domain.
+  const Scal width = size * 2. * kRadius;
+  const Scal height = size * std::sqrt(3.) * kRadius;
+  const RectVect box(Vect(-0.5 * width, -1.), Vect(0.5 * width, -1. + height));
+  ArrayVect position;
+  ArrayVect velocity;
+  std::vector<int> id;
+  for (size_t j = 0; j < size; ++j) {
+    for (size_t i = 0; i < size; ++i) {
+      position.push_back(Vect(
+          box.A.x + kRadius * (2. * i + 1. + (j % 2)),
+          box.A.y + kRadius * (std::sqrt(3.) * j + 1.)));
+      velocity.push_back(Vect(0.));
+      id.push_back(id.size());
+    }
   }
+  Blocks.AddParticles(position, velocity, id);
+  SetParticleBuffer();
+
+  const Scal dx = kPortalThickness;
+  PortalStart(Vect(box.A.x - dx, box.A.y));
+  PortalStop(Vect(box.A.x - dx, box.B.y + 0.2));
+  PortalStart(Vect(box.B.x + dx, box.A.y));
+  PortalStop(Vect(box.B.x + dx, box.B.y + 0.2));
+
+  std::cout << "Particle grid " << size << "x" << size << " = "
+            << size * size << " particles" << std::endl;
 }
 Particles::~Particles() {}
 void Particles::SetParticleBuffer() {

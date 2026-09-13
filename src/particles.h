@@ -12,6 +12,11 @@
 extern const Scal kRadius;
 extern const Scal kPortalThickness;
 
+// Presets for the grid of particles, in particles per side.
+constexpr size_t kGridSmall = 10;
+constexpr size_t kGridMedium = 25;
+constexpr size_t kGridLarge = 45;
+
 struct particle {
   Vect p;
   Vect v;
@@ -117,6 +122,13 @@ class Particles {
   }
   const std::set<int>& GetFrozen() const {
     return frozen_;
+  }
+  // Replaces all particles with a grid of `size` by `size` of them.
+  // Resets the simulation, see the definition.
+  void SetParticleGrid(size_t size);
+  // Size of the grid passed to the last SetParticleGrid().
+  size_t GetParticleGrid() const {
+    return grid_size_;
   }
   void step(Scal time_target, bool quit);
   void SetForce(Vect center, bool enabled);
@@ -235,4 +247,5 @@ class Particles {
   void UpdatePortalBlocks(Portal& portal);
   std::set<std::pair<int, int>> no_rendering_;
   std::set<std::pair<int, int>> no_rendering_buffer_;
+  size_t grid_size_ = 0;
 };

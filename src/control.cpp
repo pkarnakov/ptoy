@@ -112,6 +112,15 @@ void Control::Handle(Event e) {
         std::cout << "Remove last portal" << std::endl;
         partsys_->RemoveLastPortal();
         break;
+      case 's':
+        partsys_->SetParticleGrid(kGridSmall);
+        break;
+      case 'm':
+        partsys_->SetParticleGrid(kGridMedium);
+        break;
+      case 'l':
+        partsys_->SetParticleGrid(kGridLarge);
+        break;
       default:
         break;
     }

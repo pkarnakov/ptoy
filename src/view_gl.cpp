@@ -688,6 +688,15 @@ struct ViewGl::Imp {
       add_button("O", Control::MouseMode::Portal);
       add_button("B", Control::MouseMode::Bond);
 
+      auto add_grid_button = [&](std::string lbl, size_t size) {
+        gui.AddButton(Gui::Button( //
+            lbl, [this, size]() { partsys->SetParticleGrid(size); }, {1, 1, 1}));
+        grid_to_button[size] = &gui.GetButtons().back();
+      };
+      add_grid_button("S", kGridSmall);
+      add_grid_button("M", kGridMedium);
+      add_grid_button("L", kGridLarge);
+
       gui.SetWindowSize(width, height);
     }
 
@@ -729,6 +738,10 @@ struct ViewGl::Imp {
         }
         if (mouse_to_button.count(control_.mouse_mode)) {
           mouse_to_button[control_.mouse_mode]->color = SplitRgb(colors_geo[0]);
+        }
+        if (grid_to_button.count(partsys->GetParticleGrid())) {
+          grid_to_button[partsys->GetParticleGrid()]->color =
+              SplitRgb(colors_geo[3]);
         }
 
         for (auto& b : buttons) {
@@ -822,6 +835,7 @@ F: switch to freeze
 O: switch to portal
 B: switch to bond
 N: switch to no action
+S, M, L: restart with a small, medium or large grid of particles
 G: toggle gravity
 I: remove last pair of portals
 SPACE: toggle pause
@@ -917,6 +931,7 @@ Q: quit after three presses
   std::vector<RenderTask> tasks_;
   std::vector<size_t> tasks_indices_;
   std::map<Control::MouseMode, Gui::Button*> mouse_to_button;
+  std::map<size_t, Gui::Button*> grid_to_button;
   Gui gui;
   SDL_GLContext glcontext;
   SDL_Window* window;
