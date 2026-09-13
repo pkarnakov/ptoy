@@ -324,7 +324,7 @@ function postRun() {
     window.button_pause, window.button_restart,
     window.button_r, window.button_a, window.button_p,
     window.button_f, window.button_o, window.button_b,
-    window.button_i, window.button_g,
+    window.button_i, window.button_g, window.button_d,
   ].forEach(b => {
     b.addEventListener('keydown', function(e){
       if (e.key == ' ') {
