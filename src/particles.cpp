@@ -308,6 +308,21 @@ void Particles::SetForce(bool enabled) {
   force_enabled = enabled;
 }
 
+// One step changes gravity by half of its default magnitude, which reaches
+// zero in two steps and reverses in four.
+const Scal kGravityStep = kGravity * 0.5;
+const Scal kGravityMax = kGravity * 2;
+
+void Particles::ChangeGravity(int steps) {
+  gravity_.y = std::min(
+      kGravityMax, std::max(-kGravityMax, gravity_.y + steps * kGravityStep));
+  // Changing gravity while it is off would do nothing visible.
+  gravity_enable_ = true;
+  const Scal down = -gravity_.y;
+  const char* direction = down > 0 ? " down" : down < 0 ? " up" : "";
+  std::cout << "Gravity: " << std::abs(down) << direction << std::endl;
+}
+
 void Particles::PickStart(Vect point) {
   size_t min_block = blocks::kBlockNone;
   size_t min_particle = 0;

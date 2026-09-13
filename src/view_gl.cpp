@@ -705,6 +705,14 @@ struct ViewGl::Imp {
           },
           {1, 1, 1}));
 
+      auto add_gravity_button = [&](std::string lbl, int steps) {
+        gui.AddButton(Gui::Button( //
+            lbl, [this, steps]() { partsys->ChangeGravity(steps); },
+            {1, 1, 1}));
+      };
+      add_gravity_button("1", -1);
+      add_gravity_button("2", 1);
+
       gui.SetWindowSize(width, height);
     }
 
@@ -845,6 +853,7 @@ B: switch to bond
 N: switch to no action
 S, M, L: restart with a small, medium or large grid of particles
 D: drop a block of particles
+1, 2: gravity further down or up
 G: toggle gravity
 I: remove last pair of portals
 SPACE: toggle pause

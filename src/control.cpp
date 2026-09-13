@@ -125,6 +125,12 @@ void Control::Handle(Event e) {
         partsys_->AddParticleBlock(
             Vect(kBlockPositionX, kBlockPositionY), kBlockGrid);
         break;
+      case '1':
+        partsys_->ChangeGravity(-1);
+        break;
+      case '2':
+        partsys_->ChangeGravity(1);
+        break;
       default:
         break;
     }

@@ -180,6 +180,10 @@ class Particles {
   Vect GetGravityVect() const {
     return gravity_;
   }
+  // Changes gravity by `steps`, negative pointing it further down and
+  // positive further up, up to twice its default magnitude either way. Turns
+  // gravity on, since it would have no effect otherwise.
+  void ChangeGravity(int steps);
   void SetGravityVect(Vect gravity) {
     gravity_ = gravity;
   }

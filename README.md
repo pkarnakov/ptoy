@@ -63,6 +63,7 @@ or `./build_debug/ptoy` for the debug build.
 * `s`, `m`, `l`: restart with a small (10x10), medium (25x25)
   or large (45x45) grid of particles
 * `d`: drop a block of 10x10 particles from above
+* `1`, `2`: point gravity further down or further up, also turning it on
 * `g`: toggle gravity
 * `i`: remove last pair of portals
 * `space`: toggle pause
