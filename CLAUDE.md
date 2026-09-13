@@ -91,6 +91,10 @@ simulation is single precision.
   live at the top of `src/particles.cpp` and are tightly coupled — `kBlockSize`
   must stay at least the force cutoff, since forces are only computed between
   neighboring blocks.
+- **The integrator in `Particles::step()`** is neither Euler nor velocity
+  Verlet, and it looks like a half-finished Verlet. It is not: the scheme is
+  non-symplectic and the resulting numerical damping is what keeps stiff
+  contacts stable. Do not "correct" it without reading `docs/MODEL.md`.
 - **Assertions** use `fassert`, `fassert_equal`, `NAMEVALUE` from `src/logger.h`
   (they throw, they are not `assert`).
 

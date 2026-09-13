@@ -83,3 +83,8 @@ Mode|Key|Click action
 *Freeze* |`f`| freeze/unfreeze particle
 *Bonds*  |`b`| draw bonds between particles
 *No action* |`n`| nothing
+
+## Documentation
+
+* [docs/MODEL.md](docs/MODEL.md): the forces, the constants and the time
+  integrator, including why the integrator is not velocity Verlet
