@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstdint>
+#include <limits>
 #include <thread>
 
 #include "macros.h"
@@ -122,11 +123,13 @@ void Particles::step(Scal time_target, bool quit) {
       }
 
 #pragma omp single
-      {
-        RHS_bonds();
-        ApplyPortalsForces();
-        ApplyFrozen();
-      }
+      RHS_bonds();
+
+      // Parallelized inside, so called by all threads.
+      ApplyPortalsForces();
+
+#pragma omp single
+      ApplyFrozen();
 
 #pragma omp for schedule(dynamic, 8)
       for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
@@ -153,11 +156,13 @@ void Particles::step(Scal time_target, bool quit) {
       }
 
 #pragma omp single
-      {
-        RHS_bonds();
-        ApplyPortalsForces();
-        ApplyFrozen();
-      }
+      RHS_bonds();
+
+      // Parallelized inside, so called by all threads.
+      ApplyPortalsForces();
+
+#pragma omp single
+      ApplyFrozen();
 
 #pragma omp for schedule(dynamic, 8)
       for (size_t iblock = 0; iblock < Blocks.GetNumBlocks(); ++iblock) {
@@ -363,63 +368,135 @@ void Particles::DetectPortals() {
   }
 }
 
+void Particles::UpdatePortalCache(const Portal& portal, PortalCache& cache) {
+  const Vect a = portal.begin;
+  const Vect r = portal.end - a;
+  const Vect n = Vect(-r.y, r.x).GetNormalized();
+  const auto& data = Blocks.GetData();
+
+  cache.block.clear();
+  cache.index.clear();
+  cache.position.clear();
+  cache.lambda.clear();
+  cache.offset.clear();
+  cache.groups.clear();
+  for (size_t iblock : portal.blocks) {
+    if (data.position[iblock].empty()) {
+      continue;
+    }
+    const Scal inf = std::numeric_limits<Scal>::max();
+    PortalCache::Group group;
+    group.begin = cache.position.size();
+    group.low = Vect(inf);
+    group.high = Vect(-inf);
+    group.lambda_min = inf;
+    group.lambda_max = -inf;
+    for (size_t p = 0; p < data.position[iblock].size(); ++p) {
+      const Vect x = data.position[iblock][p];
+      const Scal lambda = r.dot(x - a) / r.dot(r);
+      cache.block.push_back(iblock);
+      cache.index.push_back(p);
+      cache.position.push_back(x);
+      cache.lambda.push_back(lambda);
+      cache.offset.push_back((x - a).dot(n));
+      group.low = Vect(std::min(group.low.x, x.x), std::min(group.low.y, x.y));
+      group.high =
+          Vect(std::max(group.high.x, x.x), std::max(group.high.y, x.y));
+      group.lambda_min = std::min(group.lambda_min, lambda);
+      group.lambda_max = std::max(group.lambda_max, lambda);
+    }
+    group.end = cache.position.size();
+    cache.groups.push_back(group);
+  }
+}
+
 void Particles::ApplyPortalsForces() {
   // Assume that the particles have just been moved
   // with their velocity
   // so that (position - dt * velocity) is the previous position
 
+  // Distance beyond which F12() returns zero.
+  const Scal kCutoff = 2. * kRadius;
+
+  // Called from the parallel region of step(), so the directives below are
+  // orphaned and bind to it. Every particle only gets a force of its own, so
+  // the loop over them is shared between the threads.
+  auto& data = Blocks.GetData();
   for (auto& pair : portals_) {
+    // The coordinates relative to the portal are the same for every particle
+    // of the pair, so they are computed once instead of once per pair of
+    // particles below.
+#pragma omp single
+    {
+      UpdatePortalCache(pair[0], portal_cache_[0]);
+      UpdatePortalCache(pair[1], portal_cache_[1]);
+    }
+
     for (int d = 0; d <= 1; ++d) {
       auto& portal = pair[d];
-      auto& other = pair[1 - d];
+      const PortalCache& cache = portal_cache_[d];
+      const PortalCache& other_cache = portal_cache_[1 - d];
       const Vect a = portal.begin;
       const Vect b = portal.end;
-      const Vect other_a = other.begin;
-      const Vect other_b = other.end;
 
       const Vect r = b - a;
       const Vect n = Vect(-r.y, r.x).GetNormalized();
-      const Vect other_r = other_b - other_a;
-      const Vect other_n = Vect(-other_r.y, other_r.x).GetNormalized();
-      auto& data = Blocks.GetData();
-      for (size_t iblock : portal.blocks) {
-        for (size_t p = 0; p < data.position[iblock].size(); ++p) {
-          const Vect curr = data.position[iblock][p];
-          const Scal lambda_curr = r.dot(curr - a) / r.dot(r);
-          const Scal offset_curr = (curr - a).dot(n);
+      const Scal r_length = r.length();
+#pragma omp for schedule(static)
+      for (size_t p = 0; p < cache.position.size(); ++p) {
+        const Vect curr = cache.position[p];
+        const Scal lambda_curr = cache.lambda[p];
+        const Scal offset_curr = cache.offset[p];
+        if (!(lambda_curr > 0. && lambda_curr < 1.)) {
+          continue;
+        }
+        Vect& force = data.force[cache.block[p]][cache.index[p]];
 
-          // Check particle forces
-          if (lambda_curr > 0. && lambda_curr < 1.) {
-            for (size_t j : portal.blocks) {
-              for (size_t q = 0; q < data.position[j].size(); ++q) {
-                const Vect neighbor = data.position[j][q];
-                const Scal lambda_neighbor = r.dot(neighbor - a) / r.dot(r);
-                const Scal offset_neighbor = (neighbor - a).dot(n);
-                if (lambda_neighbor > 0. && lambda_neighbor < 1. &&
-                    offset_neighbor * offset_curr < 0.) {
-                  data.force[iblock][p] -= F12(curr, neighbor);
-                }
-              }
+        // Check particle forces
+        for (const auto& group : cache.groups) {
+          if (curr.x < group.low.x - kCutoff ||
+              curr.x > group.high.x + kCutoff ||
+              curr.y < group.low.y - kCutoff ||
+              curr.y > group.high.y + kCutoff) {
+            continue;
+          }
+          for (size_t q = group.begin; q < group.end; ++q) {
+            const Vect neighbor = cache.position[q];
+            const Vect dp = neighbor - curr;
+            if (dp.dot(dp) > kCutoff * kCutoff) {
+              continue;
+            }
+            const Scal lambda_neighbor = cache.lambda[q];
+            const Scal offset_neighbor = cache.offset[q];
+            if (lambda_neighbor > 0. && lambda_neighbor < 1. &&
+                offset_neighbor * offset_curr < 0.) {
+              force -= F12(curr, neighbor);
             }
           }
+        }
 
-          if (lambda_curr > 0. && lambda_curr < 1.) {
-            for (size_t j : other.blocks) {
-              for (size_t q = 0; q < data.position[j].size(); ++q) {
-                const Vect neighbor = data.position[j][q];
-                const Scal other_lambda_neighbor =
-                    other_r.dot(neighbor - other_a) / other_r.dot(other_r);
-                const Scal other_offset_neighbor =
-                    (neighbor - other_a).dot(other_n);
-                if (other_lambda_neighbor > 0. && other_lambda_neighbor < 1. &&
-                    other_offset_neighbor * offset_curr < 0.) {
-                  const Scal sign = (offset_curr > 0. ? 1. : -1.);
-                  const Vect proj = a + r * other_lambda_neighbor +
-                                    n * (other_offset_neighbor +
-                                         2. * sign * kPortalThickness);
-                  data.force[iblock][p] += F12(curr, proj);
-                }
-              }
+        // The projection of a particle of the other portal lies at its
+        // position along that portal, so a larger gap along the portal alone
+        // already puts the projection beyond the cutoff.
+        const Scal window = kCutoff / r_length;
+        for (const auto& group : other_cache.groups) {
+          if (group.lambda_max < lambda_curr - window ||
+              group.lambda_min > lambda_curr + window) {
+            continue;
+          }
+          for (size_t q = group.begin; q < group.end; ++q) {
+            const Scal other_lambda_neighbor = other_cache.lambda[q];
+            if (std::abs(other_lambda_neighbor - lambda_curr) > window) {
+              continue;
+            }
+            const Scal other_offset_neighbor = other_cache.offset[q];
+            if (other_lambda_neighbor > 0. && other_lambda_neighbor < 1. &&
+                other_offset_neighbor * offset_curr < 0.) {
+              const Scal sign = (offset_curr > 0. ? 1. : -1.);
+              const Vect proj =
+                  a + r * other_lambda_neighbor +
+                  n * (other_offset_neighbor + 2. * sign * kPortalThickness);
+              force += F12(curr, proj);
             }
           }
         }

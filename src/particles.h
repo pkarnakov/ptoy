@@ -245,6 +245,25 @@ class Particles {
   std::vector<std::array<Portal, 2>> portals_;
   std::vector<int> particle_to_move_; // 1: to move, 0: otherwise
   void UpdatePortalBlocks(Portal& portal);
+  // Particles in the blocks of one portal, with their coordinates relative to
+  // the portal line: `lambda` spans the portal from 0 to 1 and `offset` is the
+  // signed distance to it. Filled by UpdatePortalCache().
+  struct PortalCache {
+    std::vector<size_t> block, index; // Location in blocks::BlockData.
+    std::vector<Vect> position;
+    std::vector<Scal> lambda, offset;
+    // One entry per non-empty block of the portal, to skip whole blocks at
+    // once: the range [begin,end) of their particles in the arrays above, the
+    // bounding box of their positions and the range of their `lambda`.
+    struct Group {
+      size_t begin, end;
+      Vect low, high;
+      Scal lambda_min, lambda_max;
+    };
+    std::vector<Group> groups;
+  };
+  void UpdatePortalCache(const Portal& portal, PortalCache& cache);
+  std::array<PortalCache, 2> portal_cache_;
   std::set<std::pair<int, int>> no_rendering_;
   std::set<std::pair<int, int>> no_rendering_buffer_;
   size_t grid_size_ = 0;
