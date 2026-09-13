@@ -7,7 +7,11 @@
 
 class Control {
  public:
-  using Keysym = char;
+  // ASCII, plus the codes below for keys that have none. The frontends
+  // translate their own key codes to these before sending an event.
+  using Keysym = int;
+  static constexpr Keysym kKeyArrowDown = 256;
+  static constexpr Keysym kKeyArrowUp = 257;
 
   enum class EventType {
     key_down,
@@ -28,7 +32,7 @@ class Control {
 
   struct Event {
     EventType type;
-    Keysym keysym; // ASCII value.
+    Keysym keysym; // ASCII value, or one of the codes above.
     Vect mousepos; // Mouse position in domain units.
   };
 

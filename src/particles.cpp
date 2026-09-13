@@ -56,12 +56,9 @@ Particles::Particles()
 }
 
 // Bonds, frozen particles and portals refer to particles by id, so they cannot
-// outlive the particles they were made of and are cleared here. The two
-// portals flanking the grid are recreated, as in the initial state. The domain
-// is left alone since it follows the window size.
-void Particles::SetParticleGrid(size_t size) {
-  grid_size_ = size;
-
+// outlive the particles they were made of and are cleared here. The domain is
+// left alone since it follows the window size.
+void Particles::ResetScene() {
   bonds_.clear();
   no_rendering_.clear();
   no_rendering_buffer_.clear();
@@ -80,6 +77,12 @@ void Particles::SetParticleGrid(size_t size) {
   auto& data = Blocks.GetData();
   data.clear();
   data.resize(Blocks.GetNumBlocks());
+}
+
+// Recreates the two portals flanking the grid, as in the initial state.
+void Particles::SetParticleGrid(size_t size) {
+  ResetScene();
+  grid_size_ = size;
 
   // Hexagonal packing resting on the bottom of the domain.
   const Scal width = size * 2. * kRadius;
@@ -108,6 +111,39 @@ void Particles::SetParticleGrid(size_t size) {
 
   std::cout << "Particle grid " << size << "x" << size << " = "
             << size * size << " particles" << std::endl;
+}
+
+// Unlike SetParticleGrid() the particle count follows the domain rather than a
+// preset, and there are no portals: the point is a box loaded to a known
+// fraction of its capacity, to test what a deep pile does under gravity.
+void Particles::SetParticleFill(Scal fraction) {
+  ResetScene();
+  grid_size_ = 0; // Not one of the presets, so no grid button is active.
+
+  // Hexagonal packing resting on the bottom of the domain, one particle
+  // diameter clear of the side walls.
+  const Vect size = domain.size();
+  const size_t nx = std::max<Scal>(0, (size.x - 4. * kRadius) / (2. * kRadius));
+  const size_t ny =
+      std::max<Scal>(0, size.y * fraction / (std::sqrt(3.) * kRadius));
+  const Vect low(domain.A.x + (size.x - 2. * kRadius * nx) * 0.5, domain.A.y);
+  ArrayVect position;
+  ArrayVect velocity;
+  std::vector<int> id;
+  for (size_t j = 0; j < ny; ++j) {
+    for (size_t i = 0; i < nx; ++i) {
+      position.push_back(Vect(
+          low.x + kRadius * (2. * i + 1. + (j % 2)),
+          low.y + kRadius * (std::sqrt(3.) * j + 1.)));
+      velocity.push_back(Vect(0.));
+      id.push_back(id.size());
+    }
+  }
+  Blocks.AddParticles(position, velocity, id);
+  SetParticleBuffer();
+
+  std::cout << "Box filled to " << fraction << " of its height: " << nx << "x"
+            << ny << " = " << position.size() << " particles" << std::endl;
 }
 
 // A particle placed closer than the cutoff to an existing one starts inside

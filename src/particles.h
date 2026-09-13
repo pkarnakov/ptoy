@@ -18,6 +18,8 @@ constexpr size_t kGridMedium = 25;
 constexpr size_t kGridLarge = 45;
 // Block added by AddParticleBlock(), in particles per side.
 constexpr size_t kBlockGrid = 10;
+// Fraction of the domain height filled by the box scene.
+constexpr Scal kFillFraction = 0.5;
 // Where that block appears, relative to the domain.
 constexpr Scal kBlockPositionX = 0.5;
 constexpr Scal kBlockPositionY = 0.8;
@@ -131,6 +133,9 @@ class Particles {
   // Replaces all particles with a grid of `size` by `size` of them.
   // Resets the simulation, see the definition.
   void SetParticleGrid(size_t size);
+  // Replaces all particles with a hexagonal packing filling the domain from
+  // the bottom up to `fraction` of its height. Resets the simulation too.
+  void SetParticleFill(Scal fraction);
   // Adds a block of `size` by `size` particles centered at `relative`
   // position in the domain, where (0,0) is its lower left corner and (1,1) the
   // upper right one. Keeps the particles that are already there.
@@ -228,6 +233,8 @@ class Particles {
   Scal dt;
   Vect gravity_;
   void calc_forces(size_t i);
+  // Clears everything a scene is built on top of, see the definition.
+  void ResetScene();
   // True if no existing particle is close enough to `position` to push a
   // particle placed there.
   bool IsPositionFree(Vect position) const;

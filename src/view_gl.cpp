@@ -705,13 +705,19 @@ struct ViewGl::Imp {
           },
           {1, 1, 1}));
 
+      gui.AddButton(Gui::Button( //
+          "1", [this]() { partsys->SetParticleGrid(kGridMedium); }, {1, 1, 1}));
+      gui.AddButton(Gui::Button( //
+          "2", [this]() { partsys->SetParticleFill(kFillFraction); },
+          {1, 1, 1}));
+
       auto add_gravity_button = [&](std::string lbl, int steps) {
         gui.AddButton(Gui::Button( //
             lbl, [this, steps]() { partsys->ChangeGravity(steps); },
             {1, 1, 1}));
       };
-      add_gravity_button("1", -1);
-      add_gravity_button("2", 1);
+      add_gravity_button("v", -1);
+      add_gravity_button("^", 1);
 
       gui.SetWindowSize(width, height);
     }
@@ -852,8 +858,9 @@ O: switch to portal
 B: switch to bond
 N: switch to no action
 S, M, L: restart with a small, medium or large grid of particles
+1, 2: restart with the default scene or a half-filled box
 D: drop a block of particles
-1, 2: gravity further down or up
+DOWN, UP: gravity further down or up
 G: toggle gravity
 I: remove last pair of portals
 SPACE: toggle pause
@@ -983,7 +990,19 @@ void ViewGl::Imp::Control() {
     if (e.type == SDL_QUIT) {
       state_quit = true;
     } else if (e.type == SDL_KEYDOWN) {
-      control_.SendKeyDown(e.key.keysym.sym);
+      // Keys outside ASCII get SDL codes far past it, so translate the ones
+      // that are bound to the codes Control expects.
+      switch (e.key.keysym.sym) {
+        case SDLK_DOWN:
+          control_.SendKeyDown(Control::kKeyArrowDown);
+          break;
+        case SDLK_UP:
+          control_.SendKeyDown(Control::kKeyArrowUp);
+          break;
+        default:
+          control_.SendKeyDown(e.key.keysym.sym);
+          break;
+      }
       if (e.key.keysym.sym != 'q') {
         quit_count = 0;
       }

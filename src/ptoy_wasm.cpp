@@ -103,7 +103,7 @@ int GetFrozen(uint16_t* data, int max_size) {
   }
   return i;
 }
-void SendKeyDown(char keysym) {
+void SendKeyDown(int keysym) {
   auto control = g_control;
   control->SendKeyDown(keysym);
 }

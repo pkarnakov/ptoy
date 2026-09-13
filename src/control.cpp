@@ -45,7 +45,9 @@ void Control::Send(Event e) {
   if (!debug) {
     return;
   }
-  const char keysym = std::isprint(e.keysym) ? e.keysym : ' ';
+  const bool printable =
+      e.keysym >= 0 && e.keysym < 256 && std::isprint(e.keysym);
+  const char keysym = printable ? e.keysym : ' ';
   std::cout << EventTypeToStr(e.type);
   switch (e.type) {
     case EventType::key_down:
@@ -126,9 +128,15 @@ void Control::Handle(Event e) {
             Vect(kBlockPositionX, kBlockPositionY), kBlockGrid);
         break;
       case '1':
-        partsys_->ChangeGravity(-1);
+        partsys_->SetParticleGrid(kGridMedium);
         break;
       case '2':
+        partsys_->SetParticleFill(kFillFraction);
+        break;
+      case kKeyArrowDown:
+        partsys_->ChangeGravity(-1);
+        break;
+      case kKeyArrowUp:
         partsys_->ChangeGravity(1);
         break;
       default:

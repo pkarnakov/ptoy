@@ -199,9 +199,21 @@ function printError(text) {
   }
 }
 
+// Codes for keys without one, matching Control::kKeyArrow* in control.h.
+const kKeyArrowDown = 256;
+const kKeyArrowUp = 257;
+
 function sendKeyDownChar(c) {
+  if (c == 'ArrowDown') {
+    SendKeyDown(kKeyArrowDown);
+    return;
+  }
+  if (c == 'ArrowUp') {
+    SendKeyDown(kKeyArrowUp);
+    return;
+  }
   keysym = c.charCodeAt(0);
-  if (keysym < 256) {
+  if (c.length == 1 && keysym < 256) {
     SendKeyDown(keysym);
   }
 }
@@ -249,8 +261,9 @@ function postRun() {
       return;
     }
     pressButton(e.key);
-    // Prevent scrolling by Space.
-    if(e.keyCode == 32 && e.target == document.body) {
+    // Prevent scrolling by Space and by the arrow keys.
+    if((e.keyCode == 32 || e.key == 'ArrowDown' || e.key == 'ArrowUp') &&
+       e.target == document.body) {
       e.preventDefault();
     }
   };
