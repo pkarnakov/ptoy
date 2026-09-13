@@ -1,6 +1,10 @@
+#pragma once
+
 #include <sstream>
 #include <stdexcept>
 #include <string>
+
+#include "macros.h"
 
 #define FILELINE (std::string() + __FILE__ + ":" + std::to_string(__LINE__))
 
@@ -22,8 +26,6 @@
 
 #define GET_COUNT(_1, _2, _3, COUNT, ...) COUNT
 #define VA_SIZE(...) GET_COUNT(__VA_ARGS__, 3, 2, 1, 0)
-#define PTOY_CAT(x, y) x##y
-#define PTOY_XCAT(x, y) PTOY_CAT(x, y)
 
 #define fassert(...) PTOY_XCAT(fassert##_, VA_SIZE(__VA_ARGS__))(__VA_ARGS__)
 
