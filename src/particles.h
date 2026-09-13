@@ -129,6 +129,7 @@ class Particles {
   void BondsMove(Vect point);
   void BondsStop(Vect point);
   void CheckBonds();
+  void CheckFrozen();
   void FreezeStart(Vect point);
   void FreezeMove(Vect point);
   void FreezeStop(Vect point);

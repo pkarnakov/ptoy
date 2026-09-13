@@ -179,6 +179,7 @@ void Particles::step(Scal time_target, bool quit) {
         ApplyPortals();
         Blocks.SortParticles();
         CheckBonds();
+        CheckFrozen();
 
         if (remove_last_portal_) {
           if (portals_.size()) {
@@ -209,6 +210,20 @@ void Particles::CheckBonds() {
     if (bbi[it->first].first == blocks::kBlockNone ||
         bbi[it->second].first == blocks::kBlockNone) {
       it = bonds_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+// Particles that left the domain are removed by blocks::SortParticles(), which
+// only marks them in block_by_id_. Forget them here, otherwise ApplyFrozen()
+// and the renderer would look up a block that does not exist.
+void Particles::CheckFrozen() {
+  const auto& bbi = Blocks.GetBlockById();
+  for (auto it = frozen_.begin(); it != frozen_.end();) {
+    if (bbi[*it].first == blocks::kBlockNone) {
+      it = frozen_.erase(it);
     } else {
       ++it;
     }
