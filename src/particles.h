@@ -179,6 +179,20 @@ class Particles {
   void SetRendererReadyForNext(bool value) {
     renderer_ready_for_next_ = value;
   }
+  // Portal pair currently being drawn with the mouse.
+  struct PortalDrawing {
+    int stage; // 0: drawing the first portal of a pair, 1: the second one.
+    bool mouse_moving; // Whether a portal is being drawn right now.
+    Vect begin, current; // Endpoints of the portal being drawn.
+    std::pair<Vect, Vect> prev; // First portal of the pair, if stage is 1.
+  };
+  PortalDrawing GetPortalDrawing() const {
+    return {portal_stage_, portal_mouse_moving_, portal_begin_, portal_current_,
+            portal_prev_};
+  }
+  const std::set<std::pair<int, int>>& GetNoRendering() const {
+    return no_rendering_buffer_;
+  }
 
  private:
   RectVect domain;
@@ -210,8 +224,6 @@ class Particles {
   bool renderer_ready_for_next_ = true;
   bool portal_enabled_ = false;
   bool remove_last_portal_;
-
- public:
   int portal_stage_ = 0;
   bool portal_mouse_moving_ = false;
   Vect portal_begin_;
@@ -222,7 +234,4 @@ class Particles {
   void UpdatePortalBlocks(Portal& portal);
   std::set<std::pair<int, int>> no_rendering_;
   std::set<std::pair<int, int>> no_rendering_buffer_;
-  const std::set<std::pair<int, int>>& GetNoRendering() const {
-    return no_rendering_buffer_;
-  }
 };

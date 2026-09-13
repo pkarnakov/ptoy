@@ -41,11 +41,15 @@ endif()
 set(T "control")
 add_library(${T} src/control.cpp)
 
+set(T "scene")
+add_library(${T} src/scene.cpp)
+target_link_libraries(${T} geometry particles)
+
 # Executable.
 if (USE_EXE)
   set(EXE "ptoy")
   add_executable(${EXE} src/main.cpp)
-  target_link_libraries(${EXE} geometry particles)
+  target_link_libraries(${EXE} geometry particles scene)
   if (USE_BACKEND_TEXT)
     target_compile_definitions(${EXE} PRIVATE USE_BACKEND_TEXT=1)
   else()
@@ -106,7 +110,7 @@ if (USE_WASM)
   set(T ptoy)
   add_link_options(-sALLOW_MEMORY_GROWTH=1)
   add_executable(${T} src/ptoy_wasm.cpp)
-  target_link_libraries(${T} geometry particles control)
+  target_link_libraries(${T} geometry particles control scene)
   target_link_options(${T} PRIVATE "-sEXPORTED_FUNCTIONS=[\
     '_main', '_malloc' \
     , '_GetParticles', '_GetPortals', '_GetBonds', '_GetFrozen' \

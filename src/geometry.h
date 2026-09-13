@@ -72,6 +72,9 @@ class Vect {
   bool operator==(Vect other) const {
     return x == other.x && y == other.y;
   }
+  bool operator!=(Vect other) const {
+    return !(*this == other);
+  }
   Vect GetNormalized() const {
     const Scal len = length();
     return Vect(x / len, y / len);

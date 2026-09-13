@@ -531,8 +531,7 @@ struct ViewGl::Imp {
       auto attr_width =
           std::make_shared<VertexAttribute<GLfloat, 1>>("width", program);
 
-      auto render = [&, program, &ps = partsys, attr_point, attr_color,
-                     attr_width]() {
+      auto render = [&, program, attr_point, attr_color, attr_width]() {
         glUseProgram(program);
 
         std::vector<std::array<GLfloat, 2>> buf;
@@ -559,50 +558,31 @@ struct ViewGl::Imp {
         };
 
         { // Draw portals.
-          const auto& portals = owner->scene_.portals;
           const Scal kPortalWidth = 0.015;
           const auto blue = rgba(SplitRgb(colors_geo[2]));
           const auto orange = rgba(SplitRgb(colors_geo[5]));
-          for (auto& pair : portals) {
-            add(pair[0].pa, pair[0].pb, blue, kPortalWidth);
-            add(pair[1].pa, pair[1].pb, orange, kPortalWidth);
-          }
-          if (ps->portal_stage_ == 0) {
-            if (ps->portal_mouse_moving_) {
-              add(ps->portal_begin_, ps->portal_current_, blue, kPortalWidth);
-            }
-          } else {
-            add(ps->portal_prev_.first, ps->portal_prev_.second, blue,
-                kPortalWidth);
-            if (ps->portal_mouse_moving_) {
-              add(ps->portal_begin_, ps->portal_current_, orange, kPortalWidth);
+          for (auto& pair : owner->scene_.portals) {
+            for (size_t j : {0, 1}) {
+              const auto& portal = pair[j];
+              if (portal.pa != portal.pb) { // Skip the portal not drawn yet.
+                add(portal.pa, portal.pb, j == 0 ? blue : orange,
+                    kPortalWidth);
+              }
             }
           }
         }
 
         { // Draw bonds.
           const Scal kBondWidth = 0.015;
-          const auto& nr = ps->GetNoRendering();
-          const auto& pos = ps->GetBlockData().position;
-          const auto& bbi = ps->GetBlockById();
-          for (auto bond : ps->GetBonds()) {
-            const auto& a = bbi[bond.first];
-            const auto& b = bbi[bond.second];
-            if (!nr.count(bond)) {
-              add(pos[a.first][a.second], pos[b.first][b.second], rgb(1, 1, 1),
-                  kBondWidth);
-            }
+          for (auto& bond : owner->scene_.bonds) {
+            add(bond.pa, bond.pb, rgb(1, 1, 1), kBondWidth);
           }
         }
 
         { // Draw frozen particles.
           // TODO: draw with texture or color of particles instead
           const Scal kFrozenWidth = kRadius * 2;
-          const auto& pos = ps->GetBlockData().position;
-          const auto& bbi = ps->GetBlockById();
-          for (auto id : ps->GetFrozen()) {
-            const auto& a = bbi[id];
-            Vect c = pos[a.first][a.second];
+          for (auto c : owner->scene_.frozen) {
             Vect d(kFrozenWidth * 0.25, 0);
             add(c - d, c + d, rgb(0., 0., 0.), kFrozenWidth);
           }
@@ -610,9 +590,8 @@ struct ViewGl::Imp {
 
         { // Draw frame.
           const Scal kFrameWidth = 0.01;
-          auto dom = ps->GetDomain();
-          Vect dom0 = dom.A;
-          Vect dom1 = dom.B;
+          Vect dom0 = owner->scene_.domain.A;
+          Vect dom1 = owner->scene_.domain.B;
           add(Vect(dom0.x, dom0.y), Vect(dom1.x, dom0.y), rgb(1, 1, 1),
               kFrameWidth);
           add(Vect(dom1.x, dom0.y), Vect(dom1.x, dom1.y), rgb(1, 1, 1),
@@ -712,8 +691,7 @@ struct ViewGl::Imp {
       auto attr_color =
           std::make_shared<VertexAttribute<GLfloat, 4>>("color", program);
 
-      auto render = [&, program, &ps = partsys, attr_lowcorner, attr_color,
-                     attr_size]() {
+      auto render = [&, program, attr_lowcorner, attr_color, attr_size]() {
         glUseProgram(program);
 
         std::vector<std::array<GLfloat, 2>> buf_lowcorner;
@@ -780,8 +758,8 @@ struct ViewGl::Imp {
       auto attr_width =
           std::make_shared<VertexAttribute<GLfloat, 1>>("width", program);
 
-      auto render = [program, &ps = partsys, attr_lowcorner, attr_color,
-                     attr_size, attr_char, attr_width, tex_font, font, this]() {
+      auto render = [program, attr_lowcorner, attr_color, attr_size, attr_char,
+                     attr_width, tex_font, font, this]() {
         glUseProgram(program);
 
         std::vector<std::array<GLfloat, 2>> buf_lowcorner;

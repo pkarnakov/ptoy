@@ -35,17 +35,6 @@ bool flag_display;
 bool state_pause;
 bool state_quit;
 
-struct SceneData {
-  struct Particles {
-    std::vector<Vect> p;
-    std::vector<Vect> v;
-  };
-  Particles particles;
-
-  using Portal = Scene::Portal;
-  std::vector<std::array<Portal, 2>> portals;
-};
-
 std::unique_ptr<View> g_view;
 Scene g_scene;
 SceneData g_data;
@@ -90,29 +79,8 @@ void display() {
   g_last_wtime = curr_wtime;
   g_last_gtime = curr_gtime;
 
-  // Update scene.
-  {
-    const auto& particles = gameinst->partsys->GetParticles();
-    g_data.particles.p.resize(particles.size());
-    g_data.particles.v.resize(particles.size());
-    for (size_t i = 0; i < particles.size(); ++i) {
-      g_data.particles.p[i] = particles[i].p;
-      g_data.particles.v[i] = particles[i].v;
-    }
-    g_scene.particles.p = g_data.particles.p;
-    g_scene.particles.v = g_data.particles.v;
-
-    const auto& portals = gameinst->partsys->GetPortals();
-    g_data.portals.resize(portals.size());
-    for (size_t i = 0; i < portals.size(); ++i) {
-      for (size_t j : {0, 1}) {
-        g_data.portals[i][j].pa = portals[i][j].begin;
-        g_data.portals[i][j].pb = portals[i][j].end;
-      }
-    }
-    g_scene.portals = g_data.portals;
-    g_view->SetScene(g_scene);
-  }
+  UpdateScene(*gameinst->partsys, g_data, g_scene);
+  g_view->SetScene(g_scene);
   g_view->Draw();
   flag_display = false;
 }

@@ -15,22 +15,6 @@
 #include "macros.h"
 #include "scene.h"
 
-struct SceneData {
-  struct Particles {
-    std::vector<Vect> p;
-    std::vector<Vect> v;
-  };
-  Particles particles;
-
-  using Portal = Scene::Portal;
-  std::vector<std::array<Portal, 2>> portals;
-
-  using Bond = Scene::Bond;
-  std::vector<Bond> bonds;
-
-  std::vector<Vect> frozen;
-};
-
 const int g_width = 800;
 const int g_height = 800;
 Scene g_scene;
@@ -40,89 +24,12 @@ std::shared_ptr<Control> g_control;
 std::string g_buf;
 bool state_pause;
 
-void UpdateScene() {
-  auto gameinst = g_gameinst;
-
-  { // Particles.
-    const auto& particles = gameinst->partsys->GetParticles();
-    g_data.particles.p.resize(particles.size());
-    g_data.particles.v.resize(particles.size());
-    for (size_t i = 0; i < particles.size(); ++i) {
-      g_data.particles.p[i] = particles[i].p;
-      g_data.particles.v[i] = particles[i].v;
-    }
-    g_scene.particles.p = g_data.particles.p;
-    g_scene.particles.v = g_data.particles.v;
-  }
-
-  { // Portals.
-    using Portal = Scene::Portal;
-    using Pair = std::array<Portal, 2>;
-    const auto& portals = gameinst->partsys->GetPortals();
-    g_data.portals.resize(portals.size());
-    const auto& ps = gameinst->partsys;
-    for (size_t i = 0; i < portals.size(); ++i) {
-      Pair pair{
-          Portal{portals[i][0].begin, portals[i][0].end},
-          Portal{portals[i][1].begin, portals[i][1].end},
-      };
-      g_data.portals[i] = pair;
-    }
-    // Append incomplete pair currently drawn.
-    if (ps->portal_stage_ == 0) {
-      if (ps->portal_mouse_moving_) {
-        g_data.portals.emplace_back(Pair{
-            Portal{ps->portal_begin_, ps->portal_current_},
-            Portal{Vect(-1), Vect(-1)}});
-      }
-    } else {
-      g_data.portals.emplace_back(Pair{
-          Portal{ps->portal_prev_.first, ps->portal_prev_.second},
-          Portal{Vect(-1), Vect(-1)}});
-      if (ps->portal_mouse_moving_) {
-        g_data.portals.back()[1] =
-            Portal{ps->portal_begin_, ps->portal_current_};
-      }
-    }
-    g_scene.portals = g_data.portals;
-  }
-
-  { // Bonds.
-    g_data.bonds.clear();
-    const auto& ps = gameinst->partsys;
-    const auto& norend = ps->GetNoRendering();
-    const auto& pos = ps->GetBlockData().position;
-    const auto& bbi = ps->GetBlockById();
-    for (auto bond : ps->GetBonds()) {
-      const auto& a = bbi[bond.first];
-      const auto& b = bbi[bond.second];
-      if (!norend.count(bond)) {
-        g_data.bonds.push_back(
-            {pos[a.first][a.second], pos[b.first][b.second]});
-      }
-    }
-    g_scene.bonds = g_data.bonds;
-  }
-
-  { // Frozen particles.
-    g_data.frozen.clear();
-    const auto& ps = gameinst->partsys;
-    const auto& pos = ps->GetBlockData().position;
-    const auto& bbi = ps->GetBlockById();
-    for (auto id : ps->GetFrozen()) {
-      const auto& a = bbi[id];
-      g_data.frozen.push_back(pos[a.first][a.second]);
-    }
-    g_scene.frozen = g_data.frozen;
-  }
-}
-
 static void main_loop() {
   auto gameinst = g_gameinst;
   gameinst->partsys->SetRendererReadyForNext(true);
   const auto dt = 0.03;
   gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
-  UpdateScene();
+  UpdateScene(*gameinst->partsys, g_data, g_scene);
   EM_ASM_({ draw(); });
 }
 
@@ -220,7 +127,7 @@ void Init() {
   state_pause = false;
   g_gameinst = std::make_shared<Game>(g_width, g_height);
   g_control = std::make_shared<Control>(g_gameinst->partsys.get());
-  UpdateScene();
+  UpdateScene(*g_gameinst->partsys, g_data, g_scene);
 }
 void SetPause(int flag) {
   state_pause = flag;
