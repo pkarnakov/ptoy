@@ -228,6 +228,9 @@ class Particles {
   Scal dt;
   Vect gravity_;
   void calc_forces(size_t i);
+  // True if no existing particle is close enough to `position` to push a
+  // particle placed there.
+  bool IsPositionFree(Vect position) const;
   void RHS_bonds();
   void ApplyFrozen();
   std::vector<std::unique_ptr<env_object>> ENVOBJ;

@@ -103,6 +103,32 @@ void Particles::SetParticleGrid(size_t size) {
             << size * size << " particles" << std::endl;
 }
 
+// A particle placed closer than the cutoff to an existing one starts inside
+// the repulsive core, and the force there is large enough to eject both at the
+// velocity limit. Checks the same nine blocks as calc_forces(), which is
+// enough because kBlockSize is larger than the cutoff.
+bool Particles::IsPositionFree(Vect position) const {
+  const size_t iblock = Blocks.FindBlock(position);
+  if (iblock == blocks::kBlockNone) {
+    return false;
+  }
+  const Scal cutoff2 = std::pow(2. * kRadius, 2);
+  const auto& data = Blocks.GetData();
+  for (int offset : Blocks.GetNeighborOffsets()) {
+    const size_t j = iblock + offset;
+    if (j >= Blocks.GetNumBlocks()) {
+      continue;
+    }
+    for (size_t p = 0; p < data.position[j].size(); ++p) {
+      const Vect dp = position - data.position[j][p];
+      if (dp.dot(dp) < cutoff2) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 void Particles::AddParticleBlock(Vect relative, size_t size) {
   const Vect center = domain.A + domain.size() * relative;
   // Hexagonal packing, as in SetParticleGrid().
@@ -115,11 +141,18 @@ void Particles::AddParticleBlock(Vect relative, size_t size) {
   ArrayVect position;
   ArrayVect velocity;
   std::vector<int> id;
+  size_t skipped = 0;
   for (size_t j = 0; j < size; ++j) {
     for (size_t i = 0; i < size; ++i) {
-      position.push_back(Vect(
+      const Vect p(
           low.x + kRadius * (2. * i + 1. + (j % 2)),
-          low.y + kRadius * (std::sqrt(3.) * j + 1.)));
+          low.y + kRadius * (std::sqrt(3.) * j + 1.));
+      // Overlapping an existing particle would eject both of them.
+      if (!IsPositionFree(p)) {
+        ++skipped;
+        continue;
+      }
+      position.push_back(p);
       velocity.push_back(Vect(0.));
       id.push_back(next_id);
       ++next_id;
@@ -128,8 +161,11 @@ void Particles::AddParticleBlock(Vect relative, size_t size) {
   Blocks.AddParticles(position, velocity, id);
   SetParticleBuffer();
 
-  std::cout << "Added " << size << "x" << size << " particles, "
-            << Blocks.GetNumParticles() << " in total" << std::endl;
+  std::cout << "Added " << position.size() << " particles";
+  if (skipped) {
+    std::cout << ", skipped " << skipped << " overlapping";
+  }
+  std::cout << ", " << Blocks.GetNumParticles() << " in total" << std::endl;
 }
 
 Particles::~Particles() {}
