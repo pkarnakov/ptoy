@@ -113,7 +113,7 @@ function draw() {
   }
 
   { // Draw frozen particles.
-    g_frozen = new Uint16Array(Module.HEAPU8.buffer, g_bonds_ptr, g_bonds_max_size);
+    g_frozen = new Uint16Array(Module.HEAPU8.buffer, g_frozen_ptr, g_frozen_max_size);
     let size = GetFrozen(g_frozen.byteOffset, g_frozen.length);
     ctx.fillStyle = c_black;
     ctx.lineWidth = 0;
