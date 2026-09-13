@@ -10,6 +10,12 @@
 
 #ifdef _OPENMP
 #include <omp.h>
+#include <cstdlib>
+#include <set>
+#include <string>
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#endif
 #endif
 
 #include "game.h"
@@ -85,7 +91,63 @@ void display() {
   flag_display = false;
 }
 
+#ifdef _OPENMP
+// Number of physical cores, or 0 if unknown.
+static size_t GetNumCores() {
+#if defined(__APPLE__)
+  int value = 0;
+  size_t size = sizeof(value);
+  if (sysctlbyname("hw.physicalcpu", &value, &size, nullptr, 0) == 0 &&
+      value > 0) {
+    return static_cast<size_t>(value);
+  }
+  return 0;
+#elif defined(__linux__)
+  // Every processor entry reports the core it runs on, so the number of
+  // distinct cores is the number of entries without the ones sharing a core.
+  std::ifstream fin("/proc/cpuinfo");
+  std::set<std::pair<int, int>> cores;
+  int package = 0;
+  std::string line;
+  while (std::getline(fin, line)) {
+    const size_t colon = line.find(':');
+    if (colon == std::string::npos) {
+      continue;
+    }
+    const std::string key = line.substr(0, colon);
+    const int value = std::atoi(line.c_str() + colon + 1);
+    if (key.compare(0, 11, "physical id") == 0) {
+      package = value;
+    } else if (key.compare(0, 7, "core id") == 0) {
+      cores.insert({package, value});
+    }
+  }
+  return cores.size();
+#else
+  return 0;
+#endif
+}
+
+// OpenMP starts one thread per logical CPU, but the block loops in
+// Particles::step() are memory-bound and gain nothing from a second thread on
+// the same core, while the extra threads add synchronization at every barrier
+// and take time from the renderer. Use one thread per core unless the
+// environment asks for a number.
+static void SetDefaultNumThreads() {
+  if (!std::getenv("OMP_NUM_THREADS")) {
+    const size_t cores = GetNumCores();
+    if (cores > 0 && cores < static_cast<size_t>(omp_get_max_threads())) {
+      omp_set_num_threads(static_cast<int>(cores));
+    }
+  }
+  std::cout << "OpenMP threads: " << omp_get_max_threads() << std::endl;
+}
+#endif
+
 int main() {
+#ifdef _OPENMP
+  SetDefaultNumThreads();
+#endif
   g_last_gtime = 0;
   state_pause = false;
   state_quit = false;
