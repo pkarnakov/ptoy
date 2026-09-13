@@ -861,6 +861,7 @@ S, M, L: restart with a small, medium or large grid of particles
 1, 2: restart with the default scene or a half-filled box
 D: drop a block of particles
 DOWN, UP: gravity further down or up
+T: switch the position update between second and first order
 G: toggle gravity
 I: remove last pair of portals
 SPACE: toggle pause

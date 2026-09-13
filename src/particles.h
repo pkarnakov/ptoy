@@ -200,6 +200,12 @@ class Particles {
   }
   // Total kinetic energy of all particles.
   Scal GetKineticEnergy() const;
+  // Selects the position update in step(): the second-order trapezoid, or the
+  // first-order one that damps stiff contacts. Defaults to USE_TRAPEZOID.
+  void SetTrapezoidPosition(bool value);
+  bool GetTrapezoidPosition() const {
+    return trapezoid_position_;
+  }
   size_t GetNumPerCell() const {
     return blocks_buffer_.GetNumPerCell();
   }
@@ -234,6 +240,7 @@ class Particles {
   Scal t;
   Scal dt;
   Vect gravity_;
+  bool trapezoid_position_;
   void calc_forces(size_t i);
   // Clears everything a scene is built on top of, see the definition.
   void ResetScene();

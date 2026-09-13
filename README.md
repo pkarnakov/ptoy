@@ -65,6 +65,7 @@ or `./build_debug/ptoy` for the debug build.
 * `1`, `2`: restart with the default scene or with a box filled half-way
 * `d`: drop a block of 10x10 particles from above
 * `down`, `up`: point gravity further down or further up, also turning it on
+* `t`: switch the position update between second and first order
 * `g`: toggle gravity
 * `i`: remove last pair of portals
 * `space`: toggle pause

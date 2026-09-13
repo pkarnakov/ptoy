@@ -133,6 +133,9 @@ void Control::Handle(Event e) {
       case '2':
         partsys_->SetParticleFill(kFillFraction);
         break;
+      case 't':
+        partsys_->SetTrapezoidPosition(!partsys_->GetTrapezoidPosition());
+        break;
       case kKeyArrowDown:
         partsys_->ChangeGravity(-1);
         break;
