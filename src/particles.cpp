@@ -26,6 +26,13 @@ const Scal kGravity = 10;
 const Scal kPortalThickness = 0.02;
 const Scal kVelocityLimit = 10;
 
+// Position update in the corrector of Particles::step(). True averages the old
+// and new velocities, which is second order. False advances with the new
+// velocity alone, the original first-order scheme, whose truncation error acts
+// as a stiffness-selective damper and so tolerates stiffer contacts. Flip it if
+// a pile goes unstable under heavy load. See docs/MODEL.md.
+constexpr bool kTrapezoidPosition = true;
+
 const int kParticleIdNone = -1;
 const Scal kTimeStep = 0.0005;
 
@@ -246,8 +253,10 @@ void Particles::step(Scal time_target, bool quit) {
           }
           data.position[iblock][p] =
               data.position_tmp[iblock][p] +
-              (data.velocity_tmp[iblock][p] + data.velocity[iblock][p]) *
-                  (dt * 0.5);
+              (kTrapezoidPosition
+                   ? (data.velocity_tmp[iblock][p] + data.velocity[iblock][p]) *
+                         (dt * 0.5)
+                   : data.velocity[iblock][p] * dt);
         }
       }
 

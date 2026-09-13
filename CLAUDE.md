@@ -96,7 +96,8 @@ simulation is single precision.
   takes no velocity parameter: the corrector needs the dashpot evaluated at
   $v^*$, and gets it only because the predictor overwrote `data.velocity` in
   place first. Reordering those loops, or using a saved copy of the velocity,
-  silently drops the scheme to first order. See `docs/MODEL.md`.
+  silently drops the scheme to first order. `kTrapezoidPosition = false` swaps
+  the position update back to the original first-order one. See `docs/MODEL.md`.
 - **Contact damping comes from the dashpot in `F12()`** (`kDashpot`), not from
   `kDissipation` and no longer from integrator error. It acts only along the
   line of centres and only while particles overlap, so it settles piles without

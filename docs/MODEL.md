@@ -226,6 +226,13 @@ The dashpot costs about 14 % of a step at 6 threads (69 to 79 µs per step on a
 45x45 grid), which is the price of the two extra velocity loads in
 `CalcForceAvx`.
 
+The old position update is still reachable: set `kTrapezoidPosition` to false in
+`src/particles.cpp` and rebuild. It keeps the dashpot and adds the old numerical
+damping on top, so piles settle a few seconds sooner at the cost of first-order
+accuracy. It is not a cure for an over-packed domain — pack more particles into
+the domain than hexagonal packing holds, for instance by shrinking the window
+onto a full pile, and both schemes explode alike.
+
 ### Reproducing the numbers
 
 The determinant, the order and the dashpot stability limit are all
