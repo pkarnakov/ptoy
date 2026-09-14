@@ -127,6 +127,7 @@ if (USE_WASM)
     , '_SendKeyDown', '_SendMouseMotion', '_SendMouseDown', '_SendMouseUp' \
     , '_SetControlDebug', '_Init', '_SetPause', '_GetMouseMode' \
     , '_GetGravity', '_SetGravity', '_SetGravityVect' \
+    , '_GetMillisStep', '_GetMillisScene' \
   ]")
   # HEAPU8 is read by ptoy_inc.js to view the packed coordinate buffers. The
   # memory views stopped being exported by default in emscripten 4.0.7.

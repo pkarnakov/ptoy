@@ -24,12 +24,23 @@ std::shared_ptr<Control> g_control;
 std::string g_buf;
 bool state_pause;
 
+// Milliseconds spent in the last frame, reported by the status line.
+// emscripten_get_now() is performance.now(), the same clock the page times
+// itself with.
+double g_millis_step;
+double g_millis_scene;
+
 static void main_loop() {
   auto gameinst = g_gameinst;
   gameinst->partsys->SetRendererReadyForNext(true);
   const auto dt = 0.03;
+  const double t0 = emscripten_get_now();
   gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
+  const double t1 = emscripten_get_now();
   UpdateScene(*gameinst->partsys, g_data, g_scene);
+  const double t2 = emscripten_get_now();
+  g_millis_step = t1 - t0;
+  g_millis_scene = t2 - t1;
   EM_ASM_({ draw(); });
 }
 
@@ -131,6 +142,12 @@ void Init() {
 }
 void SetPause(int flag) {
   state_pause = flag;
+}
+double GetMillisStep() {
+  return g_millis_step;
+}
+double GetMillisScene() {
+  return g_millis_scene;
 }
 int GetGravity() {
   auto gameinst = g_gameinst;
