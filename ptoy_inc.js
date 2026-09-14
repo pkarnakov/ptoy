@@ -55,6 +55,8 @@ var SetPause;
 var flag_pause = false;
 var GetMouseMode;
 var Init;
+var GetMillisStep;
+var GetMillisScene;
 
 // WebGL renderer. Null until initGl() succeeds, drawing falls back to the 2D
 // canvas while it is.
@@ -294,13 +296,54 @@ function drawGl(canvas) {
   }
 }
 
+// Status line under the canvas. Per-frame numbers jitter too much to read, so
+// they are smoothed and the text is rewritten a few times a second.
+var g_status;
+var g_stat_frame = 0;
+var g_stat_step = 0;
+var g_stat_scene = 0;
+var g_stat_draw = 0;
+var g_stat_prev = 0;     // Start of the previous frame.
+var g_stat_written = 0;  // When the text was last rewritten.
+
+function smooth(average, value) {
+  return average > 0 ? average + (value - average) * 0.1 : value;
+}
+
+function updateStatus(start, millis_draw) {
+  if (g_stat_prev > 0) {
+    g_stat_frame = smooth(g_stat_frame, start - g_stat_prev);
+  }
+  g_stat_prev = start;
+  g_stat_draw = smooth(g_stat_draw, millis_draw);
+  g_stat_step = smooth(g_stat_step, GetMillisStep());
+  g_stat_scene = smooth(g_stat_scene, GetMillisScene());
+
+  if (!g_status || start - g_stat_written < 250) {
+    return;
+  }
+  g_stat_written = start;
+  // `frame` is the interval between animation frames, so it includes the wait
+  // for the next one and stays at the refresh rate while there is headroom.
+  // `draw` is the time spent packing the buffers and issuing the GL commands;
+  // the GPU work they queue finishes later and is not measured here.
+  g_status.textContent =
+      (g_stat_frame > 0 ? (1000 / g_stat_frame).toFixed(0) : '0') + ' fps' +
+      ' | frame ' + g_stat_frame.toFixed(1) +
+      ' | sim ' + g_stat_step.toFixed(1) +
+      ' | scene ' + g_stat_scene.toFixed(1) +
+      ' | draw ' + g_stat_draw.toFixed(1) + ' ms';
+}
+
 function draw() {
   let canvas = Module['canvas'];
+  const start = performance.now();
   if (gl) {
     drawGl(canvas);
   } else {
     drawCanvas2d(canvas);
   }
+  updateStatus(start, performance.now() - start);
 }
 
 // Fallback for browsers without WebGL2. Kept because a failed context would
@@ -491,11 +534,15 @@ function postRun() {
   SetGravityVect = Module.cwrap('SetGravityVect', null, ['number', 'number']);
   GetMouseMode = Module.cwrap('GetMouseMode', 'string', []);
   Init = Module.cwrap('Init', null, []);
+  GetMillisStep = Module.cwrap('GetMillisStep', 'number', []);
+  GetMillisScene = Module.cwrap('GetMillisScene', 'number', []);
 
   g_particles_ptr = Module._malloc(g_particles_max_size * 2);
   g_portals_ptr = Module._malloc(g_portals_max_size * 2);
   g_bonds_ptr = Module._malloc(g_bonds_max_size * 2);
   g_frozen_ptr = Module._malloc(g_frozen_max_size * 2);
+
+  g_status = document.getElementById('status');
 
   let canvas = Module['canvas'];
   // A canvas keeps the first context type it is asked for, so this decides

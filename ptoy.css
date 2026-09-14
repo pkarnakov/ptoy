@@ -28,6 +28,18 @@ textarea {
   font-family: monospace;
 }
 
+/* Frame timings under the canvas, which is 400px wide. Monospace and
+   left-aligned so the numbers do not shift as their widths change. */
+.status {
+  width: 400px;
+  margin: 2px auto 0 auto;
+  font-family: monospace;
+  font-size: 12px;
+  color: #808080;
+  text-align: left;
+  white-space: nowrap;
+}
+
 .button {
   display: inline-block;
   color: #000000;
