@@ -175,6 +175,9 @@ const char* GetMouseMode() {
   auto control = g_control;
   return Control::MouseModeToStr(control->mouse_mode);
 }
+const char* GetRevision() {
+  return PTOY_REVISION;
+}
 } // extern "C"
 
 int main() {

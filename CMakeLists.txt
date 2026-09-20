@@ -123,8 +123,23 @@ endif()
 
 if (USE_WASM)
   set(T ptoy)
+  # Build revision for the status line. CMAKE_CONFIGURE_DEPENDS re-runs cmake
+  # once HEAD moves, otherwise the string would stick at whatever was current
+  # when the build directory was first configured.
+  execute_process(COMMAND git rev-parse --short HEAD
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE PTOY_REVISION
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET)
+  if (NOT PTOY_REVISION)
+    set(PTOY_REVISION "unknown")
+  endif()
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/.git/HEAD"
+      "${CMAKE_CURRENT_SOURCE_DIR}/.git/index")
   add_link_options(-sALLOW_MEMORY_GROWTH=1)
   add_executable(${T} src/ptoy_wasm.cpp)
+  target_compile_definitions(${T} PRIVATE PTOY_REVISION="${PTOY_REVISION}")
   target_link_libraries(${T} geometry particles control scene)
   target_link_options(${T} PRIVATE "-sEXPORTED_FUNCTIONS=[\
     '_main', '_malloc' \
@@ -132,7 +147,7 @@ if (USE_WASM)
     , '_SendKeyDown', '_SendMouseMotion', '_SendMouseDown', '_SendMouseUp' \
     , '_SetControlDebug', '_Init', '_SetPause', '_GetMouseMode' \
     , '_GetGravity', '_SetGravity', '_SetGravityVect' \
-    , '_GetMillisStep', '_GetMillisScene' \
+    , '_GetMillisStep', '_GetMillisScene', '_GetRevision' \
   ]")
   # HEAPU8 is read by ptoy_inc.js to view the packed coordinate buffers. The
   # memory views stopped being exported by default in emscripten 4.0.7.
