@@ -928,7 +928,7 @@ void CalcForceSerialPadded(
 }
 
 #if USEFLAG(AVX)
-#include <x86intrin.h>
+#include <immintrin.h>
 #define CALC_FORCE CalcForceAvx
 // Accesses `force` and `position` in groups of 8 particles, up to the next
 // multiple of 8 past their size. This stays inside the allocation since
