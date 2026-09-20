@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -29,12 +30,20 @@ bool state_pause;
 // itself with.
 double g_millis_step;
 double g_millis_scene;
+double g_last_wtime;
 
 static void main_loop() {
   auto gameinst = g_gameinst;
   gameinst->partsys->SetRendererReadyForNext(true);
-  const auto dt = 0.03;
   const double t0 = emscripten_get_now();
+  // Advance game time by the measured frame time, as the native loop does, so
+  // that a browser which cannot keep up falls into slow motion rather than
+  // spending ever longer on a frame it still has to finish.
+  const double frame_wtime =
+      g_last_wtime > 0 ? (t0 - g_last_wtime) * 1e-3 : 1. / 60;
+  g_last_wtime = t0;
+  const double speed_target = 1.5;
+  const auto dt = std::min(0.04, std::max(0.02, speed_target * frame_wtime));
   gameinst->partsys->step(gameinst->partsys->GetTime() + dt, state_pause);
   const double t1 = emscripten_get_now();
   UpdateScene(*gameinst->partsys, g_data, g_scene);
